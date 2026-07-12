@@ -76,9 +76,20 @@ export default function ProfileTab({ state, update }) {
       </div>
 
       <button className="btn danger" onClick={() => {
-        if (confirm('Reset profile and all data?')) {
-          localStorage.clear()
+        // window.confirm is blocked inside Telegram WebView — use native popup when available
+        const doReset = () => {
+          try { localStorage.clear() } catch { /* ignore */ }
           location.reload()
+        }
+        const tg = window.Telegram?.WebApp
+        try {
+          if (tg?.showConfirm && tg.isVersionAtLeast?.('6.2')) {
+            tg.showConfirm('Reset profile and all data?', ok => { if (ok) doReset() })
+          } else if (confirm('Reset profile and all data?')) {
+            doReset()
+          }
+        } catch {
+          doReset()
         }
       }}>Reset profile</button>
     </div>

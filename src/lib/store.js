@@ -1,6 +1,17 @@
-// Persistence: localStorage always, Telegram CloudStorage when available.
+// Persistence: localStorage always, Telegram CloudStorage when supported (6.9+).
+// Every Telegram call is wrapped: on old clients CloudStorage methods THROW
+// synchronously (WebAppMethodUnsupported) — an uncaught throw blanks the app.
 const KEY = 'fittrack_state_v1'
 const tg = () => window.Telegram?.WebApp
+
+function cloudSupported() {
+  try {
+    const t = tg()
+    return !!t?.CloudStorage && (t.isVersionAtLeast ? t.isVersionAtLeast('6.9') : false)
+  } catch {
+    return false
+  }
+}
 
 export function loadState() {
   try {
@@ -16,32 +27,41 @@ export function saveState(state) {
   try {
     localStorage.setItem(KEY, raw)
   } catch { /* ignore */ }
-  const cloud = tg()?.CloudStorage
-  if (cloud?.setItem) {
+  if (!cloudSupported()) return
+  try {
+    const cloud = tg().CloudStorage
     // CloudStorage item limit 4096 chars — chunk it
     for (let i = 0; i * 4000 < raw.length; i++) {
       cloud.setItem(`${KEY}_${i}`, raw.slice(i * 4000, (i + 1) * 4000), () => {})
     }
     cloud.setItem(`${KEY}_n`, String(Math.ceil(raw.length / 4000)), () => {})
-  }
+  } catch { /* cloud sync is best-effort */ }
 }
 
 export function loadCloudState() {
   return new Promise(resolve => {
-    const cloud = tg()?.CloudStorage
-    if (!cloud?.getItem) return resolve(null)
-    cloud.getItem(`${KEY}_n`, (err, n) => {
-      const count = parseInt(n, 10)
-      if (err || !count) return resolve(null)
-      const keys = Array.from({ length: count }, (_, i) => `${KEY}_${i}`)
-      cloud.getItems(keys, (err2, items) => {
-        if (err2 || !items) return resolve(null)
+    if (!cloudSupported()) return resolve(null)
+    try {
+      const cloud = tg().CloudStorage
+      cloud.getItem(`${KEY}_n`, (err, n) => {
+        const count = parseInt(n, 10)
+        if (err || !count) return resolve(null)
+        const keys = Array.from({ length: count }, (_, i) => `${KEY}_${i}`)
         try {
-          resolve(JSON.parse(keys.map(k => items[k] || '').join('')))
+          cloud.getItems(keys, (err2, items) => {
+            if (err2 || !items) return resolve(null)
+            try {
+              resolve(JSON.parse(keys.map(k => items[k] || '').join('')))
+            } catch {
+              resolve(null)
+            }
+          })
         } catch {
           resolve(null)
         }
       })
-    })
+    } catch {
+      resolve(null)
+    }
   })
 }

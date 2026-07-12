@@ -3,10 +3,46 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
 
-const tg = window.Telegram?.WebApp
-if (tg) {
-  tg.ready()
-  tg.expand()
+try {
+  const tg = window.Telegram?.WebApp
+  if (tg) {
+    tg.ready()
+    tg.expand()
+  }
+} catch { /* never block startup on Telegram API */ }
+
+// Error boundary: show the error instead of a blank screen.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, fontFamily: 'monospace' }}>
+          <h2 style={{ color: '#ef4444' }}>App error</h2>
+          <p style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
+            {String(this.state.error?.message || this.state.error)}
+          </p>
+          <button
+            style={{ marginTop: 12, padding: '10px 16px' }}
+            onClick={() => { try { localStorage.clear() } catch {} location.reload() }}
+          >
+            Reset & reload
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)

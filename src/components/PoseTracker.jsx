@@ -75,7 +75,7 @@ export default function PoseTracker({ trackerId, onClose, onFinish }) {
         st.reps += 1
         setReps(st.reps)
         setPhase('up')
-        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium')
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium') } catch { /* old client */ }
       }
     }
 
