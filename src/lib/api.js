@@ -29,7 +29,10 @@ async function call(path, opts = {}, retry = true) {
 // Barcode → { found, item }
 export async function lookupBarcode(code) {
   try {
-    return await call(`/api/food/barcode/${code}`)
+    const r = await call(`/api/food/barcode/${code}`)
+    // Server misconfigured or down (401 / 5xx) → don't report "not found", ask Open Food Facts directly.
+    if (r.status === 401 || r.status >= 500 || r.status === 0) return lookupOffDirect(code)
+    return r
   } catch {
     // API unreachable (local dev without the Worker) → Open Food Facts directly; it allows CORS.
     return lookupOffDirect(code)

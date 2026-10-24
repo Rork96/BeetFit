@@ -40,8 +40,15 @@ export function setsLogged(state, key = dayKey()) {
   return Object.values(day).reduce((n, e) => n + (e === true || typeof e === 'number' ? 1 : (e?.sets?.length || 0)), 0)
 }
 
+// Generated at onboarding (lib/program.js); older installs fall back to the fixed templates.
 export function program(state) {
+  if (state.program?.length) return { name: planName(state), days: state.program }
   return PROGRAMS[state.profile.goal] || PROGRAMS.maintain
+}
+
+function planName(state) {
+  const g = { lose: 'Fat loss', maintain: 'Get fit', gain: 'Muscle' }[state.profile.goal] || 'Your plan'
+  return `${g} · ${state.program.filter(d => !d.run).length} days/week`
 }
 
 // Next training day = rotate through the program by sessions done in the last 7 days.

@@ -5,6 +5,7 @@ import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.
 import { exportState, clearState } from '../lib/store.js'
 import { haptic } from '../lib/platform.js'
 import { KG_TO_LB } from '../lib/day.js'
+import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
 
 const VERSION = '0.3.0'
 
@@ -34,7 +35,7 @@ export default function Settings({ state, update, onClose }) {
           <label>Goal</label>
           <div className="chips">
             {GOALS.map(g => (
-              <button key={g.id} className={'chip' + (p.goal === g.id ? ' on' : '')} onClick={() => { haptic(); setP({ goal: g.id }) }}>{g.label}</button>
+              <button key={g.id} className={'chip' + (p.goal === g.id ? ' on' : '')} onClick={() => { haptic(); update(prev => ({ profile: { ...prev.profile, goal: g.id }, program: mkProg(g.id, prev.intake || DEFAULT_INTAKE) })) }}>{g.label}</button>
             ))}
           </div>
           <div className="grid2">

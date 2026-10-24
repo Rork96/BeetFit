@@ -40,17 +40,16 @@ export default function App() {
   const update = patch => setState(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) }))
 
   if (!state?.profile) {
-    return <Onboarding onDone={profile => setState({
-      profile,
+    return <Onboarding onDone={({ profile, intake, program, settings }) => setState({
+      profile, intake, program, settings,
       weightLog: [{ date: dayKey(), kg: profile.weightKg }],
-      mealPlan: null, workoutLog: {}, foodLog: {}, water: {},
-      settings: { units: 'kg', waterTarget: 8, name: '' }
+      mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
     })} />
   }
 
   const order = TABS.map(t => t.id)
   const back = order.indexOf(tab) < order.indexOf(prevTab.current)
-  const go = (id, it = null) => { if (id !== tab) { haptic(); prevTab.current = tab; setTab(id) } setIntent(it) }
+  const go = (id, it = null) => { if (id !== tab) { haptic(); prevTab.current = tab; setTab(id); window.scrollTo(0, 0) } setIntent(it) }
 
   return (
     <>

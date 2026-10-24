@@ -57,7 +57,7 @@ export default function TodayTab({ state, update, go, openSettings }) {
 
       <div className="stk td-stack">
         <button className={'td-streak' + (st >= 7 ? ' hot' : '')} onClick={() => go('progress')}>
-          <span className="td-mark" /><span className="num">{st}-day streak</span>
+          <span className="td-mark" /><span className="num">{st > 0 ? `${st}-day streak` : 'Start your streak today'}</span>
         </button>
 
         {/* Calories */}

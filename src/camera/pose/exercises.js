@@ -87,8 +87,9 @@ export const TRACKER_BY_NAME = {
   'Lunges': 'lunge', 'Lunges (each leg)': 'lunge', 'Reverse lunge': 'lunge', 'Bulgarian split squat': 'lunge',
   'Glute bridges': 'bridge', 'Glute bridge': 'bridge', 'Hip thrusts': 'bridge', 'Hip thrust': 'bridge',
   'Romanian deadlift': 'rdl',
-  'Dumbbell curls': 'curl', 'Hammer curls': 'curl', 'Biceps curl': 'curl',
-  'Overhead press': 'press',
+  'Dumbbell curls': 'curl', 'Hammer curls': 'curl', 'Biceps curl': 'curl', 'Hammer curl': 'curl',
+  'Overhead press': 'press', 'Band overhead press': 'press',
+  'Back squat': 'squat', 'Walking lunges': 'lunge',
   Plank: 'plank'
 }
 

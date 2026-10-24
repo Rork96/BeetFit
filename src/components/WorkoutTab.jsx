@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { PROGRAMS } from '../data/workouts.js'
-import { dayKey, nextDayIndex } from '../lib/day.js'
+import { dayKey, nextDayIndex, program as programOf } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
 import RepTracker, { trackerFor, parseTarget } from '../camera/RepTracker.jsx'
 import { EXERCISES } from '../camera/pose/exercises.js'
@@ -17,7 +16,7 @@ function setsOf(entry) {
 
 export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const { profile, workoutLog } = state
-  const program = PROGRAMS[profile.goal] || PROGRAMS.maintain
+  const program = programOf(state)
   const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? nextDayIndex(state))
   const [session, setSession] = useState(null) // { startAt }
   const [toast, setToast] = useState(null)
