@@ -67,3 +67,7 @@
 .td-day i.future { opacity: .35; border-style: dashed; }
 .td-day.today span { color: var(--accent); }
 .td-day.today i { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.td-body { position: relative; overflow: hidden; }
+.td-fig { position: absolute; right: 6px; bottom: 6px; opacity: .9; pointer-events: none; }
+.td-body > :not(.td-fig) { position: relative; }

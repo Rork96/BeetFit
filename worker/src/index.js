@@ -26,7 +26,14 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
-      if (url.pathname === '/api/health') return json({ ok: true, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE }, 200, cors)
+      if (url.pathname === '/api/health') {
+        const out = { ok: true, device: !!env.DEVICE_SECRET, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
+        // ?check=gemini makes one tiny real call so a bad key or retired model shows up here. Cached 5 min.
+        if (url.searchParams.get('check') === 'gemini' && env.GEMINI_API_KEY) {
+          return withCache(new Request(url.origin + '/api/health?check=gemini'), ctx, 300, async () => json({ ...out, geminiCheck: await geminiPing(env) }), cors)
+        }
+        return json(out, 200, { ...cors, 'cache-control': 'no-store' })
+      }
 
       if (url.pathname === '/api/device' && req.method === 'POST') {
         if (!env.DEVICE_SECRET) return json({ error: 'not_configured' }, 503, cors)
@@ -69,7 +76,7 @@ function normalizeOff(p, code) {
   const n = p.nutriments || {}
   const kcal = n['energy-kcal_100g'] ?? (n['energy_100g'] != null ? n['energy_100g'] / 4.184 : null)
   if (kcal == null) return null
-  const servingG = parseFloat(String(p.serving_size || '').match(/([\d.]+)\s*g/i)?.[1]) || null
+  const servingG = Math.round(parseFloat(String(p.serving_size || '').match(/([\d.]+)\s*g/i)?.[1])) || null
   return {
     source: 'off',
     code: code || p.code,
@@ -141,6 +148,22 @@ const SNAP_SCHEMA = {
   required: ['title', 'items']
 }
 
+async function geminiPing(env) {
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash'
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with the single word: ok' }] }], generationConfig: { maxOutputTokens: 5 } })
+    })
+    if (res.ok) return { ok: true, status: 200 }
+    const body = await res.json().catch(() => ({}))
+    return { ok: false, status: res.status, error: String(body.error?.message || '').slice(0, 200) }
+  } catch (e) {
+    return { ok: false, status: 0, error: String(e?.message || e).slice(0, 200) }
+  }
+}
+
 async function snap(buf, mimeType, env) {
   const model = env.GEMINI_MODEL || 'gemini-2.5-flash'
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -152,7 +175,7 @@ async function snap(buf, mimeType, env) {
     })
   })
   if (res.status === 429) throw new Error('gemini_rate_limited')
-  if (!res.ok) throw new Error(`gemini ${res.status}`)
+  if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 160)}`)
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}'
   const out = JSON.parse(text)

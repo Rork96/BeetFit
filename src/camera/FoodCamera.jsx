@@ -151,7 +151,7 @@ const portion = (item, g) => ({
 })
 
 function PortionCard({ item, slotLabel, onAdd, onRescan, backLabel = 'Scan another' }) {
-  const [g, setG] = useState(item.servingG || 100)
+  const [g, setG] = useState(Math.round(item.servingG || 100))
   const x = portion(item, g)
   return (
     <div className="fc-card">
@@ -215,7 +215,7 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
       setRes({ title: r.title, items: r.items.map((it, i) => ({ ...it, id: i, base: it.grams })) })
       setStage('result'); hapticSuccess()
     } else {
-      setErr(r.error === 'offline' || r.error === 'snap_not_configured' || r.status === 404 ? 'no_api' : r.error === 'daily_limit' ? 'limit' : r.items ? 'empty' : 'failed')
+      setErr(explain(r))
       setStage('error'); hapticError()
     }
   }
@@ -246,8 +246,9 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
       )}
       {stage === 'error' && (
         <div className="ct-sheet stk">
-          <div className="ct-h sm">{{ no_api: 'Photo recognition is not connected', limit: "You've hit today's photo limit", empty: "Couldn't find food in that photo", failed: 'Recognition failed' }[err]}</div>
-          <p className="ct-p dim">{err === 'no_api' ? 'The BeetFit server is offline or has no Gemini key yet. Scan a barcode instead.' : 'Try again with the plate centred and good light, or scan a barcode.'}</p>
+          <div className="ct-h sm">{err.title}</div>
+          <p className="ct-p dim">{err.text}</p>
+          {err.code && <p className="ct-p dim num" style={{ fontSize: 11.5 }}>{err.code}</p>}
           <button className="ct-btn" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
         </div>
       )}
@@ -281,6 +282,17 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
       )}
     </>
   )
+}
+
+// Turn the Worker's answer into something the person can act on (and a code to send us).
+function explain(r) {
+  const code = `HTTP ${r.status ?? 0}${r.error ? ' · ' + r.error : ''}${r.detail ? ' · ' + r.detail : ''}`
+  if (r.items && !r.items.length) return { title: "Couldn't find food in that photo", text: 'Try again with the plate centred and good light.', code: '' }
+  if (r.status === 401 || r.error === 'not_configured') return { title: 'Server setup incomplete', text: 'DEVICE_SECRET is missing on the server. Scan a barcode meanwhile.', code }
+  if (r.error === 'snap_not_configured') return { title: 'Photo recognition is off', text: 'GEMINI_API_KEY is missing on the server. Scan a barcode meanwhile.', code }
+  if (r.error === 'daily_limit') return { title: "You've hit today's photo limit", text: 'It resets at midnight. Barcode and search still work.', code: '' }
+  if (r.error === 'offline' || r.status === 0) return { title: "Can't reach the server", text: 'Check your connection and try again.', code }
+  return { title: 'Recognition failed', text: 'The AI service returned an error. Try again in a minute.', code }
 }
 
 /* ---------------- shared ---------------- */

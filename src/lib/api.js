@@ -53,13 +53,31 @@ async function lookupOffDirect(code) {
       source: 'off', code, name: p.product_name || p.generic_name || 'Unnamed product',
       brand: (p.brands || '').split(',')[0].trim() || null, image: p.image_front_small_url || null,
       per100: { kcal: Math.round(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g) },
-      servingG: parseFloat(String(p.serving_size || '').match(/([\d.]+)\s*g/i)?.[1]) || null
+      servingG: Math.round(parseFloat(String(p.serving_size || '').match(/([\d.]+)\s*g/i)?.[1])) || null
     }
   }
 }
 
 export async function searchFood(q) {
-  try { return await call(`/api/food/search?q=${encodeURIComponent(q)}`) } catch { return { status: 0, items: [], error: 'offline' } }
+  try {
+    const r = await call(`/api/food/search?q=${encodeURIComponent(q)}`)
+    if (r.status === 200) return r
+  } catch { /* fall through */ }
+  // Server down or misconfigured → Open Food Facts search straight from the device (CORS allowed).
+  try { return { status: 200, items: await searchOffDirect(q), direct: true } } catch { return { status: 0, items: [], error: 'offline' } }
+}
+
+async function searchOffDirect(q) {
+  const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=12&fields=code,product_name,brands,nutriments,serving_size,image_front_small_url`)
+  const d = await res.json()
+  return (d.products || []).map(p => {
+    const n = p.nutriments || {}
+    const kcal = n['energy-kcal_100g'] ?? (n.energy_100g != null ? n.energy_100g / 4.184 : null)
+    if (kcal == null || !p.product_name) return null
+    return { source: 'off', code: p.code, name: p.product_name, brand: (p.brands || '').split(',')[0].trim() || null, image: p.image_front_small_url || null,
+      per100: { kcal: Math.round(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g) },
+      servingG: Math.round(parseFloat(String(p.serving_size || '').match(/([\d.]+)\s*g/i)?.[1])) || null }
+  }).filter(Boolean)
 }
 
 // JPEG blob → { title, items: [{ name, grams, kcal, p, c, f, confidence }] }

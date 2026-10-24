@@ -180,3 +180,15 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .fs-item b { display: block; font-size: 14px; font-weight: 600; }
 .fs-item span { font-size: 12px; color: var(--hint); }
 .fs-src { margin-left: auto; flex: none; font: 200 10px var(--f-display); text-transform: uppercase; letter-spacing: .06em; color: var(--hint); }
+
+/* Body figure */
+@keyframes bfBreathe { 0%, 100% { transform: scale(1, 1) } 50% { transform: scale(1.012, .996) } }
+@keyframes bfPulse { 0% { transform: scale(1) } 40% { transform: scale(1.035) } 100% { transform: scale(1) } }
+.bf-breathe { animation: bfBreathe 4.5s var(--ease-inout) infinite; }
+.bf-pulse { transform-origin: 0px 220px; animation: bfPulse 350ms var(--ease-out) both; }
+.bf-legend { display: flex; justify-content: center; gap: 14px; font-size: 12px; color: var(--hint); }
+.bf-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+.bf-legend .now { background: var(--accent); opacity: .7; }
+.bf-legend .tgt { border: 1.5px dashed var(--accent); }
+.bf-legend .st { border: 1.5px solid rgba(255,255,255,.3); }
+.bf-delta { text-align: center; font: 600 13px var(--f-num); animation: floatUp 1.4s var(--ease-out) both; }

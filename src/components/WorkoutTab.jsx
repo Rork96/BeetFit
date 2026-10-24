@@ -1,82 +1,59 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { trackerFor } from '../camera/RepTracker.jsx'
+import { EXERCISES } from '../camera/pose/exercises.js'
 import { dayKey, nextDayIndex, program as programOf } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
-import RepTracker, { trackerFor, parseTarget } from '../camera/RepTracker.jsx'
-import { EXERCISES } from '../camera/pose/exercises.js'
 import { haptic } from '../lib/platform.js'
-
-
-// workoutLog[date][exName] = { sets: [{ reps?, secs?, rpe?, auto }] } — legacy `true` / number still readable.
-function setsOf(entry) {
-  if (!entry) return []
-  if (entry === true) return [{ done: true }]
-  if (typeof entry === 'number') return [{ reps: entry }]
-  return entry.sets || []
-}
+import Session, { setsOf } from './Session.jsx'
+import Library from './Library.jsx'
 
 export default function WorkoutTab({ state, update, intent, clearIntent }) {
-  const { profile, workoutLog } = state
+  const { workoutLog } = state
   const program = programOf(state)
   const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? nextDayIndex(state))
-  const [session, setSession] = useState(null) // { startAt }
+  const [session, setSession] = useState(null) // { cam: {ei, si} | null }
+  const [lib, setLib] = useState(false)
   const [toast, setToast] = useState(null)
-  const summary = useRef(null)
   const d = dayKey()
-  useBackClose(!!session, () => {
-    setSession(null)
-    const sum = summary.current; summary.current = null
-    if (sum?.sets) { setToast(`${sum.sets} set${sum.sets === 1 ? '' : 's'} logged`); setTimeout(() => setToast(null), 2000) }
-  })
-  const todayLog = workoutLog[d] || {}
-  const day = program.days[dayIdx]
+  const todayLog = workoutLog?.[d] || {}
+  const day = program.days[Math.min(dayIdx, program.days.length - 1)]
+  const before = useRef(0)
+  useBackClose(!!session, () => setSession(null))
+  useBackClose(lib, () => setLib(false))
 
-  const logSet = ({ name, si, reps, secs, rpe, auto }) => {
-    update(prev => {
-      const wl = prev.workoutLog || {}
-      const dayLog = wl[d] || {}
-      const sets = setsOf(dayLog[name]).slice()
-      sets[si] = { ...(sets[si] || {}), ...(reps != null && { reps }), ...(secs != null && { secs }), ...(rpe != null && { rpe }), auto: !!auto }
-      return { workoutLog: { ...wl, [d]: { ...dayLog, [name]: { sets } } } }
-    })
-  }
-
-  const markDone = ex => {
-    haptic()
-    const t = parseTarget(ex.reps)
-    update(prev => {
-      const wl = prev.workoutLog || {}
-      const dayLog = wl[d] || {}
-      const sets = Array.from({ length: ex.sets }, () => (t.kind === 'hold' ? { secs: t.value } : { reps: t.value }))
-      return { workoutLog: { ...wl, [d]: { ...dayLog, [ex.name]: { sets } } } }
-    })
-  }
-
-  const doneCount = day.exercises.filter(ex => setsOf(todayLog[ex.name]).length >= ex.sets).length
-  const firstOpen = Math.max(0, day.exercises.findIndex(ex => setsOf(todayLog[ex.name]).length < ex.sets))
+  const done = ex => setsOf(todayLog[ex.name]).filter(s => s && (s.reps != null || s.secs != null)).length
+  const doneCount = day.exercises.filter(ex => done(ex) >= ex.sets || todayLog[ex.name]?.skipped).length
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
+
+  const open = (cam = null) => { haptic(); before.current = countSets(todayLog); setSession({ cam }) }
+
+  // Logged-set toast when coming back from a session.
+  useEffect(() => {
+    if (session) return
+    const now = countSets(todayLog)
+    if (now > before.current) {
+      setToast(`${now - before.current} set${now - before.current === 1 ? '' : 's'} logged`)
+      before.current = now
+      const id = setTimeout(() => setToast(null), 2000)
+      return () => clearTimeout(id)
+    }
+  }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Start session" tapped on Today.
   useEffect(() => {
-    if (intent?.start) { setSession({ startAt: firstOpen }); clearIntent?.() }
+    if (intent?.start) { open(); clearIntent?.() }
   }, [intent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (session) {
-    return (
-      <RepTracker
-        exercises={day.exercises}
-        startAt={session.startAt}
-        onLog={logSet}
-        onClose={sum => { summary.current = sum; history.back() }}
-      />
-    )
+    return <Session state={state} update={update} day={day} dayIdx={dayIdx} startCamAt={session.cam} onClose={() => history.back()} />
   }
-
+  if (lib) return <Library state={state} onClose={() => history.back()} />
 
   return (
     <div className="page">
-      <div className="hero">
-        <span className="glow" />
-        <h1>Train</h1>
+      <div className="row">
+        <div className="hero"><span className="glow" /><h1>Train</h1></div>
+        <button className="btn small secondary" onClick={() => { haptic(); setLib(true) }}>Library</button>
       </div>
       <p className="hint">{program.name}</p>
 
@@ -95,45 +72,46 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
         </div>
         <div className="progressbar"><div style={{ width: `${(doneCount / day.exercises.length) * 100}%` }} /></div>
         {day.exercises.map((ex, i) => {
-          const sets = setsOf(todayLog[ex.name])
-          const done = sets.length >= ex.sets
+          const n = done(ex)
+          const finished = n >= ex.sets
           const tid = trackerFor(ex)
-          const summary = sets.length
-            ? sets.map(s => (s.secs != null ? `${s.secs}s` : s.reps ?? '✓') + (s.rpe ? `@${s.rpe}` : '')).join(' · ')
-            : null
+          const entry = todayLog[ex.name]
           return (
-            <div className="ex-row" key={ex.name}>
-              <button className={'ex-mark' + (done ? ' on' : '')} onClick={() => !done && markDone(ex)} aria-label={`Mark ${ex.name} done`}>
-                {done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}
-              </button>
+            <div className="ex-row" key={ex.name + i}>
+              <span className={'ex-mark' + (finished ? ' on' : '')}>
+                {finished && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}
+              </span>
               <div className="ex-main">
                 <div className="ex-name">{ex.name}{tid && <span className="ex-cam">▣ cam</span>}</div>
-                <div className="ex-meta">
-                  <span className="num">{ex.sets} × {ex.reps}</span>
-                  {summary && <> · <span className="num">{summary}</span></>}
+                <div className="ex-meta num">
+                  {entry?.skipped ? <span style={{ color: 'var(--danger)' }}>skipped · {entry.pain}</span>
+                    : `${n}/${ex.sets} sets · ${ex.reps}${ex.weight ? ` · ${ex.weight} kg` : ''}`}
                 </div>
               </div>
-              <button className="btn small secondary" onClick={() => { haptic(); setSession({ startAt: i }) }}>
-                {tid ? 'Track' : 'Start'}
-              </button>
+              {tid && !finished && !entry?.skipped && (
+                <button className="btn small secondary" onClick={() => open({ ei: i, si: n })}>Track</button>
+              )}
             </div>
           )
         })}
       </div>
 
-      <button className="btn" onClick={() => { haptic(); setSession({ startAt: firstOpen }) }}>
-        {doneCount ? 'Continue session' : 'Start session'}
-      </button>
+      <button className="btn" onClick={() => open()}>{doneCount ? 'Continue session' : 'Start session'}</button>
 
       <div className="card">
         <span className="label">Camera coach</span>
         <p className="hint">
           {camCount} of {day.exercises.length} exercises today are counted by the camera
-          ({[...new Set(day.exercises.map(trackerFor).filter(Boolean))].map(t => EXERCISES[t].name).join(', ')}).
+          {camCount > 0 && ` (${[...new Set(day.exercises.map(trackerFor).filter(Boolean))].map(t => EXERCISES[t].name).join(', ')})`}.
           Pose detection runs on your phone — no video leaves the device.
         </p>
       </div>
       {toast && <div className="toast">{toast}</div>}
     </div>
   )
+}
+
+function countSets(dayLog = {}) {
+  return Object.entries(dayLog).filter(([k]) => !k.startsWith('__'))
+    .reduce((n, [, e]) => n + setsOf(e).filter(s => s && (s.reps != null || s.secs != null)).length, 0)
 }

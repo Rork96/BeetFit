@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Avatar from './Avatar.jsx'
+import BodyFigure from './BodyFigure.jsx'
 import { bmi, bmiCategory, bmr, tdee, macros } from '../lib/calories.js'
 import { dayKey } from '../lib/day.js'
 
@@ -47,11 +47,9 @@ export default function ProfileTab({ state, update }) {
       <div className="hero"><span className="glow" /><h1>Progress</h1></div>
 
       <div className="card">
-        <Avatar bmiValue={currentBmi} ghostBmi={targetBmi} />
-        <p className="hint" style={{ textAlign: 'center' }}>
-          Filled — you now ({current} kg, BMI {currentBmi} · {bmiCategory(currentBmi)}).
-          Outline — target ({profile.targetKg} kg).
-        </p>
+        <BodyFigure sex={profile.sex} heightCm={profile.heightCm} startKg={start} currentKg={current} targetKg={profile.targetKg} goal={profile.goal} height={300} />
+        <div className="bf-legend"><span><i className="st" />start {start} kg</span><span><i className="now" />now {current} kg</span><span><i className="tgt" />target {profile.targetKg} kg</span></div>
+        <p className="hint num" style={{ textAlign: 'center' }}>BMI {currentBmi} · {bmiCategory(currentBmi)}</p>
         <div className="progressbar"><div style={{ width: `${pct}%` }} /></div>
         <p className="hint" style={{ textAlign: 'center' }}>{pct}% to target</p>
       </div>

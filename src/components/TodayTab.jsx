@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { dayKey, eaten, targets, waterOf, dayTasks, streak, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp } from '../lib/hooks.js'
+import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import './today.css'
 
@@ -96,6 +97,7 @@ export default function TodayTab({ state, update, go, openSettings }) {
             </div>
           </div>
           <button className="card td-body" onClick={() => go('progress')}>
+            <span className="td-fig"><BodyFigure sex={state.profile.sex} heightCm={state.profile.heightCm} startKg={wStart} currentKg={wNow} targetKg={state.profile.targetKg} goal={state.profile.goal} show="target" height={118} /></span>
             <span className="label">Body</span>
             <b className="num">{fmtWeight(wNow, units)}</b>
             <span className="td-small">{toGo === 0 ? 'At target' : `${fmtWeight(Math.abs(toGo), units)} to go`}</span>

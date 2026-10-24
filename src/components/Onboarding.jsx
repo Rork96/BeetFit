@@ -4,6 +4,7 @@ import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activity
 import { EQLABEL } from '../data/library.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useCountUp } from '../lib/hooks.js'
+import BodyFigure from './BodyFigure.jsx'
 import { S16 } from '../lib/motion.js'
 import './onboarding.css'
 
@@ -222,6 +223,11 @@ function Ready({ profile, it, program, name, onStart }) {
           <span><b className="num">{m.fat}g</b> fat</span>
         </div>
         <p className="hint num">BMR {bmr(profile)} · TDEE {tdee(profile)} · activity: {profile.activity}</p>
+      </div>
+      <div className="card">
+        <span className="label">Now → target</span>
+        <BodyFigure sex={profile.sex} heightCm={profile.heightCm} startKg={profile.weightKg} currentKg={profile.weightKg} targetKg={profile.targetKg} goal={profile.goal} show="target" height={220} />
+        <div className="bf-legend"><span><i className="now" />now {profile.weightKg} kg</span><span><i className="tgt" />in {it.timeframe} months {profile.targetKg} kg</span></div>
       </div>
       <div className="card">
         <span className="label">Why this plan</span>

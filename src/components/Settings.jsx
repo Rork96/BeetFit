@@ -15,6 +15,7 @@ export default function Settings({ state, update, onClose }) {
   const [motion, setMotion] = useState(getMotionLevel())
   const [voice, setVoice] = useState(voiceEnabled())
   const [armReset, setArmReset] = useState(false)
+  const [rebuilt, setRebuilt] = useState(false)
   const lb = s.units === 'lb'
 
   const setS = patch => update(prev => ({ settings: { ...(prev.settings || {}), ...patch } }))
@@ -49,6 +50,15 @@ export default function Settings({ state, update, onClose }) {
               </select>
             </label>
           </div>
+          <label>Injuries or pain (plan leaves these out)
+            <input value={state.intake?.injuries || ''} placeholder="e.g. left knee"
+              onChange={e => update(prev => ({ intake: { ...(prev.intake || DEFAULT_INTAKE), injuries: e.target.value.slice(0, 80) } }))} />
+          </label>
+          <button className="btn secondary" onClick={() => {
+            haptic('medium')
+            update(prev => ({ program: mkProg(prev.profile.goal, prev.intake || DEFAULT_INTAKE) }))
+            setRebuilt(true); setTimeout(() => setRebuilt(false), 2000)
+          }}>{rebuilt ? '✓ Plan rebuilt' : 'Rebuild my plan'}</button>
         </section>
 
         <section className="card">

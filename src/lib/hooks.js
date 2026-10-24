@@ -2,18 +2,32 @@ import { useEffect, useRef, useState } from 'react'
 import { reducedMotion } from './motion.js'
 
 // Overlays (camera, settings, sheets) push a history entry, so the browser / Android back button closes them.
+// A single stack makes nested overlays close one at a time, top first.
+const stack = []
+let ignorePops = 0
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if (ignorePops > 0) { ignorePops--; return }
+    const top = stack.pop()
+    if (top) { top.popped = true; top.close() }
+  })
+}
+
 export function useBackClose(open, close) {
   const closeRef = useRef(close)
   closeRef.current = close
   useEffect(() => {
     if (!open) return
-    history.pushState({ bfOverlay: true }, '')
-    let popped = false
-    const onPop = () => { popped = true; closeRef.current() }
-    window.addEventListener('popstate', onPop)
+    const entry = { close: () => closeRef.current(), popped: false }
+    stack.push(entry)
+    history.pushState({ bfOverlay: stack.length }, '')
     return () => {
-      window.removeEventListener('popstate', onPop)
-      if (!popped) history.back()
+      if (entry.popped) return
+      // Closed without the back button (unmount / state change): drop our entry and its history step.
+      const i = stack.indexOf(entry)
+      if (i !== -1) stack.splice(i, 1)
+      ignorePops++
+      history.back()
     }
   }, [open])
 }

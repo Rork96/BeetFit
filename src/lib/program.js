@@ -68,7 +68,7 @@ function repsOf(L, it) {
   return L.dr >= 20 ? String(L.dr) : `${Math.max(1, Math.round(L.dr * 0.7))}-${L.dr}`
 }
 
-function mkEx(L, it) {
+export function mkEx(L, it) {
   const ex = {
     id: L.id, name: L.n, sets: 3, rest: L.pat === 'cardio' ? 45 : 75,
     cue: CUEX[L.n] || '', progression: PROGX[L.n] || '', weight: L.dw, pattern: L.pat
@@ -156,3 +156,12 @@ export function planWhy(it, program) {
   out.push(`Daily steps target starts at ${stepsTarget(it) / 1000}k, set from your current ${it.stepsR}.`)
   return out
 }
+
+// Same-pattern alternatives that fit the person's setup — for "Swap exercise".
+export function alternativesFor(ex, it = DEFAULT_INTAKE) {
+  const L = LIB.find(x => x.id === ex.id || x.n === ex.name)
+  if (!L) return []
+  return exPool(it).filter(x => x.pat === L.pat && x.id !== L.id).map(x => mkEx(x, it))
+}
+
+export const libById = id => LIB.find(x => x.id === id)
