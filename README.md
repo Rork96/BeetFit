@@ -1,4 +1,4 @@
-# FitTrack — Telegram Mini App (MVP)
+# BeetFit — Telegram Mini App
 
 React + Vite fitness Mini App: onboarding questionnaire, BMI avatar, calorie/macro targets, meal plan with swap, workout programs, camera rep tracker (MediaPipe Pose).
 
@@ -37,7 +37,27 @@ Camera requires HTTPS or localhost.
 
 Requirements: HTTPS mandatory. Camera (getUserMedia) works in Telegram's in-app WebView on iOS/Android; user must grant camera permission.
 
-## Pose tracker
+## Camera (v0.2)
+
+| Feature | Runs where | Service | Cost |
+|---|---|---|---|
+| Rep counting + form check | on-device | MediaPipe Pose Landmarker 1.1.1 (lite) | free, no key |
+| Barcode scan | on-device | native `BarcodeDetector`, else ZXing WASM ponyfill | free |
+| Barcode → nutrition | Worker or direct | Open Food Facts | free, no key |
+| Meal photo → items | Worker | Gemini API free tier | free tier, key needed |
+
+- `src/camera/RepTracker.jsx` — setup/frame check → 3-2-1 + cue → auto count → done + RPE → form report → rest → up next → recap. Manual counting at every stage.
+- `src/camera/pose/engine.js` — pure rep/hold engine (EMA smoothing, hysteresis, min phase/rep time) + form report. `npx vitest run`.
+- `src/camera/pose/exercises.js` — 9 trackable exercises (squat, push-up, lunge, bridge, RDL, curl, press, plank, wall sit) + name mapping.
+- `src/camera/FoodCamera.jsx` — barcode + photo modes, not-found → custom food with the barcode kept.
+- `worker/` — Cloudflare Worker for food lookup and Gemini; see `worker/README.md`.
+- Dev demo without a person in frame: `npm run dev` → open `/?posemock`.
+
+## Design tokens
+
+`src/styles/tokens.css`: BeetFit dark shell + Paulrork brand layer (lime `#E0FD90`, electric blue `#303BFF`, violet `#7D70F6`, Ruberoid display/labels, tight corners, square-in-square marks). Numerals use Space Grotesk because Ruberoid has no tabular figures. Motion runs on a 128 BPM grid (`s16 = 117 ms`); `html[data-motion=full|lite|off]` plus `prefers-reduced-motion`.
+
+## Pose tracker (legacy notes)
 
 - Model: `pose_landmarker_lite` loaded from Google CDN at runtime, inference on-device (GPU delegate).
 - Rep logic: joint-angle state machine. Squat: hip-knee-ankle < 100° → > 160°. Curl: shoulder-elbow-wrist < 60° → > 150°. Press: same triplet, 100°/160°.

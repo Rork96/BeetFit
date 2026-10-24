@@ -1,19 +1,24 @@
 {
-  "name": "fitness-mini-app",
+  "name": "beetfit",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.1.1",
+    "barcode-detector": "3.2.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^3.2.7"
   }
 }

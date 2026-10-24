@@ -1,0 +1,19 @@
+name = "beetfit-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Comma-separated list of origins allowed to call the API (your Mini App URL). "*" while testing.
+ALLOWED_ORIGINS = "*"
+# Free-tier vision model. Change without redeploying code: wrangler deploy --var GEMINI_MODEL:<name>
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Secrets — set once, never commit:
+#   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)
+#   npx wrangler secret put BOT_TOKEN        (@BotFather token of the bot that opens the Mini App)
+#   npx wrangler secret put USDA_API_KEY     (optional, https://fdc.nal.usda.gov/api-key-signup)
+
+# Optional per-user daily cap for /api/snap. Create with: npx wrangler kv namespace create RATE
+# [[kv_namespaces]]
+# binding = "RATE"
+# id = "<id from the command above>"
