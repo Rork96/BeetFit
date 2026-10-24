@@ -1,0 +1,31 @@
+.pg-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pg-kpis > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; background: var(--bg-2); border-radius: var(--r-1); }
+.pg-kpis b { font-size: 20px; letter-spacing: -.02em; }
+.pg-kpis span { font: 200 10px var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--hint); }
+
+.pg-chart { width: 100%; height: auto; }
+.pg-ax { font: 400 9.5px var(--f-num); fill: var(--hint); }
+.pg-ax.strong { fill: var(--accent); font-weight: 700; font-size: 11px; }
+.pg-line { stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: drawLine 900ms var(--ease-out) forwards; }
+@keyframes drawLine { to { stroke-dashoffset: 0 } }
+.pg-mini { width: 100%; height: 60px; }
+.pg-log { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pg-log input { flex: 1; }
+
+.pg-scale { display: flex; align-items: center; gap: 5px; }
+.pg-scale button { width: 30px; height: 30px; padding: 0; border: 1.5px solid var(--line-2); background: transparent; display: grid; place-items: center;
+  transition: border-color var(--dur-2), transform var(--dur-1) var(--ease-spring); }
+.pg-scale button i { width: 12px; height: 12px; background: var(--accent); }
+.pg-scale button.on { border-color: var(--accent); transform: scale(1.08); background: var(--accent-soft); }
+.pg-scale .td-small { min-width: 54px; text-align: right; }
+
+.pg-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.pg-dow { text-align: center; font: 200 10.5px var(--f-display); color: var(--hint); padding-bottom: 2px; }
+.pg-d { aspect-ratio: 1; border: 1.5px solid var(--line); background: transparent; color: var(--text); font-size: 12px; padding: 0;
+  display: grid; place-items: center; animation: popIn var(--dur-2) var(--ease-out) both; }
+.pg-d.s0 { color: var(--hint); }
+.pg-d.s1 { background: rgba(224,253,144,.15); border-color: var(--accent-line); }
+.pg-d.s2 { background: rgba(224,253,144,.5); border-color: transparent; color: var(--on-accent); }
+.pg-d.s3 { background: var(--accent); border-color: transparent; color: var(--on-accent); }
+.pg-d.sf { opacity: .3; border-style: dashed; }
+.pg-d.today { outline: 2px solid var(--accent); outline-offset: 1px; }

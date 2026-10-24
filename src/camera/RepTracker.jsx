@@ -48,6 +48,7 @@ export default function RepTracker({ exercises, startAt = 0, startSet = 0, restS
   const [reps, setReps] = useState(0)
   const [heldMs, setHeldMs] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [view, setView] = useState(null)
   const [target, setTarget] = useState(10)
   const [rpe, setRpe] = useState(null)
   const [restLeft, setRestLeft] = useState(restSec)
@@ -109,14 +110,16 @@ export default function RepTracker({ exercises, startAt = 0, startSet = 0, restS
       try { res = landmarkerRef.current.detectForVideo(video, now) } catch { return }
       const lm = res?.landmarks?.[0] || null
       const eng = engineRef.current
-      const out = st === 'track' && eng ? eng.update(lm, now) : null
+      const aspect = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1
+      const out = st === 'track' && eng ? (cfg.mode === 'hold' ? eng.update(lm, now) : eng.update(lm, now, aspect)) : null
+      if (out?.view) setView(out.view)
       const visible = !!lm && (out ? out.inFrame : true)
       setInFrame(visible)
       if (st === 'setup') {
         if (visible) { frameSince.current ??= now; if (now - frameSince.current > 900) setFramed(true) }
         else { frameSince.current = null; setFramed(false) }
       }
-      drawSkeleton(canvasRef.current, video, lm, { cfg, side: out?.side ?? (cfg.pick === 'both' ? 'both' : 'L'), progress: out?.progress ?? 0 })
+      drawSkeleton(canvasRef.current, video, lm, { cfg, side: out?.side ?? 'both', progress: out?.progress ?? 0 })
       if (!out || !autoRef.current) return
       setProgress(out.progress)
       if (cfg.mode === 'hold') {
@@ -272,6 +275,7 @@ export default function RepTracker({ exercises, startAt = 0, startSet = 0, restS
             {setLabel}
             {stage === 'track' && <span className="ct-pill num">{fmt(elapsed)}</span>}
             {manual && <span className="ct-tag">manual</span>}
+            {!manual && stage === 'track' && view && <span className="ct-tag">{view === 'front' ? 'front view' : 'side view'}</span>}
           </div>
         </div>
         <div className="ct-actions">

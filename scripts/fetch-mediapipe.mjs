@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'public', 'mediapipe')
 const src = join(root, 'node_modules', '@mediapipe', 'tasks-vision', 'wasm')
-const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+const MODELS = ['lite', 'full'].map(m => [`pose_landmarker_${m}.task`, `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/1/pose_landmarker_${m}.task`])
 
 await mkdir(join(out, 'wasm'), { recursive: true })
 for (const f of ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision_wasm_nosimd_internal.js', 'vision_wasm_nosimd_internal.wasm']) {
@@ -17,16 +17,16 @@ for (const f of ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision
 }
 console.log('mediapipe: wasm copied')
 
-const model = join(out, 'pose_landmarker_lite.task')
-const have = await stat(model).then(s => s.size > 1e6).catch(() => false)
-if (have) console.log('mediapipe: model present')
-else {
+for (const [file, url] of MODELS) {
+  const model = join(out, file)
+  const have = await stat(model).then(s => s.size > 1e6).catch(() => false)
+  if (have) { console.log(`mediapipe: ${file} present`); continue }
   try {
-    const res = await fetch(MODEL_URL)
+    const res = await fetch(url)
     if (!res.ok) throw new Error('HTTP ' + res.status)
     await writeFile(model, Buffer.from(await res.arrayBuffer()))
-    console.log('mediapipe: model downloaded')
+    console.log(`mediapipe: ${file} downloaded`)
   } catch (e) {
-    console.warn(`mediapipe: model download failed (${e.message}) — app will fetch it from Google at runtime`)
+    console.warn(`mediapipe: ${file} download failed (${e.message}) — app will fetch it from Google at runtime`)
   }
 }

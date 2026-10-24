@@ -16,6 +16,7 @@ export default function Settings({ state, update, onClose }) {
   const [voice, setVoice] = useState(voiceEnabled())
   const [armReset, setArmReset] = useState(false)
   const [rebuilt, setRebuilt] = useState(false)
+  const [poseFull, setPoseFull] = useState(() => { try { return localStorage.getItem('bf_pose_model') === 'full' } catch { return false } })
   const lb = s.units === 'lb'
 
   const setS = patch => update(prev => ({ settings: { ...(prev.settings || {}), ...patch } }))
@@ -75,6 +76,9 @@ export default function Settings({ state, update, onClose }) {
           </Row>
           <Row label="Voice coach" hint="Counts the last reps and calls rest">
             <Toggle on={voice} onChange={v => { unlockVoice(); setVoice(v); setVoiceEnabled(v); if (v) speak('Voice coach on') }} />
+          </Row>
+          <Row label="Accurate tracking" hint="Bigger pose model: steadier counts, a bit slower on older phones">
+            <Toggle on={poseFull} onChange={v => { setPoseFull(v); try { localStorage.setItem('bf_pose_model', v ? 'full' : 'lite') } catch {} }} />
           </Row>
           <Row label="Animation" hint="Auto follows your phone's reduce-motion setting">
             <Seg value={motion} options={[['auto', 'Auto'], ['full', 'Full'], ['lite', 'Lite'], ['off', 'Off']]}

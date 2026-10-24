@@ -133,3 +133,40 @@ describe('formReport', () => {
     expect(r.notes[0]).toMatch(/rep 2 stopped/)
   })
 })
+
+// Front-facing push-up: shoulders at y, wrists fixed at 0.8; shoulder width 0.3 (x), upper arm ~0.12.
+function frontPushup(shoulderY, { visL = 1, visR = 1 } = {}) {
+  const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.9 }))
+  const set = (i, x, y, v = 1) => { lm[i] = { x, y, visibility: v } }
+  set(11, 0.35, shoulderY); set(12, 0.65, shoulderY)
+  set(13, 0.3, (shoulderY + 0.8) / 2, visL); set(14, 0.7, (shoulderY + 0.8) / 2, visR)
+  set(15, 0.32, 0.8, visL); set(16, 0.68, 0.8, visR)
+  return lm
+}
+
+describe('front view', () => {
+  it('detects facing the camera and counts push-ups from shoulder travel', () => {
+    const eng = createRepEngine(EXERCISES.pushup)
+    let t = 0, reps = 0, view
+    const keys = [[0.35, 900], ...Array(4).fill([[0.6, 500], [0.35, 600]]).flat()]
+    for (const [y, ms] of keys) for (let e = 0; e < ms; e += 33) {
+      const out = eng.update(frontPushup(y), t, 1); t += 33
+      view = out.view; if (out.rep) reps++
+    }
+    expect(view).toBe('front')
+    expect(reps).toBe(4)
+  })
+  it('does not count small wobbles at the top', () => {
+    const eng = createRepEngine(EXERCISES.pushup)
+    let t = 0, reps = 0
+    for (let i = 0; i < 120; i++) { if (eng.update(frontPushup(0.35 + (i % 10 < 5 ? 0.02 : 0)), t, 1).rep) reps++; t += 33 }
+    expect(reps).toBe(0)
+  })
+  it('keeps counting when one arm is out of frame', () => {
+    const eng = createRepEngine(EXERCISES.pushup)
+    let t = 0, reps = 0
+    const keys = [[0.35, 900], [0.6, 500], [0.35, 600], [0.6, 500], [0.35, 600]]
+    for (const [y, ms] of keys) for (let e = 0; e < ms; e += 33) { if (eng.update(frontPushup(y, { visR: 0.2 }), t, 1).rep) reps++; t += 33 }
+    expect(reps).toBe(2)
+  })
+})

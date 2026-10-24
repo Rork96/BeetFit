@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { loadState, saveState, loadNativeBackup } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
 import TodayTab from './components/TodayTab.jsx'
-import ProfileTab from './components/ProfileTab.jsx'
+import ProgressTab from './components/ProgressTab.jsx'
 import MealsTab from './components/MealsTab.jsx'
 import WorkoutTab from './components/WorkoutTab.jsx'
 import Settings from './components/Settings.jsx'
@@ -57,7 +57,7 @@ export default function App() {
         {tab === 'today' && <TodayTab state={state} update={update} go={go} openSettings={() => setSettings(true)} />}
         {tab === 'workout' && <WorkoutTab state={state} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={state} update={update} />}
-        {tab === 'progress' && <ProfileTab state={state} update={update} />}
+        {tab === 'progress' && <ProgressTab state={state} update={update} />}
       </div>
       <nav className="tabbar">
         {TABS.map(t => (

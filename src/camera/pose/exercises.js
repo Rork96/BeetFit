@@ -20,15 +20,17 @@ const tri = (a, b, c) => ({ L: [L[a], L[b], L[c]], R: [R[a], R[b], R[c]] })
 export const EXERCISES = {
   squat: {
     name: 'Squat', mode: 'reps', view: 'side', pick: 'best',
-    joint: tri('hip', 'knee', 'ankle'), dir: 'close', down: 105, up: 160, target: 90,
-    setup: 'Side-on, phone at hip height, about 2 m away. Whole body in frame.',
+    joint: tri('hip', 'knee', 'ankle'), dir: 'close', down: 105, up: 160, target: 90, minRange: 50,
+    front: 'squat', frontMinRange: 35,
+    setup: 'Side-on or facing the phone, at hip height, about 2 m away. Whole body in frame.',
     cue: '3 seconds down. Knees track over toes. Chest up.'
   },
   pushup: {
-    name: 'Push-up', mode: 'reps', view: 'side', pick: 'best',
-    joint: tri('shoulder', 'elbow', 'wrist'), dir: 'close', down: 100, up: 155, target: 85,
+    name: 'Push-up', mode: 'reps', view: 'side',
+    joint: tri('shoulder', 'elbow', 'wrist'), dir: 'close', down: 100, up: 155, target: 85, minRange: 40,
+    pick: 'both', front: 'pushup', frontMinRange: 28,
     align: { joint: tri('shoulder', 'hip', 'ankle'), min: 160, label: 'Body line' },
-    setup: 'Side-on, phone on the floor about 1.5 m away. Head to feet in frame.',
+    setup: 'Phone on the floor, side-on (1.5 m) or in front of you. Both hands and shoulders in frame.',
     cue: 'Body one straight line. Elbows at 45°.'
   },
   lunge: {

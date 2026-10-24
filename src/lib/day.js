@@ -93,3 +93,40 @@ export const KG_TO_LB = 2.20462
 export function fmtWeight(kg, units = 'kg') {
   return units === 'lb' ? `${(kg * KG_TO_LB).toFixed(1)} lb` : `${(+kg).toFixed(1)} kg`
 }
+
+// 7-day rolling average over the logged weights (calendar days, not entries).
+export function weightSeries(state, days = 30, key = dayKey()) {
+  const log = (state.weightLog || []).slice().sort((a, b) => a.date.localeCompare(b.date))
+  const byDate = Object.fromEntries(log.map(e => [e.date, e.kg]))
+  const start = addDays(key, -(days - 1))
+  const out = []
+  for (let i = 0; i < days; i++) {
+    const k = addDays(start, i)
+    const win = []
+    for (let j = 0; j < 7; j++) { const v = byDate[addDays(k, -j)]; if (v != null) win.push(v) }
+    out.push({ key: k, kg: byDate[k] ?? null, avg: win.length ? win.reduce((a, b) => a + b, 0) / win.length : null })
+  }
+  return out
+}
+
+// kg per week from the rolling average over the last `span` days (null if not enough data).
+export function weeklyRate(state, span = 14, key = dayKey()) {
+  const s = weightSeries(state, span, key).filter(p => p.avg != null)
+  if (s.length < 2) return null
+  const daysApart = (Date.parse(s[s.length - 1].key) - Date.parse(s[0].key)) / 864e5
+  if (daysApart < 6) return null
+  return ((s[s.length - 1].avg - s[0].avg) / daysApart) * 7
+}
+
+export function monthGrid(state, year, month) {
+  const first = new Date(year, month, 1)
+  const lead = (first.getDay() + 6) % 7
+  const n = new Date(year, month + 1, 0).getDate()
+  const today = dayKey()
+  const cells = Array.from({ length: lead }, () => null)
+  for (let d = 1; d <= n; d++) {
+    const k = dayKey(new Date(year, month, d))
+    cells.push({ key: k, d, score: k > today ? null : dayScore(state, k), today: k === today })
+  }
+  return cells
+}

@@ -30,10 +30,13 @@ export function drawSkeleton(canvas, video, lm, { cfg, side, progress = 0, accen
     const sides = side === 'both' ? ['L', 'R'] : [side === 'R' ? 'R' : 'L']
     for (const sd of sides) {
       const [a, b, c] = cfg.joint[sd].map(P)
-      if (Math.min(a.v, b.v, c.v) < 0.4) continue
+      if (Math.min(a.v, b.v) < 0.3) continue
       ctx.strokeStyle = accent
       ctx.lineWidth = unit * 2.2
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y)
+      if (c.v >= 0.3) ctx.lineTo(c.x, c.y)
+      ctx.stroke()
+      if (c.v < 0.3) continue
       // Angle arc: fills as the rep approaches full range.
       const r = unit * 11
       const a1 = Math.atan2(a.y - b.y, a.x - b.x), a2 = Math.atan2(c.y - b.y, c.x - b.x)

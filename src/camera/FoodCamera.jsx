@@ -34,7 +34,7 @@ export default function FoodCamera({ initialMode = 'barcode', slotLabel = 'today
         </div>
       </header>
 
-      {camFailed && !(mode === 'barcode' && preset) ? (
+      {camFailed && mode === 'barcode' && !preset ? (
         <div className="ct-sheet stk">
           <div className="ct-h">{cam.status === 'denied' ? 'Camera access is off' : 'Camera unavailable'}</div>
           <p className="ct-p">Allow camera access for BeetFit in your browser or phone settings to scan barcodes or photograph a meal. Nothing leaves your device until you take a photo.</p>
@@ -82,6 +82,18 @@ function BarcodeFlow({ cam, slotLabel, onAdd, presetCode }) {
     return () => { alive = false; clearTimeout(id) }
   }, [stage, cam.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [fileMiss, setFileMiss] = useState(false)
+  async function scanFile(file) {
+    if (!file) return
+    setFileMiss(false)
+    try {
+      const det = await getBarcodeDetector()
+      const bmp = await createImageBitmap(file)
+      const hit = (await det.detect(bmp)).map(f => f.rawValue).find(validGtin)
+      if (hit) { haptic('medium'); lookup(hit) } else { hapticError(); setFileMiss(true) }
+    } catch { setFileMiss(true) }
+  }
+
   async function lookup(c) {
     setCode(c); setStage('lookup')
     try {
@@ -100,7 +112,11 @@ function BarcodeFlow({ cam, slotLabel, onAdd, presetCode }) {
         {stage === 'scan' && (
           <>
             <p className="ct-p center">Point the frame at a product barcode</p>
-            <ManualCode onCode={lookup} />
+            <div className="fc-shoot">
+              <PickPhoto onFile={scanFile} label="From photo" />
+              <ManualCode onCode={lookup} />
+            </div>
+            {fileMiss && <p className="ct-p dim center">No barcode found in that photo. Try a sharper, closer shot.</p>}
           </>
         )}
         {stage === 'lookup' && (
@@ -206,7 +222,14 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
 
   async function take() {
     haptic('heavy')
-    const blob = await cam.capture(1024)
+    analyze(await cam.capture(1024))
+  }
+  async function fromFile(file) {
+    if (!file) return
+    haptic()
+    analyze(await resizeImage(file, 1024))
+  }
+  async function analyze(blob) {
     if (!blob) return
     setShot(URL.createObjectURL(blob))
     setStage('busy')
@@ -233,8 +256,12 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
         <>
           <div className="fc-frame plate"><b /><b /><b /><b /></div>
           <div className="ct-sheet center">
-            <p className="ct-p center">Get the whole plate in frame</p>
-            <button className="fc-shutter" onClick={take} disabled={cam.status !== 'live'} aria-label="Take photo"><i /></button>
+            <p className="ct-p center">{cam.status === 'live' ? 'Get the whole plate in frame' : 'Camera is off — upload a photo of your meal instead'}</p>
+            <div className="fc-shoot">
+              <PickPhoto onFile={fromFile} label="Upload" />
+              <button className="fc-shutter" onClick={take} disabled={cam.status !== 'live'} aria-label="Take photo"><i /></button>
+              <span style={{ width: 64 }} />
+            </div>
           </div>
         </>
       )}
@@ -296,6 +323,29 @@ function explain(r) {
 }
 
 /* ---------------- shared ---------------- */
+
+// Gallery / files picker. On phones this offers "Photo Library" and "Take Photo".
+function PickPhoto({ onFile, label }) {
+  const ref = useRef(null)
+  return (
+    <>
+      <input ref={ref} type="file" accept="image/*" hidden onChange={e => { onFile(e.target.files?.[0]); e.target.value = '' }} />
+      <button className="fc-pick" onClick={() => ref.current?.click()}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="14" /><path d="M3 15l5-5 4 4 3-3 6 6" /></svg>
+        {label}
+      </button>
+    </>
+  )
+}
+
+export async function resizeImage(file, maxSide = 1024, quality = 0.82) {
+  const bmp = await createImageBitmap(file)
+  const k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k)
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height)
+  return new Promise(res => c.toBlob(res, 'image/jpeg', quality))
+}
 
 function Stepper({ value, onChange, step = 10, unit }) {
   return (

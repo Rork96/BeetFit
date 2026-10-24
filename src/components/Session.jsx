@@ -5,9 +5,9 @@ import { dayKey } from '../lib/day.js'
 import { haptic, hapticSuccess, hapticError } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { speak } from '../lib/voice.js'
+import Warmup from './Warmup.jsx'
 import './session.css'
 
-const WARMUP = ['Arm circles · 20', 'Hip hinges · 10', 'Bodyweight squats · 10', 'Leg swings · 10 each', 'Jumping jacks · 30 s']
 const RPE = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10]
 const PAIN_AREAS = ['knee', 'lower back', 'shoulder', 'elbow / wrist', 'ankle', 'other']
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -36,7 +36,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
   const today = dayKey()
   const log = state.workoutLog?.[today] || {}
   const intake = state.intake || DEFAULT_INTAKE
-  const [warm, setWarm] = useState(() => (state.workoutLog?.[today]?.__warmup ? 'done' : 'todo'))
+  const [warm, setWarm] = useState(() => state.workoutLog?.[today]?.__warmup || 'todo')
   const [rest, setRest] = useState(null) // { left, total, label }
   const [cam, setCam] = useState(startCamAt ?? null) // { ei, si } | null
   const [sheet, setSheet] = useState(null) // { kind: 'swap'|'pain', ei }
@@ -121,16 +121,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
       <div className="ss-progress"><i style={{ transform: `scaleX(${allSets ? doneSets / allSets : 0})` }} /></div>
 
       <div className="page stk ss-list">
-        <div className={'card ss-warm' + (warm !== 'todo' ? ' done' : '')}>
-          <div className="row"><span className="label">Warm-up · 5 min</span>{warm !== 'todo' && <span className="ex-cam">{warm === 'done' ? '✓ done' : 'skipped'}</span>}</div>
-          {warm === 'todo' && (
-            <>
-              <ul className="ob-why">{WARMUP.map(w => <li key={w}>{w}</li>)}</ul>
-              <button className="btn" onClick={() => markWarm('done')}>Warm-up done</button>
-              <button className="ct-link" style={{ color: 'var(--hint)' }} onClick={() => markWarm('skipped')}>Skip warm-up</button>
-            </>
-          )}
-        </div>
+        <Warmup dayName={day.name} status={warm} onDone={id => markWarm(id)} onSkip={() => markWarm('skipped')} />
 
         {day.exercises.map((ex, ei) => (
           <ExerciseCard key={ex.name + ei} ex={ex} ei={ei} entry={log[ex.name]} locked={warm === 'todo'}

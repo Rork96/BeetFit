@@ -192,3 +192,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .bf-legend .tgt { border: 1.5px dashed var(--accent); }
 .bf-legend .st { border: 1.5px solid rgba(255,255,255,.3); }
 .bf-delta { text-align: center; font: 600 13px var(--f-num); animation: floatUp 1.4s var(--ease-out) both; }
+.fs-row { scroll-margin-top: 12px; }
+.fs-row.open .fs-item { border-bottom-color: transparent; }
+.fs-inline { padding-bottom: 10px; animation: riseIn var(--dur-3) var(--ease-out) both; }
+.fs-inline .fc-card { background: var(--bg-2); }

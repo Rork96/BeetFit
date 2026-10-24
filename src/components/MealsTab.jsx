@@ -13,10 +13,8 @@ export default function MealsTab({ state, update }) {
   const t = targets(state)
   const today = dayKey()
   const [cam, setCam] = useState(null) // 'barcode' | 'snap'
-  const [picked, setPicked] = useState(null) // search result being portioned
   const [toast, setToast] = useState(null)
   useBackClose(!!cam, () => setCam(null))
-  useBackClose(!!picked, () => setPicked(null))
 
   const plan = mealPlan?.date === today ? mealPlan.items : null
   const logged = state.foodLog?.[today] || []
@@ -33,7 +31,7 @@ export default function MealsTab({ state, update }) {
       const day = fl[today] || []
       return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot, at: Date.now() + i }))] } }
     })
-    if (cam || picked) history.back()
+    if (cam) history.back()
     setToast(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${slot}`)
     setTimeout(() => setToast(null), 2200)
   }
@@ -59,7 +57,7 @@ export default function MealsTab({ state, update }) {
         </div>
       </div>
 
-      <FoodSearch onPick={item => { haptic(); setPicked(item) }} />
+      <FoodSearch slotLabel={slotByHour()} onAdd={(item, g) => addFoods([portion(item, g)])} />
 
       <div className="grid2">
         <button className="btn secondary" onClick={() => { haptic(); setCam('barcode') }}>▥ Barcode</button>
@@ -97,23 +95,17 @@ export default function MealsTab({ state, update }) {
         ))}
       </div>
 
-      {picked && (
-        <>
-          <div className="sheet-back" onClick={() => history.back()} />
-          <div className="sheet">
-            <PortionCard item={picked} slotLabel={slotByHour()} onAdd={g => addFoods([portion(picked, g)])} onRescan={() => history.back()} backLabel="Cancel" />
-          </div>
-        </>
-      )}
       {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }
 
-function FoodSearch({ onPick }) {
+function FoodSearch({ onAdd, slotLabel }) {
   const [q, setQ] = useState('')
   const [res, setRes] = useState({ items: [], busy: false, error: null })
   const seq = useRef(0)
+  const [open, setOpen] = useState(null) // key of the expanded result
+  const inputRef = useRef(null)
 
   useEffect(() => {
     const query = q.trim()
@@ -132,20 +124,36 @@ function FoodSearch({ onPick }) {
     <div className="card">
       <div className="fs-input">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="13" height="13" /><path d="M14 14l7 7" /></svg>
-        <input type="search" placeholder="Search food — e.g. greek yogurt" value={q} onChange={e => setQ(e.target.value)} enterKeyHint="search" />
+        <input ref={inputRef} type="search" placeholder="Search food — e.g. greek yogurt" value={q} onChange={e => setQ(e.target.value)} enterKeyHint="search" />
       </div>
       {res.busy && <div className="fc-skel"><i /><i /></div>}
       {!res.busy && res.error && <p className="hint">Search needs the BeetFit server — it's offline right now. Scanning a barcode still works.</p>}
       {!res.busy && !res.error && q.trim().length >= 2 && res.items.length === 0 && <p className="hint">Nothing found. Try a simpler name, or scan the barcode.</p>}
       {res.items.length > 0 && (
         <div className="fs-results stk">
-          {res.items.map(it => (
-            <button key={it.code + it.name} className="fs-item" onClick={() => onPick(it)}>
-              {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph" />}
-              <div><b>{it.name}</b><span className="num">{it.brand ? it.brand + ' · ' : ''}{it.per100.kcal} kcal / 100 g</span></div>
-              <span className="fs-src">{it.source === 'usda' ? 'USDA' : 'OFF'}</span>
-            </button>
-          ))}
+          {res.items.map(it => {
+            const key = it.code + it.name
+            return (
+              <div key={key} className={'fs-row' + (open === key ? ' open' : '')}>
+                <button className="fs-item" onClick={e => {
+                  haptic()
+                  inputRef.current?.blur() // drop the keyboard so the portion editor is visible
+                  const row = e.currentTarget
+                  setOpen(o => (o === key ? null : key))
+                  setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+                }}>
+                  {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph" />}
+                  <div><b>{it.name}</b><span className="num">{it.brand ? it.brand + ' · ' : ''}{it.per100.kcal} kcal / 100 g</span></div>
+                  <span className="fs-src">{it.source === 'usda' ? 'USDA' : 'OFF'}</span>
+                </button>
+                {open === key && (
+                  <div className="fs-inline">
+                    <PortionCard item={it} slotLabel={slotLabel} onAdd={g => { onAdd(it, g); setOpen(null); setQ('') }} onRescan={() => setOpen(null)} backLabel="Cancel" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

@@ -76,3 +76,9 @@
 .fc-conf { flex: none; font: 200 10.5px var(--f-display); text-transform: uppercase; letter-spacing: .06em; padding: 3px 7px; border-radius: var(--r-1); }
 .fc-conf.ok { color: var(--ok); background: rgba(111,211,154,.12); }
 .fc-conf.warn { color: var(--warn); background: rgba(244,201,93,.12); }
+.fc-shoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.fc-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; min-height: 56px; padding: 8px;
+  border: 1px solid var(--line-2); border-radius: var(--r-2); background: rgba(0,0,0,.45); color: #fff; font: 400 11px var(--f-display); backdrop-filter: blur(8px); }
+.fc-pick svg { width: 20px; height: 20px; }
+.fc-shoot .fc-manual { flex: 1; }
+.fc-shoot .ct-link { flex: 1; text-align: right; }
