@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useCamera } from './useCamera.js'
 import { getBarcodeDetector, validGtin } from './barcode.js'
-import { lookupBarcode, snapMeal, hasApi } from '../lib/api.js'
-import { haptic, hapticError, hapticSuccess } from '../lib/tg.js'
+import { lookupBarcode, snapMeal } from '../lib/api.js'
+import { haptic, hapticError, hapticSuccess } from '../lib/platform.js'
 import './camera.css'
 import './food.css'
 
@@ -37,7 +37,7 @@ export default function FoodCamera({ initialMode = 'barcode', slotLabel = 'today
       {camFailed && !(mode === 'barcode' && preset) ? (
         <div className="ct-sheet stk">
           <div className="ct-h">{cam.status === 'denied' ? 'Camera access is off' : 'Camera unavailable'}</div>
-          <p className="ct-p">Allow camera access for Telegram in your phone settings to scan barcodes or photograph a meal. Nothing leaves your device until you take a photo.</p>
+          <p className="ct-p">Allow camera access for BeetFit in your browser or phone settings to scan barcodes or photograph a meal. Nothing leaves your device until you take a photo.</p>
           <button className="ct-btn" onClick={() => cam.start()}>Try again</button>
           {mode === 'barcode' && <ManualCode onCode={setPreset} />}
         </div>
@@ -150,7 +150,7 @@ const portion = (item, g) => ({
   source: item.source, code: item.code
 })
 
-function PortionCard({ item, slotLabel, onAdd, onRescan }) {
+function PortionCard({ item, slotLabel, onAdd, onRescan, backLabel = 'Scan another' }) {
   const [g, setG] = useState(item.servingG || 100)
   const x = portion(item, g)
   return (
@@ -159,13 +159,13 @@ function PortionCard({ item, slotLabel, onAdd, onRescan }) {
         {item.image ? <img src={item.image} alt="" /> : <span className="fc-ph" />}
         <div>
           <div className="fc-name">{item.name}</div>
-          <div className="ct-p dim">{item.brand || 'Open Food Facts'} · <span className="num">{item.per100.kcal}</span> kcal / 100 g</div>
+          <div className="ct-p dim">{item.brand || (item.source === 'usda' ? 'USDA' : 'Open Food Facts')} · <span className="num">{item.per100.kcal}</span> kcal / 100 g</div>
         </div>
       </div>
       <Stepper value={g} onChange={setG} step={g >= 100 ? 25 : 10} unit="g" />
       <Macros x={x} />
       <button className="ct-btn" onClick={() => { hapticSuccess(); onAdd(g) }}>Add to {slotLabel}</button>
-      <button className="ct-link" onClick={onRescan}>Scan another</button>
+      <button className="ct-link" onClick={onRescan}>{backLabel}</button>
     </div>
   )
 }
@@ -215,7 +215,7 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
       setRes({ title: r.title, items: r.items.map((it, i) => ({ ...it, id: i, base: it.grams })) })
       setStage('result'); hapticSuccess()
     } else {
-      setErr(r.error === 'no_api' ? 'no_api' : r.error === 'daily_limit' ? 'limit' : r.items ? 'empty' : 'failed')
+      setErr(r.error === 'offline' || r.error === 'snap_not_configured' || r.status === 404 ? 'no_api' : r.error === 'daily_limit' ? 'limit' : r.items ? 'empty' : 'failed')
       setStage('error'); hapticError()
     }
   }
@@ -247,7 +247,7 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
       {stage === 'error' && (
         <div className="ct-sheet stk">
           <div className="ct-h sm">{{ no_api: 'Photo recognition is not connected', limit: "You've hit today's photo limit", empty: "Couldn't find food in that photo", failed: 'Recognition failed' }[err]}</div>
-          <p className="ct-p dim">{err === 'no_api' ? 'Set VITE_API_URL to the BeetFit Worker to turn this on.' : 'Try again with the plate centred and good light, or scan a barcode.'}</p>
+          <p className="ct-p dim">{err === 'no_api' ? 'The BeetFit server is offline or has no Gemini key yet. Scan a barcode instead.' : 'Try again with the plate centred and good light, or scan a barcode.'}</p>
           <button className="ct-btn" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
         </div>
       )}
@@ -306,4 +306,4 @@ function Macros({ x }) {
   )
 }
 
-export { hasApi }
+export { PortionCard, portion }

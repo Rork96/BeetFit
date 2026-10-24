@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { PROGRAMS } from '../data/workouts.js'
+import { dayKey, nextDayIndex } from '../lib/day.js'
+import { useBackClose } from '../lib/hooks.js'
 import RepTracker, { trackerFor, parseTarget } from '../camera/RepTracker.jsx'
 import { EXERCISES } from '../camera/pose/exercises.js'
-import { haptic } from '../lib/tg.js'
+import { haptic } from '../lib/platform.js'
 
-const today = () => new Date().toISOString().slice(0, 10)
 
 // workoutLog[date][exName] = { sets: [{ reps?, secs?, rpe?, auto }] } — legacy `true` / number still readable.
 function setsOf(entry) {
@@ -14,13 +15,19 @@ function setsOf(entry) {
   return entry.sets || []
 }
 
-export default function WorkoutTab({ state, update }) {
+export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const { profile, workoutLog } = state
   const program = PROGRAMS[profile.goal] || PROGRAMS.maintain
-  const [dayIdx, setDayIdx] = useState(0)
+  const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? nextDayIndex(state))
   const [session, setSession] = useState(null) // { startAt }
   const [toast, setToast] = useState(null)
-  const d = today()
+  const summary = useRef(null)
+  const d = dayKey()
+  useBackClose(!!session, () => {
+    setSession(null)
+    const sum = summary.current; summary.current = null
+    if (sum?.sets) { setToast(`${sum.sets} set${sum.sets === 1 ? '' : 's'} logged`); setTimeout(() => setToast(null), 2000) }
+  })
   const todayLog = workoutLog[d] || {}
   const day = program.days[dayIdx]
 
@@ -45,29 +52,32 @@ export default function WorkoutTab({ state, update }) {
     })
   }
 
+  const doneCount = day.exercises.filter(ex => setsOf(todayLog[ex.name]).length >= ex.sets).length
+  const firstOpen = Math.max(0, day.exercises.findIndex(ex => setsOf(todayLog[ex.name]).length < ex.sets))
+  const camCount = day.exercises.filter(ex => trackerFor(ex)).length
+
+  // "Start session" tapped on Today.
+  useEffect(() => {
+    if (intent?.start) { setSession({ startAt: firstOpen }); clearIntent?.() }
+  }, [intent]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (session) {
     return (
       <RepTracker
         exercises={day.exercises}
         startAt={session.startAt}
         onLog={logSet}
-        onClose={sum => {
-          setSession(null)
-          if (sum?.sets) { setToast(`${sum.sets} set${sum.sets === 1 ? '' : 's'} logged`); setTimeout(() => setToast(null), 2000) }
-        }}
+        onClose={sum => { summary.current = sum; history.back() }}
       />
     )
   }
 
-  const doneCount = day.exercises.filter(ex => setsOf(todayLog[ex.name]).length >= ex.sets).length
-  const firstOpen = Math.max(0, day.exercises.findIndex(ex => setsOf(todayLog[ex.name]).length < ex.sets))
-  const camCount = day.exercises.filter(ex => trackerFor(ex)).length
 
   return (
     <div className="page">
       <div className="hero">
         <span className="glow" />
-        <h1>Workout</h1>
+        <h1>Train</h1>
       </div>
       <p className="hint">{program.name}</p>
 

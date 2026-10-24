@@ -20,7 +20,7 @@ export function useCamera({ facing = 'user', width = 640, height = 480, autoStar
     stop()
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus('unavailable')
-      setError('This browser has no camera API. Open the app inside Telegram or over HTTPS.')
+      setError('This browser has no camera API. Open the app over HTTPS (or install it from the store).')
       return
     }
     setStatus('starting'); setError(null)

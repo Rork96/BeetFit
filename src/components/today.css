@@ -1,0 +1,69 @@
+.td-top { align-items: flex-start; }
+.today h1 { font-size: 24px; line-height: 1.15; margin-top: 4px; }
+.td-stack { display: flex; flex-direction: column; gap: 12px; }
+.td-icon { width: 44px; height: 44px; flex: none; border: 1px solid var(--line-2); border-radius: var(--r-2); background: transparent; color: var(--text);
+  display: grid; place-items: center; transition: transform var(--dur-2) var(--ease-spring); }
+.td-icon svg { width: 20px; height: 20px; }
+.td-icon:active { transform: rotate(45deg) scale(.94); }
+.td-small { font-size: 12.5px; color: var(--hint); }
+.td-link { align-self: flex-start; border: none; background: none; color: var(--accent); font: 400 13px var(--f-display); padding: 6px 0; }
+
+.td-streak { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 7px 12px;
+  border: 1px solid var(--accent-line); border-radius: var(--r-1); background: var(--accent-soft); color: var(--accent); font: 400 13px var(--f-display); }
+.td-streak.hot { background: var(--accent); color: var(--on-accent); }
+.td-mark { position: relative; width: 12px; height: 12px; border: 1.5px solid currentColor; }
+.td-mark::after { content: ''; position: absolute; inset: 2.5px; background: currentColor; }
+
+/* Calories */
+.card.td-kcal { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; }
+.td-kcal .td-link { grid-column: 1 / -1; }
+.td-ring { position: relative; width: 150px; height: 150px; }
+.td-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.td-ring .trk { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 12; }
+.td-ring .val { fill: none; stroke: var(--accent); stroke-width: 12; transition: stroke-dashoffset var(--dur-5) var(--ease-out), stroke var(--dur-3); }
+.td-ring .val.over { stroke: var(--warn); }
+.td-ring-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.td-ring-in b { font-size: 34px; letter-spacing: -.03em; line-height: 1; }
+.td-ring-in span { font: 200 10.5px var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--hint); margin-top: 4px; }
+.td-kcal-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.td-kcal-side > div:nth-child(-n+2) { display: flex; justify-content: space-between; align-items: baseline; }
+.td-kcal-side b { font-size: 18px; }
+.td-macro { font-size: 12px; color: var(--hint); }
+.td-macro small { color: var(--dim); }
+.td-macro .row span:last-child { color: var(--text); }
+.td-bar { height: 4px; background: rgba(255,255,255,.08); margin-top: 4px; overflow: hidden; }
+.td-bar i { display: block; height: 100%; transform-origin: left; transition: transform var(--dur-4) var(--ease-out); animation: barX var(--dur-4) var(--ease-out) both; }
+
+/* Water — glasses are squares, the brand's unit */
+.td-glasses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.td-glasses i { aspect-ratio: 1; border: 1.5px solid rgba(124,195,255,.35); background: transparent;
+  transition: background var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-spring); }
+.td-glasses i.on { background: var(--water); border-color: var(--water); transform: scale(.92); }
+.td-water-btns { display: grid; grid-template-columns: 40px 1fr; gap: 6px; }
+.td-water-btns button { position: relative; overflow: hidden; min-height: 40px; border-radius: var(--r-1); border: 1px solid var(--line-2);
+  background: transparent; color: var(--text); font: 400 13px var(--f-display); transition: transform var(--dur-1) var(--ease-spring); }
+.td-water-btns button:active { transform: scale(.95); }
+.td-water-btns button.add { background: rgba(124,195,255,.12); border-color: rgba(124,195,255,.4); color: var(--water); }
+.td-water-btns button:disabled { opacity: .35; }
+.td-splash { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 2px solid var(--water);
+  animation: ripple var(--dur-4) var(--ease-out) both; pointer-events: none; }
+
+/* Body */
+.td-body { text-align: left; color: var(--text); font: inherit; gap: 6px; }
+.td-body b { font-size: 24px; letter-spacing: -.02em; }
+.td-delta { font-size: 12px; color: var(--hint); }
+.td-delta.good { color: var(--ok); }
+
+/* Workout */
+.td-work h2 { font-size: 18px; }
+
+/* Week */
+.td-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.td-day { display: flex; flex-direction: column; align-items: center; gap: 6px; font: 200 11px var(--f-display); color: var(--hint); }
+.td-day i { width: 100%; aspect-ratio: 1; max-width: 38px; border: 1.5px solid var(--line-2); transition: background var(--dur-3); }
+.td-day i.s1 { background: rgba(224,253,144,.18); border-color: var(--accent-line); }
+.td-day i.s2 { background: rgba(224,253,144,.55); border-color: transparent; }
+.td-day i.s3 { background: var(--accent); border-color: transparent; }
+.td-day i.future { opacity: .35; border-style: dashed; }
+.td-day.today span { color: var(--accent); }
+.td-day.today i { outline: 2px solid var(--accent); outline-offset: 2px; }

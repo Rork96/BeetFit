@@ -1,7 +1,9 @@
 // MediaPipe Pose Landmarker (Google, Apache-2.0). Free, no API key, runs on-device.
-// The JS package is bundled by Vite (lazy chunk); WASM + model are fetched once and cached by the browser.
+// The JS package is bundled by Vite (lazy chunk). WASM + model are self-hosted under /mediapipe
+// (scripts/fetch-mediapipe.mjs, cached by the service worker); the CDN is only a fallback.
 const VERSION = '1.1.1' // keep in sync with package.json
-const WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}/wasm`
+const LOCAL = new URL('mediapipe/', document.baseURI).href
+const CDN_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}/wasm`
 const MODELS = {
   lite: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
   full: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task'
@@ -18,9 +20,13 @@ export function loadPoseLandmarker(model = 'lite') {
   }
   pending = (async () => {
     const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision')
-    const files = await FilesetResolver.forVisionTasks(WASM_BASE)
+    // SPA fallback answers missing files with index.html (200), so check the type too.
+    const local = await fetch(LOCAL + 'pose_landmarker_lite.task', { method: 'HEAD' })
+      .then(r => r.ok && !(r.headers.get('content-type') || '').includes('text/html')).catch(() => false)
+    const files = await FilesetResolver.forVisionTasks(local ? LOCAL + 'wasm' : CDN_WASM)
+    const modelPath = local && model === 'lite' ? LOCAL + 'pose_landmarker_lite.task' : MODELS[model]
     const opts = delegate => ({
-      baseOptions: { modelAssetPath: MODELS[model], delegate },
+      baseOptions: { modelAssetPath: modelPath, delegate },
       runningMode: 'VIDEO',
       numPoses: 1,
       minPoseDetectionConfidence: 0.5,

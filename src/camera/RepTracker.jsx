@@ -4,7 +4,7 @@ import { loadPoseLandmarker, preloadPose } from './pose/landmarker.js'
 import { createHoldEngine, createRepEngine, formReport } from './pose/engine.js'
 import { EXERCISES, TRACKER_BY_NAME } from './pose/exercises.js'
 import { drawSkeleton } from './pose/skeleton.js'
-import { haptic, hapticSuccess } from '../lib/tg.js'
+import { haptic, hapticSuccess } from '../lib/platform.js'
 import { cancelVoice, speak, unlockVoice } from '../lib/voice.js'
 import { T } from '../lib/motion.js'
 import './camera.css'
@@ -295,7 +295,7 @@ export default function RepTracker({ exercises, startAt = 0, startSet = 0, restS
             <>
               <div className="ct-h">{cam.status === 'denied' ? 'Camera access is off' : 'Camera unavailable'}</div>
               <p className="ct-p">{cam.status === 'denied'
-                ? 'Allow camera access for Telegram in your phone settings. Video never leaves your device.'
+                ? 'Allow camera access for BeetFit in your browser or phone settings. Video never leaves your device.'
                 : cam.error}</p>
               <button className="ct-btn" onClick={() => cam.start()}>Try again</button>
               <button className="ct-link" onClick={goManual}>Count manually instead</button>

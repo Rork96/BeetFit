@@ -1,13 +1,13 @@
 /* BeetFit × Paulrork hybrid tokens.
  * Frame: BeetFit dark shell (bg / cards / text / hint).
- * Brand layer: Paulrork lime / electric blue / violet, Ruberoid display + labels,
- * tight corners, square-in-square bullet, the blurred lime highlight as the only soft effect.
- * Numerals stay on Space Grotesk (tabular) because Ruberoid has no `tnum` — live counters
- * would jitter otherwise. */
+ * Brand layer: Paulrork lime / electric blue / violet, wide geometric display, tight corners,
+ * square-in-square bullet, the blurred lime highlight as the only soft effect.
+ * Display face: Unbounded (SIL OFL, self-hosted via @fontsource) — the free stand-in for Ruberoid:
+ * same wide geometric build, Latin + Cyrillic, variable 200–900.
+ * Numerals: Space Grotesk (OFL) with tabular figures so live counters don't jitter. */
 
-@font-face { font-family: 'Ruberoid'; src: url('/fonts/ruberoid-ultralight.woff2') format('woff2'); font-weight: 200; font-display: swap; }
-@font-face { font-family: 'Ruberoid'; src: url('/fonts/ruberoid-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Ruberoid'; src: url('/fonts/ruberoid-bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@import '@fontsource-variable/unbounded/wght.css';
+@import '@fontsource-variable/space-grotesk/wght.css';
 
 :root {
   /* Paulrork palette (source: tokens.json, Rork96/Design-file@779a2d4) */
@@ -21,8 +21,8 @@
   --rork-ink: #1D1D1D;
   --rork-paper: #FCFCFC;
 
-  /* BeetFit shell (Telegram theme first) */
-  --bg: var(--tg-theme-bg-color, #0c0d11);
+  /* BeetFit shell */
+  --bg: #0c0d11;
   --bg-2: #08090c;
   --card: #16181f;
   --card-2: #1d2029;
@@ -45,8 +45,8 @@
   --water: #7cc3ff;
 
   /* Type */
-  --f-display: 'Ruberoid', system-ui, sans-serif;
-  --f-num: 'Space Grotesk', system-ui, sans-serif;
+  --f-display: 'Unbounded Variable', system-ui, sans-serif;
+  --f-num: 'Space Grotesk Variable', system-ui, sans-serif;
   --f-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* Shape — hybrid: Paulrork is radius 0, BeetFit was 20–24. Meet at "tight". */

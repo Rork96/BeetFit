@@ -1,27 +1,41 @@
-// BeetFit API — Cloudflare Worker.
+// BeetFit — one Cloudflare Worker serves the web app (static assets from ../dist) and the API.
+//   POST /api/device               issue a signed per-install token (no account needed)
 //   GET  /api/health
 //   GET  /api/food/barcode/:code   Open Food Facts product → normalized per-100 g macros (cached 7 days)
 //   GET  /api/food/search?q=       Open Food Facts text search (+ USDA FoodData Central when USDA_API_KEY is set)
 //   POST /api/snap                 JPEG body → Gemini vision → [{ name, grams, kcal, p, c, f, confidence }]
+//   everything else                → static assets (SPA fallback to index.html)
 //
-// Every /api/* call except /health must carry the Telegram Mini App initData in `X-Telegram-Init-Data`.
-// The Worker verifies its HMAC with BOT_TOKEN, so only people who opened the app from your bot can spend
-// your Gemini quota. Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
+// /api/food/* and /api/snap need `Authorization: Bearer <device token>`. Tokens are HMAC-signed with
+// DEVICE_SECRET, so they can't be forged; KV (binding RATE) caps token issue per IP and photos per device.
+// Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
 
 const OFF = 'https://world.openfoodfacts.org'
-const UA = 'BeetFit/0.2 (https://t.me/beetfit_bot)' // OFF asks for AppName/Version (contact)
-const SNAP_DAILY_LIMIT = 30
+const UA = 'BeetFit/0.3 (https://beetfit.wealthifai.xyz)' // OFF asks for AppName/Version (contact)
+const SNAP_DAILY_LIMIT = 30      // per device
+const SNAP_IP_DAILY_LIMIT = 80   // per IP, stops token farming
+const DEVICE_IP_DAILY_LIMIT = 10 // new tokens per IP per day
 
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url)
+    if (!url.pathname.startsWith('/api/')) {
+      return env.ASSETS ? env.ASSETS.fetch(req) : new Response('Not found', { status: 404 })
+    }
     const cors = corsHeaders(req, env)
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
+    const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
-      if (url.pathname === '/api/health') return json({ ok: true, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY }, 200, cors)
+      if (url.pathname === '/api/health') return json({ ok: true, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE }, 200, cors)
 
-      const user = await authenticate(req, env)
-      if (!user) return json({ error: 'unauthorized' }, 401, cors)
+      if (url.pathname === '/api/device' && req.method === 'POST') {
+        if (!env.DEVICE_SECRET) return json({ error: 'not_configured' }, 503, cors)
+        if (!(await underLimit(env, `dev:${ip}`, DEVICE_IP_DAILY_LIMIT))) return json({ error: 'daily_limit' }, 429, cors)
+        return json({ token: await issueToken(env.DEVICE_SECRET) }, 200, { ...cors, 'cache-control': 'no-store' })
+      }
+
+      const device = await authenticate(req, env)
+      if (!device) return json({ error: 'unauthorized' }, 401, cors)
 
       const bc = url.pathname.match(/^\/api\/food\/barcode\/(\d{6,14})$/)
       if (bc && req.method === 'GET') return withCache(req, ctx, 60 * 60 * 24 * 7, () => barcode(bc[1]), cors)
@@ -34,7 +48,9 @@ export default {
 
       if (url.pathname === '/api/snap' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'snap_not_configured' }, 503, cors)
-        if (!(await underLimit(env, `snap:${user.id}`, SNAP_DAILY_LIMIT))) return json({ error: 'daily_limit' }, 429, cors)
+        if (!(await underLimit(env, `snapip:${ip}`, SNAP_IP_DAILY_LIMIT)) || !(await underLimit(env, `snap:${device.id}`, SNAP_DAILY_LIMIT))) {
+          return json({ error: 'daily_limit' }, 429, cors)
+        }
         const buf = await req.arrayBuffer()
         if (!buf.byteLength || buf.byteLength > 4 * 1024 * 1024) return json({ error: 'bad_image' }, 400, cors)
         const result = await snap(buf, req.headers.get('content-type') || 'image/jpeg', env)
@@ -150,24 +166,24 @@ async function snap(buf, mimeType, env) {
   return { title: String(out.title || '').slice(0, 40), items, model }
 }
 
-// ---------- Telegram initData verification ----------
-// https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+// ---------- device tokens ----------
+// token = <uuid>.<issued unix>.<base64url HMAC-SHA256(secret, "<uuid>.<issued>")>
+
+async function issueToken(secret) {
+  const body = `${crypto.randomUUID()}.${Math.floor(Date.now() / 1000)}`
+  return `${body}.${b64url(await hmac(new TextEncoder().encode(secret), body))}`
+}
 
 async function authenticate(req, env) {
-  const raw = req.headers.get('x-telegram-init-data') || ''
+  const raw = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
   if (!raw) return env.ALLOW_UNSIGNED === '1' ? { id: 'dev' } : null
-  if (!env.BOT_TOKEN) return null
-  const params = new URLSearchParams(raw)
-  const hash = params.get('hash')
-  if (!hash) return null
-  params.delete('hash')
-  const dataCheck = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('\n')
-  const secret = await hmac(new TextEncoder().encode('WebAppData'), env.BOT_TOKEN)
-  const sig = hex(await hmac(secret, dataCheck))
-  if (!timingSafeEqual(sig, hash)) return null
-  const authDate = +params.get('auth_date')
-  if (!authDate || Date.now() / 1000 - authDate > 60 * 60 * 24) return null
-  try { return JSON.parse(params.get('user') || '{}') } catch { return null }
+  if (!env.DEVICE_SECRET) return null
+  const parts = raw.split('.')
+  if (parts.length !== 3) return null
+  const [id, ts, sig] = parts
+  if (!/^[0-9a-f-]{36}$/.test(id) || !/^\d{9,11}$/.test(ts)) return null
+  const want = b64url(await hmac(new TextEncoder().encode(env.DEVICE_SECRET), `${id}.${ts}`))
+  return timingSafeEqual(want, sig) ? { id } : null
 }
 
 async function hmac(keyBytes, msg) {
@@ -188,7 +204,7 @@ async function underLimit(env, key, max) {
 
 async function withCache(req, ctx, ttl, produce, cors) {
   const cache = caches.default
-  const key = new Request(new URL(req.url).toString(), { method: 'GET' }) // cache key ignores auth header
+  const key = new Request(new URL(req.url).toString(), { method: 'GET' }) // cache key ignores the token
   const hit = await cache.match(key)
   if (hit) return addHeaders(hit, cors)
   const res = await produce()
@@ -207,7 +223,7 @@ function corsHeaders(req, env) {
   return {
     'access-control-allow-origin': ok ? origin || '*' : allowed[0],
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type,x-telegram-init-data',
+    'access-control-allow-headers': 'content-type,authorization',
     'access-control-max-age': '86400',
     vary: 'origin'
   }
@@ -230,7 +246,7 @@ function toBase64(buf) {
   return btoa(s)
 }
 
-const hex = b => [...b].map(x => x.toString(16).padStart(2, '0')).join('')
+const b64url = b => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const r1 = v => (v == null || isNaN(v) ? 0 : Math.round(v * 10) / 10)
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false
@@ -239,4 +255,4 @@ function timingSafeEqual(a, b) {
   return d === 0
 }
 
-export { authenticate, normalizeOff, normalizeUsda }
+export { authenticate, issueToken, normalizeOff, normalizeUsda }

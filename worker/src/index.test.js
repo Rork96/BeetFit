@@ -1,36 +1,43 @@
 import { describe, it, expect } from 'vitest'
-import { createHmac } from 'node:crypto'
-import { authenticate, normalizeOff, normalizeUsda } from './index.js'
+import worker, { authenticate, issueToken, normalizeOff, normalizeUsda } from './index.js'
 
-const BOT = '123456:TEST-token'
+const SECRET = 'test-secret-0123456789'
+const req = token => new Request('https://x/api/food/search?q=egg', { headers: token ? { authorization: `Bearer ${token}` } : {} })
 
-function sign(fields) {
-  const dcs = Object.keys(fields).sort().map(k => `${k}=${fields[k]}`).join('\n')
-  const secret = createHmac('sha256', 'WebAppData').update(BOT).digest()
-  const hash = createHmac('sha256', secret).update(dcs).digest('hex')
-  return new URLSearchParams({ ...fields, hash }).toString()
-}
-
-const req = initData => new Request('https://x/api/food/search?q=egg', { headers: initData ? { 'x-telegram-init-data': initData } : {} })
-
-describe('Telegram initData', () => {
-  const fields = { auth_date: String(Math.floor(Date.now() / 1000)), query_id: 'AAE', user: JSON.stringify({ id: 42, first_name: 'Pavlo' }) }
-
-  it('accepts a correctly signed payload', async () => {
-    const u = await authenticate(req(sign(fields)), { BOT_TOKEN: BOT })
-    expect(u.id).toBe(42)
+describe('device tokens', () => {
+  it('accepts a token it issued', async () => {
+    const t = await issueToken(SECRET)
+    const d = await authenticate(req(t), { DEVICE_SECRET: SECRET })
+    expect(d.id).toMatch(/^[0-9a-f-]{36}$/)
   })
-  it('rejects a tampered payload', async () => {
-    const tampered = sign(fields).replace('Pavlo', 'Mallory')
-    expect(await authenticate(req(tampered), { BOT_TOKEN: BOT })).toBeNull()
+  it('rejects a forged or tampered token', async () => {
+    const t = await issueToken(SECRET)
+    const [id, ts, sig] = t.split('.')
+    expect(await authenticate(req(`${id}.${+ts + 1}.${sig}`), { DEVICE_SECRET: SECRET })).toBeNull()
+    expect(await authenticate(req(await issueToken('other-secret')), { DEVICE_SECRET: SECRET })).toBeNull()
+    expect(await authenticate(req('garbage'), { DEVICE_SECRET: SECRET })).toBeNull()
   })
-  it('rejects stale auth_date', async () => {
-    const old = sign({ ...fields, auth_date: String(Math.floor(Date.now() / 1000) - 3 * 86400) })
-    expect(await authenticate(req(old), { BOT_TOKEN: BOT })).toBeNull()
-  })
-  it('rejects unsigned unless ALLOW_UNSIGNED', async () => {
-    expect(await authenticate(req(''), { BOT_TOKEN: BOT })).toBeNull()
+  it('rejects missing tokens unless ALLOW_UNSIGNED', async () => {
+    expect(await authenticate(req(''), { DEVICE_SECRET: SECRET })).toBeNull()
     expect((await authenticate(req(''), { ALLOW_UNSIGNED: '1' })).id).toBe('dev')
+  })
+})
+
+describe('routing', () => {
+  it('serves non-API paths from static assets', async () => {
+    const env = { ASSETS: { fetch: r => new Response('asset:' + new URL(r.url).pathname) } }
+    const res = await worker.fetch(new Request('https://x/today'), env, {})
+    expect(await res.text()).toBe('asset:/today')
+  })
+  it('issues a device token on POST /api/device', async () => {
+    const res = await worker.fetch(new Request('https://x/api/device', { method: 'POST' }), { DEVICE_SECRET: SECRET }, {})
+    const { token } = await res.json()
+    expect(res.status).toBe(200)
+    expect((await authenticate(req(token), { DEVICE_SECRET: SECRET })).id).toBeTruthy()
+  })
+  it('401s food routes without a token', async () => {
+    const res = await worker.fetch(new Request('https://x/api/food/barcode/3017620422003'), { DEVICE_SECRET: SECRET }, {})
+    expect(res.status).toBe(401)
   })
 })
 

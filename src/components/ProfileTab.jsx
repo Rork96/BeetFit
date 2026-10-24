@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Avatar from './Avatar.jsx'
 import { bmi, bmiCategory, bmr, tdee, macros } from '../lib/calories.js'
+import { dayKey } from '../lib/day.js'
 
 function WeightChart({ log, targetKg }) {
   if (log.length < 2) return <p className="hint">Log more weigh-ins to see the chart.</p>
@@ -35,7 +36,7 @@ export default function ProfileTab({ state, update }) {
   const logWeight = () => {
     const kg = +newKg
     if (!kg || kg < 35 || kg > 250) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = dayKey()
     const log = weightLog.filter(e => e.date !== today).concat({ date: today, kg })
     update({ weightLog: log, profile: { ...profile, weightKg: kg } })
     setNewKg('')
@@ -43,13 +44,13 @@ export default function ProfileTab({ state, update }) {
 
   return (
     <div className="page">
-      <h1>Profile</h1>
+      <div className="hero"><span className="glow" /><h1>Progress</h1></div>
 
       <div className="card">
         <Avatar bmiValue={currentBmi} ghostBmi={targetBmi} />
         <p className="hint" style={{ textAlign: 'center' }}>
-          Blue — you now ({current} kg, BMI {currentBmi} · {bmiCategory(currentBmi)}).
-          Green outline — target ({profile.targetKg} kg).
+          Filled — you now ({current} kg, BMI {currentBmi} · {bmiCategory(currentBmi)}).
+          Outline — target ({profile.targetKg} kg).
         </p>
         <div className="progressbar"><div style={{ width: `${pct}%` }} /></div>
         <p className="hint" style={{ textAlign: 'center' }}>{pct}% to target</p>
@@ -75,23 +76,6 @@ export default function ProfileTab({ state, update }) {
         <p className="hint">BMR {bmr({ ...profile, weightKg: current })} kcal · TDEE {tdee({ ...profile, weightKg: current })} kcal</p>
       </div>
 
-      <button className="btn danger" onClick={() => {
-        // window.confirm is blocked inside Telegram WebView — use native popup when available
-        const doReset = () => {
-          try { localStorage.clear() } catch { /* ignore */ }
-          location.reload()
-        }
-        const tg = window.Telegram?.WebApp
-        try {
-          if (tg?.showConfirm && tg.isVersionAtLeast?.('6.2')) {
-            tg.showConfirm('Reset profile and all data?', ok => { if (ok) doReset() })
-          } else if (confirm('Reset profile and all data?')) {
-            doReset()
-          }
-        } catch {
-          doReset()
-        }
-      }}>Reset profile</button>
     </div>
   )
 }

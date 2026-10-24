@@ -1,21 +1,42 @@
-import { initData } from './tg.js'
-
-// Worker base URL, e.g. https://beetfit-api.<you>.workers.dev — set VITE_API_URL at build time.
+// API client. On the website the API is same-origin (the Worker serves both); native builds
+// point VITE_API_URL at https://beetfit.wealthifai.xyz.
 export const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
-export const hasApi = () => !!API_URL
+const TOKEN_KEY = 'beetfit_device_token'
 
-async function call(path, opts = {}) {
-  const res = await fetch(API_URL + path, {
-    ...opts,
-    headers: { 'x-telegram-init-data': initData(), ...(opts.headers || {}) }
-  })
+// The Worker issues a signed per-install token; it rate-limits photo recognition per device.
+// No account needed. Replace with real sign-in when sync/coach mode lands.
+let tokenP = null
+async function deviceToken(force = false) {
+  if (!force) {
+    try { const t = localStorage.getItem(TOKEN_KEY); if (t) return t } catch { /* ignore */ }
+  }
+  tokenP ??= fetch(API_URL + '/api/device', { method: 'POST' })
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error('device ' + r.status))))
+    .then(({ token }) => { try { localStorage.setItem(TOKEN_KEY, token) } catch { /* ignore */ } return token })
+    .finally(() => { tokenP = null })
+  return tokenP
+}
+
+async function call(path, opts = {}, retry = true) {
+  let token = ''
+  try { token = await deviceToken() } catch { /* API offline → call fails below with a clear status */ }
+  const res = await fetch(API_URL + path, { ...opts, headers: { authorization: `Bearer ${token}`, ...(opts.headers || {}) } })
+  if (res.status === 401 && retry) { await deviceToken(true).catch(() => {}); return call(path, opts, false) }
   const body = await res.json().catch(() => ({}))
   return { status: res.status, ...body }
 }
 
-// Barcode → { found, item }. Without the Worker we hit Open Food Facts directly (it allows CORS).
+// Barcode → { found, item }
 export async function lookupBarcode(code) {
-  if (hasApi()) return call(`/api/food/barcode/${code}`)
+  try {
+    return await call(`/api/food/barcode/${code}`)
+  } catch {
+    // API unreachable (local dev without the Worker) → Open Food Facts directly; it allows CORS.
+    return lookupOffDirect(code)
+  }
+}
+
+async function lookupOffDirect(code) {
   const fields = 'code,product_name,generic_name,brands,nutriments,serving_size,image_front_small_url'
   const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`)
   const data = await res.json().catch(() => ({}))
@@ -35,14 +56,16 @@ export async function lookupBarcode(code) {
 }
 
 export async function searchFood(q) {
-  if (!hasApi()) return { items: [] }
-  return call(`/api/food/search?q=${encodeURIComponent(q)}`)
+  try { return await call(`/api/food/search?q=${encodeURIComponent(q)}`) } catch { return { status: 0, items: [], error: 'offline' } }
 }
 
 // JPEG blob → { title, items: [{ name, grams, kcal, p, c, f, confidence }] }
 export async function snapMeal(blob) {
-  if (!hasApi()) return { status: 0, error: 'no_api' }
-  return call('/api/snap', { method: 'POST', body: blob, headers: { 'content-type': blob.type || 'image/jpeg' } })
+  try {
+    return await call('/api/snap', { method: 'POST', body: blob, headers: { 'content-type': blob.type || 'image/jpeg' } })
+  } catch {
+    return { status: 0, error: 'offline' }
+  }
 }
 
 const r1 = v => (v == null || isNaN(v) ? 0 : Math.round(v * 10) / 10)

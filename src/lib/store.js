@@ -1,67 +1,61 @@
-// Persistence: localStorage always, Telegram CloudStorage when supported (6.9+).
-// Every Telegram call is wrapped: on old clients CloudStorage methods THROW
-// synchronously (WebAppMethodUnsupported) — an uncaught throw blanks the app.
-const KEY = 'fittrack_state_v1'
-const tg = () => window.Telegram?.WebApp
+// Persistence: one JSON blob in localStorage (web + Capacitor WebView).
+// Native builds also mirror it to Capacitor Preferences, because iOS may evict WebView storage under pressure.
+import { isNative } from './platform.js'
 
-function cloudSupported() {
-  try {
-    const t = tg()
-    return !!t?.CloudStorage && (t.isVersionAtLeast ? t.isVersionAtLeast('6.9') : false)
-  } catch {
-    return false
-  }
-}
+const KEY = 'beetfit_state_v1'
+const LEGACY = 'fittrack_state_v1'
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? JSON.parse(raw) : null
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY)
+    return raw ? migrate(JSON.parse(raw)) : null
   } catch {
     return null
   }
 }
 
+let timer = null
 export function saveState(state) {
-  const raw = JSON.stringify(state)
-  try {
-    localStorage.setItem(KEY, raw)
-  } catch { /* ignore */ }
-  if (!cloudSupported()) return
-  try {
-    const cloud = tg().CloudStorage
-    // CloudStorage item limit 4096 chars — chunk it
-    for (let i = 0; i * 4000 < raw.length; i++) {
-      cloud.setItem(`${KEY}_${i}`, raw.slice(i * 4000, (i + 1) * 4000), () => {})
-    }
-    cloud.setItem(`${KEY}_n`, String(Math.ceil(raw.length / 4000)), () => {})
-  } catch { /* cloud sync is best-effort */ }
+  clearTimeout(timer)
+  // Debounced: camera logging can write several times a second.
+  timer = setTimeout(() => {
+    const raw = JSON.stringify(state)
+    try { localStorage.setItem(KEY, raw) } catch { /* quota / private mode */ }
+    if (isNative()) import('@capacitor/preferences').then(({ Preferences }) => Preferences.set({ key: KEY, value: raw })).catch(() => {})
+  }, 250)
 }
 
-export function loadCloudState() {
-  return new Promise(resolve => {
-    if (!cloudSupported()) return resolve(null)
-    try {
-      const cloud = tg().CloudStorage
-      cloud.getItem(`${KEY}_n`, (err, n) => {
-        const count = parseInt(n, 10)
-        if (err || !count) return resolve(null)
-        const keys = Array.from({ length: count }, (_, i) => `${KEY}_${i}`)
-        try {
-          cloud.getItems(keys, (err2, items) => {
-            if (err2 || !items) return resolve(null)
-            try {
-              resolve(JSON.parse(keys.map(k => items[k] || '').join('')))
-            } catch {
-              resolve(null)
-            }
-          })
-        } catch {
-          resolve(null)
-        }
-      })
-    } catch {
-      resolve(null)
-    }
-  })
+// On native cold start, recover from Preferences if the WebView storage was wiped.
+export async function loadNativeBackup() {
+  if (!isNative()) return null
+  try {
+    const { Preferences } = await import('@capacitor/preferences')
+    const { value } = await Preferences.get({ key: KEY })
+    return value ? migrate(JSON.parse(value)) : null
+  } catch {
+    return null
+  }
+}
+
+export function clearState() {
+  try { localStorage.removeItem(KEY); localStorage.removeItem(LEGACY) } catch { /* ignore */ }
+  if (isNative()) import('@capacitor/preferences').then(({ Preferences }) => Preferences.remove({ key: KEY })).catch(() => {})
+}
+
+function migrate(s) {
+  if (!s || typeof s !== 'object') return null
+  return {
+    foodLog: {}, workoutLog: {}, water: {}, settings: {},
+    ...s,
+    settings: { units: 'kg', waterTarget: 8, name: '', ...(s.settings || {}) }
+  }
+}
+
+export function exportState(state) {
+  const blob = new Blob([JSON.stringify({ app: 'BeetFit', exported: new Date().toISOString(), state }, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `beetfit-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }

@@ -36,7 +36,7 @@
 
 /* Buttons */
 .ct-btn { width: 100%; min-height: 50px; padding: 14px 18px; border: none; border-radius: var(--r-2);
-  background: var(--accent); color: var(--on-accent); font: 700 15px var(--f-display); letter-spacing: .01em;
+  background: var(--accent); color: var(--on-accent); font: 600 14px/1.2 var(--f-display); letter-spacing: 0;
   transition: transform var(--dur-1) var(--ease-spring), opacity var(--dur-2); }
 .ct-btn:active { transform: scale(.97); }
 .ct-btn:disabled { opacity: .4; }
