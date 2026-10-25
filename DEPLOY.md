@@ -17,6 +17,7 @@ openssl rand -hex 32                   # copy the output, then:
 npx wrangler secret put DEVICE_SECRET  # paste it
 npx wrangler secret put GEMINI_API_KEY # https://aistudio.google.com/apikey → Create API key
 npx wrangler secret put USDA_API_KEY   # optional: https://fdc.nal.usda.gov/api-key-signup
+npm run --silent vapid | npx wrangler secret put VAPID_JWK   # push notifications; the key goes straight in, never shown
 
 npm run deploy
 ```
@@ -24,7 +25,7 @@ npm run deploy
 `npm run deploy` builds the app, downloads the pose model, creates the KV namespace for rate limits and the D1 database for sync, and attaches `beetfit.wealthifai.xyz`. Cloudflare creates the DNS record and certificate for you; give it 1–2 minutes.
 
 Check:
-- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"device":true,"sync":true,"gemini":true,…}` (all must be true)
+- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"device":true,"sync":true,"push":true,"gemini":true,…}` (all must be true)
 - https://beetfit.wealthifai.xyz → the app
 
 If `wrangler secret put` complains the Worker doesn't exist yet, run `npm run deploy` first, then the secrets, then deploy again.
