@@ -11,6 +11,7 @@ import { useBackClose } from './lib/hooks.js'
 import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
+import { useAccount } from './lib/useAccount.js'
 import { CoachChat } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
 import Guides from './components/Read.jsx'
@@ -65,6 +66,7 @@ export default function App() {
     return { ...s, ...p, ...(hit.length ? { _t: { ...(s._t || {}), ...Object.fromEntries(hit.map(k => [k, Date.now()])) } } : {}) }
   })
   const sync = useSync(state, setState)
+  const account = useAccount(sync, setState)
   const coachHook = useCoach(sync.on)
   // Joining a coach turns sync on: the coach reads the synced copy.
   const coach = { ...coachHook, join: async code => { const r = await coachHook.join(code); if (r.status === 200) sync.setOn(true); return r } }
@@ -106,7 +108,7 @@ export default function App() {
   }, [])
 
   if (!state?.profile) {
-    return <Onboarding onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode }) => {
+    return <Onboarding account={account} onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode }) => {
       setState({
         _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
         profile, intake, program, settings,
@@ -137,7 +139,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={view} update={update} sync={sync} coach={coach} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}

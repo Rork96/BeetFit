@@ -7,6 +7,7 @@ import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
 import { S16 } from '../lib/motion.js'
 import { claimPairCode } from '../lib/sync.js'
+import { SignIn } from './Account.jsx'
 import { coachPeek, cleanCode, CODE_RE } from '../lib/coach.js'
 import { migrate } from '../lib/store.js'
 import './onboarding.css'
@@ -31,7 +32,7 @@ const COACH_ERR = {
   offline: 'No connection.'
 }
 
-export default function Onboarding({ onDone, onRestore }) {
+export default function Onboarding({ onDone, onRestore, account }) {
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
   const [name, setName] = useState('')
@@ -74,7 +75,7 @@ export default function Onboarding({ onDone, onRestore }) {
         </header>
       )}
       <div className={'ob-step ' + (dir > 0 ? 'fwd' : 'back')} key={id}>
-        {id === 'welcome' && <Welcome onStart={c => { setCoach(c || null); go(1) }} onRestore={onRestore} />}
+        {id === 'welcome' && <Welcome onStart={c => { setCoach(c || null); go(1) }} onRestore={onRestore} account={account} />}
 
         {id === 'goal' && (
           <Step title="What's your goal?" sub="Your program, calories and pace are built around it.">
@@ -181,8 +182,10 @@ export default function Onboarding({ onDone, onRestore }) {
   )
 }
 
-function Welcome({ onStart, onRestore }) {
+function Welcome({ onStart, onRestore, account }) {
   const [open, setOpen] = useState(null) // null | 'sync' | 'coach'
+  const [linkCode, setLinkCode] = useState(false)
+  const [note, setNote] = useState('')
   const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -234,15 +237,25 @@ function Welcome({ onStart, onRestore }) {
       </div>
       <ul className="ob-privacy stk">
         <li>Camera tracking runs on your phone and is never uploaded.</li>
-        <li>Your data stays on this device unless you turn on sync. Export or erase it any time.</li>
+        <li>Your data stays on this device unless you sign in or turn on sync. Export or erase it any time.</li>
         <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
       </ul>
       <button className="btn" onClick={() => onStart(null)}>Get started</button>
       <div className="ob-alt">
-        <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => pick('sync')}>I already use BeetFit</button>
+        <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => { pick('sync'); setLinkCode(false); setNote('') }}>Sign in</button>
         <button className={'chip' + (open === 'coach' ? ' on' : '')} onClick={() => pick('coach')}>I have a coach code</button>
       </div>
-      {open === 'sync' && (
+      {open === 'sync' && !linkCode && (
+        <div className="ob-claim stk" key="signin">
+          <SignIn autoFocus onDone={r => {
+            account?.onSignedIn(r)
+            if (!r.doc?.data?.profile) setNote('Signed in. This account has no plan yet: tap Get started and it will be saved to your account.')
+          }} />
+          {note && <p className="hint ob-note">{note}</p>}
+          <button className="ac-link" onClick={() => { haptic(); setLinkCode(true) }}>No account? Link with a code from your other phone</button>
+        </div>
+      )}
+      {open === 'sync' && linkCode && (
         <div className="ob-claim stk" key="sync">
           <p className="hint">On your other phone: Settings → Sync & devices → Link another phone. Enter the code here.</p>
           <div className="sy-enter">

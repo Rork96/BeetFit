@@ -25,7 +25,7 @@ npm run deploy
 `npm run deploy` builds the app, downloads the pose model, creates the KV namespace for rate limits and the D1 database for sync, and attaches `beetfit.wealthifai.xyz`. Cloudflare creates the DNS record and certificate for you; give it 1–2 minutes.
 
 Check:
-- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"device":true,"sync":true,"push":true,"gemini":true,…}` (all must be true)
+- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"device":true,"sync":true,"push":true,"auth":{"email":true,…},"gemini":true,…}` (all must be true; auth shows which sign-ins are on)
 - https://beetfit.wealthifai.xyz → the app
 
 If `wrangler secret put` complains the Worker doesn't exist yet, run `npm run deploy` first, then the secrets, then deploy again.
@@ -37,6 +37,28 @@ Build command: `npm run build` · Deploy command: `npx wrangler deploy`.
 ### Abuse protection (recommended, free)
 Security → WAF → Rate limiting rules → Create:
 `URI Path equals /api/snap` → 10 requests / 1 minute per IP → Block.
+
+## Accounts (sign-in)
+
+Each method shows up in the app only once it's configured. Start with email; Google and Apple are optional on the web.
+
+**Email codes (Resend, free: 100 emails/day, 3,000/month).**
+1. Sign up at https://resend.com → Domains → Add `wealthifai.xyz`. Add the DNS records it lists in Cloudflare (DNS → Records) and wait for "Verified".
+2. API Keys → Create (sending access) → `npx wrangler secret put RESEND_API_KEY`.
+3. `MAIL_FROM` in `wrangler.toml` must use the verified domain (default `BeetFit <login@wealthifai.xyz>`).
+
+**Google (web only for now).**
+1. https://console.cloud.google.com → APIs & Services → OAuth consent screen: External, app name BeetFit, your support email. Publish it.
+2. Credentials → Create credentials → OAuth client ID → Web application. Authorized JavaScript origins: `https://beetfit.wealthifai.xyz`.
+3. Put the client ID in `GOOGLE_CLIENT_ID` in `wrangler.toml`.
+
+**Apple (needs the Apple Developer Program).**
+1. developer.apple.com → Identifiers → + → Services IDs, e.g. `xyz.wealthifai.beetfit.web`. Enable Sign in with Apple → Configure: domain `beetfit.wealthifai.xyz`, return URL `https://beetfit.wealthifai.xyz/`.
+2. Put the Services ID in `APPLE_CLIENT_ID` in `wrangler.toml`.
+
+Deploy again, then check `/api/health` → `"auth":{"email":true,…}`.
+
+In the iOS/Android apps only email is offered until the native sign-in plugin is added (Google blocks its web sign-in inside app WebViews).
 
 ## 2. Install on a phone (no store)
 

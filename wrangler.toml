@@ -18,6 +18,10 @@ run_worker_first = ["/api/*"]
 # The website itself is same-origin and needs no CORS.
 ALLOWED_ORIGINS = "capacitor://localhost,https://localhost,http://localhost:5173"
 GEMINI_MODEL = "gemini-2.5-flash"
+# Sign-in (see DEPLOY.md → Accounts). Leave empty to hide a method.
+MAIL_FROM = "BeetFit <login@wealthifai.xyz>"
+GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials
+APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
 
 # Daily caps (photos per device / per IP, new device tokens per IP).
 # No id: wrangler creates the namespace on the first deploy and remembers it.
@@ -38,3 +42,4 @@ crons = ["*/15 * * * *"]
 #   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)
 #   npx wrangler secret put USDA_API_KEY     (optional, https://fdc.nal.usda.gov/api-key-signup)
 #   npm run --silent vapid | npx wrangler secret put VAPID_JWK   (push notifications; key never shown)
+#   npx wrangler secret put RESEND_API_KEY   (email sign-in codes, https://resend.com)

@@ -5,6 +5,7 @@
 //   GET  /api/food/search?q=       Open Food Facts text search (+ USDA FoodData Central when USDA_API_KEY is set)
 //   POST /api/snap                 JPEG body → Gemini vision → [{ name, grams, kcal, p, c, f, confidence }]
 //   /api/sync, /api/pair           cross-device sync (D1), 6-digit pairing codes
+//   /api/auth/*                    accounts: email code, Google, Apple; sign out; delete account
 //   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
 //   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
 //   POST /api/chat                 Beet, the in-app assistant (Gemini)
@@ -15,6 +16,7 @@
 // Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
 
 import { sendPush, vapidPublic } from './webpush.js'
+import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
 
 const OFF = 'https://world.openfoodfacts.org'
@@ -41,7 +43,7 @@ export default {
     const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
       if (url.pathname === '/api/health') {
-        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, push: !!env.VAPID_JWK, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
+        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, push: !!env.VAPID_JWK, auth: authConfig(env), gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
         // ?check=gemini makes one tiny real call so a bad key or retired model shows up here. Cached 5 min.
         if (url.searchParams.get('check') === 'gemini' && env.GEMINI_API_KEY) {
           return withCache(new Request(url.origin + '/api/health?check=gemini'), ctx, 300, async () => json({ ...out, geminiCheck: await geminiPing(env) }), cors)
@@ -54,6 +56,8 @@ export default {
         if (!(await underLimit(env, `dev:${ip}`, DEVICE_IP_DAILY_LIMIT))) return json({ error: 'daily_limit' }, 429, cors)
         return json({ token: await issueToken(env.DEVICE_SECRET) }, 200, { ...cors, 'cache-control': 'no-store' })
       }
+
+      if (url.pathname === '/api/auth/config') return json(authConfig(env), 200, { ...cors, 'cache-control': 'no-store' })
 
       if (url.pathname === '/api/push/key') {
         if (!env.VAPID_JWK) return json({ error: 'push_not_configured' }, 503, cors)
@@ -98,6 +102,10 @@ export default {
       if (url.pathname.startsWith('/api/coach')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
         return await coachRoutes(req, url, env, device, ip, cors, ctx)
+      }
+      if (url.pathname.startsWith('/api/auth/')) {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        return await authRoutes(req, url, env, device, ip, cors)
       }
       if (url.pathname.startsWith('/api/sync') || url.pathname.startsWith('/api/pair')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
@@ -386,6 +394,51 @@ async function syncRoutes(req, url, env, device, ip, cors) {
   return json({ error: 'not_found' }, 404, cors)
 }
 
+// ---------- accounts ----------
+async function authRoutes(req, url, env, device, ip, cors) {
+  const db = env.DB
+  await ensurePushSchema(db)
+  await ensureAuthSchema(db)
+  const userId = await userOf(db, device.id)
+  const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
+  const out = (v, status = 200) => json(v, status, { ...cors, 'cache-control': 'no-store' })
+  const fail = r => out({ error: r.error }, r.status || 400)
+
+  if (url.pathname === '/api/auth/me' && req.method === 'GET') return out({ account: await accountOf(db, userId), config: authConfig(env) })
+
+  if (url.pathname === '/api/auth/email/start' && req.method === 'POST') {
+    if (!(await underLimit(env, `mailip:${ip}`, 10)) || !(await underLimit(env, `mail:${cleanEmail(body.email)}`, 5))) return out({ error: 'too_many_tries' }, 429)
+    const r = await startEmail(db, env, body.email)
+    return r.error ? fail(r) : out({ ok: true })
+  }
+
+  let who = null
+  if (url.pathname === '/api/auth/email/verify' && req.method === 'POST') {
+    if (!(await underLimit(env, `authtry:${ip}`, 40))) return out({ error: 'too_many_tries' }, 429)
+    who = await verifyEmail(db, env, body.email, body.code)
+  } else if (url.pathname === '/api/auth/google' && req.method === 'POST') {
+    who = await verifyGoogle(env, body.credential)
+  } else if (url.pathname === '/api/auth/apple' && req.method === 'POST') {
+    who = await verifyApple(env, body.idToken)
+  }
+  if (who) {
+    if (who.error) return fail(who)
+    const r = await signIn(db, userId, device.id, who)
+    return out({ result: r.status, account: await accountOf(db, r.userId), ...(r.status === 'switched' ? { doc: await readDoc(db, r.userId) } : {}) })
+  }
+
+  if (url.pathname === '/api/auth/signout' && req.method === 'POST') {
+    await signOut(db, device.id)
+    return out({ ok: true })
+  }
+  if (url.pathname === '/api/auth/delete' && req.method === 'POST') {
+    if (body.confirm !== 'DELETE') return out({ error: 'confirm' }, 400)
+    await deleteUser(db, userId)
+    return out({ ok: true })
+  }
+  return out({ error: 'not_found' }, 404)
+}
+
 // ---------- coach mode ----------
 // A coach is any user who set a coach name; they get a 6-character invite code. A client joins with it
 // (one coach per client). The coach then reads the client's synced doc, messages them and can override
@@ -588,7 +641,7 @@ async function pushRoutes(req, url, env, device, cors, ctx) {
     if (!row) return json({ error: 'not_subscribed' }, 404, cors)
     const r = await sendPush({ endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth }, { title: 'BeetFit', body: 'Notifications are on. Reminders come at the times you picked.', url: '/', tag: 'test' }, env, { urgency: 'high' })
     if (r.gone) await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(row.endpoint).run()
-    return ok({ ok: r.ok, status: r.status })
+    return ok({ ok: r.ok, pushStatus: r.status }) // not "status": the client wrapper uses that for the HTTP code
   }
   return json({ error: 'not_found' }, 404, cors)
 }

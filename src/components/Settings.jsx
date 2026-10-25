@@ -10,11 +10,12 @@ import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sy
 import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
 import { planEvents } from '../lib/plans.js'
+import { AccountCard } from './Account.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.5.0'
+const VERSION = '0.6.0'
 
-export default function Settings({ state, update, sync, coach, openChat, startCoach, onClose }) {
+export default function Settings({ state, update, sync, coach, account, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
   useBackClose(coachHome, () => setCoachHome(false))
   const s = state.settings || {}
@@ -38,6 +39,8 @@ export default function Settings({ state, update, sync, coach, openChat, startCo
         <span style={{ width: 44 }} />
       </header>
       <div className="page stk" style={{ paddingTop: 4 }}>
+        {account && <AccountCard account={account} />}
+
         <section className="card">
           <span className="label">Profile</span>
           <label>Name<input value={s.name || ''} placeholder="What should we call you?" onChange={e => setS({ name: e.target.value.slice(0, 24) })} /></label>
@@ -103,7 +106,7 @@ export default function Settings({ state, update, sync, coach, openChat, startCo
 
         <section className="card">
           <span className="label">Your data</span>
-          <p className="hint">{sync?.on ? 'Stored on this device and backed up to BeetFit sync.' : 'Everything is stored on this device.'} Camera video never leaves it. Meal photos are sent to Google Gemini only when you tap the shutter.</p>
+          <p className="hint">{account?.value ? 'Stored on this device and in your BeetFit account.' : sync?.on ? 'Stored on this device and backed up to BeetFit sync.' : 'Everything is stored on this device.'} Camera video never leaves it. Meal photos are sent to Google Gemini only when you tap the shutter.</p>
           <button className="btn secondary" onClick={() => { haptic(); exportState(state) }}>Export all data (JSON)</button>
           <button className={'btn ' + (armReset ? 'danger' : 'secondary')}
             onClick={() => {
