@@ -5,11 +5,13 @@ import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote } from './Coach.jsx'
+import { BeetCard } from './Beet.jsx'
+import { ReadCard } from './Read.jsx'
 import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -122,6 +124,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </button>
         </div>
 
+        {askBeet && <BeetCard state={state} onAsk={askBeet} />}
+
         {/* Week */}
         <div className="card">
           <div className="row"><span className="label">This week</span><span className="td-small num">{wk.filter(d => d.score >= 2).length}/7 days</span></div>
@@ -145,6 +149,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
             </div>
           ))}
         </div>
+
+        {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
     </div>
   )

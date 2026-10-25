@@ -6,19 +6,31 @@
 //   POST /api/snap                 JPEG body → Gemini vision → [{ name, grams, kcal, p, c, f, confidence }]
 //   /api/sync, /api/pair           cross-device sync (D1), 6-digit pairing codes
 //   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
+//   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
+//   POST /api/chat                 Beet, the in-app assistant (Gemini)
 //   everything else                → static assets (SPA fallback to index.html)
 //
 // /api/food/* and /api/snap need `Authorization: Bearer <device token>`. Tokens are HMAC-signed with
 // DEVICE_SECRET, so they can't be forged; KV (binding RATE) caps token issue per IP and photos per device.
 // Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
 
+import { sendPush, vapidPublic } from './webpush.js'
+import { cleanPrefs, validTz, nextDue, message, localDay } from './reminders.js'
+
 const OFF = 'https://world.openfoodfacts.org'
 const UA = 'BeetFit/0.3 (https://beetfit.wealthifai.xyz)' // OFF asks for AppName/Version (contact)
 const SNAP_DAILY_LIMIT = 30      // per device
 const SNAP_IP_DAILY_LIMIT = 80   // per IP, stops token farming
 const DEVICE_IP_DAILY_LIMIT = 10 // new tokens per IP per day
+const CHAT_DAILY_LIMIT = 40      // Beet chat messages per device
+const CHAT_IP_DAILY_LIMIT = 150
 
 export default {
+  // Cron (wrangler.toml [triggers]): send the reminders that came due.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runReminders(env, event.scheduledTime || Date.now()))
+  },
+
   async fetch(req, env, ctx) {
     const url = new URL(req.url)
     if (!url.pathname.startsWith('/api/')) {
@@ -29,7 +41,7 @@ export default {
     const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
       if (url.pathname === '/api/health') {
-        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
+        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, push: !!env.VAPID_JWK, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
         // ?check=gemini makes one tiny real call so a bad key or retired model shows up here. Cached 5 min.
         if (url.searchParams.get('check') === 'gemini' && env.GEMINI_API_KEY) {
           return withCache(new Request(url.origin + '/api/health?check=gemini'), ctx, 300, async () => json({ ...out, geminiCheck: await geminiPing(env) }), cors)
@@ -41,6 +53,11 @@ export default {
         if (!env.DEVICE_SECRET) return json({ error: 'not_configured' }, 503, cors)
         if (!(await underLimit(env, `dev:${ip}`, DEVICE_IP_DAILY_LIMIT))) return json({ error: 'daily_limit' }, 429, cors)
         return json({ token: await issueToken(env.DEVICE_SECRET) }, 200, { ...cors, 'cache-control': 'no-store' })
+      }
+
+      if (url.pathname === '/api/push/key') {
+        if (!env.VAPID_JWK) return json({ error: 'push_not_configured' }, 503, cors)
+        return json({ key: vapidPublic(env.VAPID_JWK) }, 200, cors)
       }
 
       const device = await authenticate(req, env)
@@ -65,9 +82,22 @@ export default {
         const result = await snap(buf, req.headers.get('content-type') || 'image/jpeg', env)
         return json(result, 200, cors)
       }
+      if (url.pathname === '/api/chat' && req.method === 'POST') {
+        if (!env.GEMINI_API_KEY) return json({ error: 'chat_not_configured' }, 503, cors)
+        if (!(await underLimit(env, `chatip:${ip}`, CHAT_IP_DAILY_LIMIT)) || !(await underLimit(env, `chat:${device.id}`, CHAT_DAILY_LIMIT))) {
+          return json({ error: 'daily_limit' }, 429, cors)
+        }
+        const body = await req.json().catch(() => null)
+        if (!body || !Array.isArray(body.messages) || !body.messages.length) return json({ error: 'bad_request' }, 400, cors)
+        return json(await chat(body, env), 200, cors)
+      }
+      if (url.pathname.startsWith('/api/push')) {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        return await pushRoutes(req, url, env, device, cors, ctx)
+      }
       if (url.pathname.startsWith('/api/coach')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
-        return await coachRoutes(req, url, env, device, ip, cors)
+        return await coachRoutes(req, url, env, device, ip, cors, ctx)
       }
       if (url.pathname.startsWith('/api/sync') || url.pathname.startsWith('/api/pair')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
@@ -156,6 +186,41 @@ const SNAP_SCHEMA = {
     }
   },
   required: ['title', 'items']
+}
+
+// ---------- Beet chat ----------
+
+const BEET_SYSTEM = `You are Beet, the coach inside the BeetFit app (training, food logging, camera rep counting, progress).
+Answer like a sharp, friendly personal trainer and nutrition coach: short, concrete, practical. Use the user's numbers from CONTEXT when they matter (targets, what they ate today, their plan, recent weights, check-ins, pain reports) and say which number you used.
+Format: plain text. At most ~120 words unless the user asks for more. Up to 5 short bullet lines with "- " when listing. No headings, no tables, no emoji.
+Reply in the language the user writes in.
+Scope: workouts, exercise technique and swaps, meals and macros, hydration, sleep, recovery, habits, motivation, and how to use BeetFit (log food by photo or barcode, camera counts reps, warm-up, swap an exercise with the ⋯ menu, report pain, weekly check-in, sync, coach code). For other topics, say briefly that you help with training and food.
+Safety: you are not a doctor. For chest pain, fainting, sharp or worsening joint pain, or symptoms of illness, tell them to stop and get medical help. Don't diagnose. Don't recommend eating below their calorie target, losing more than about 1% of body weight a week, or skipping meals to compensate. If they describe restricting, bingeing, purging or guilt about food, respond with care, don't give numbers, and suggest talking to a doctor or an eating-disorder helpline.
+Never invent data you don't have; if CONTEXT lacks something, ask or give a general answer.`
+
+async function chat(body, env) {
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash'
+  const msgs = body.messages.slice(-16).map(m => ({
+    role: m.role === 'model' ? 'model' : 'user',
+    parts: [{ text: cleanText(m.text, 1500) || '…' }]
+  }))
+  if (msgs[0].role !== 'user') msgs.shift()
+  const context = cleanText(body.context, 4000)
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: `${BEET_SYSTEM}\n\nCONTEXT (today is ${cleanText(body.today, 10) || 'unknown'}):\n${context || 'none'}` }] },
+      contents: msgs,
+      generationConfig: { temperature: 0.6, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } },
+      safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }]
+    })
+  })
+  if (res.status === 429) throw new Error('gemini_rate_limited')
+  if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 160)}`)
+  const data = await res.json()
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim()
+  return { text: text || 'I couldn’t answer that one. Try asking it another way.', model }
 }
 
 async function geminiPing(env) {
@@ -341,7 +406,7 @@ async function override(db, linkId) {
   return row ? { ...parse(row.data), at: row.at } : null
 }
 
-async function coachRoutes(req, url, env, device, ip, cors) {
+async function coachRoutes(req, url, env, device, ip, cors, ctx) {
   const db = env.DB
   await ensureSchema(db)
   const me = await userOf(db, device.id)
@@ -370,7 +435,7 @@ async function coachRoutes(req, url, env, device, ip, cors) {
       .bind(id, c.user_id, me, now).run()
     return ok({ coach: { name: c.name, since: now }, msgs: [], override: null })
   }
-  const asClient = await db.prepare('SELECT l.id, l.since, c.name FROM links l JOIN coaches c ON c.user_id = l.coach_id WHERE l.client_id = ?').bind(me).first()
+  const asClient = await db.prepare('SELECT l.id, l.since, l.coach_id, c.name FROM links l JOIN coaches c ON c.user_id = l.coach_id WHERE l.client_id = ?').bind(me).first()
   if (path === '/api/coach/link' && req.method === 'GET') {
     if (!asClient) return ok({ coach: null })
     return ok({ coach: { name: asClient.name, since: asClient.since }, msgs: await thread(db, asClient.id), override: await override(db, asClient.id) })
@@ -381,7 +446,13 @@ async function coachRoutes(req, url, env, device, ip, cors) {
   }
   if (path === '/api/coach/msg' && req.method === 'POST') {
     if (!asClient) return err('no_coach', 404)
-    return postMsg(env, db, me, asClient.id, 'client', body.text, ok, err)
+    const res = await postMsg(env, db, me, asClient.id, 'client', body.text, ok, err)
+    if (res.status === 200) {
+      const doc = await db.prepare('SELECT summary FROM docs WHERE user_id = ?').bind(me).first()
+      const who = parse(doc?.summary)?.name || 'Your client'
+      notify(ctx, env, asClient.coach_id, { title: who, body: cleanText(body.text, 140), url: '/?coach=1', tag: `coach-${asClient.id}` })
+    }
+    return res
   }
   if (path === '/api/coach/seen' && req.method === 'POST') {
     if (asClient) await db.prepare("UPDATE messages SET seen = 1 WHERE link_id = ? AND by = 'coach'").bind(asClient.id).run()
@@ -433,7 +504,11 @@ async function coachRoutes(req, url, env, device, ip, cors) {
       const doc = await db.prepare('SELECT data, updated FROM docs WHERE user_id = ?').bind(link.client_id).first()
       return ok({ id: link.id, since: link.since, updated: doc?.updated || 0, data: parse(doc?.data), msgs: await thread(db, link.id), override: await override(db, link.id) })
     }
-    if (m[2] === 'msg' && req.method === 'POST') return postMsg(env, db, me, link.id, 'coach', body.text, ok, err)
+    if (m[2] === 'msg' && req.method === 'POST') {
+      const res = await postMsg(env, db, me, link.id, 'coach', body.text, ok, err)
+      if (res.status === 200) notify(ctx, env, link.client_id, { title: `Coach · ${coach.name}`, body: cleanText(body.text, 140), url: '/?chat=coach', tag: 'coach' })
+      return res
+    }
     if (m[2] === 'seen' && req.method === 'POST') {
       await db.prepare("UPDATE messages SET seen = 1 WHERE link_id = ? AND by = 'client'").bind(link.id).run()
       return ok({ ok: true })
@@ -469,6 +544,91 @@ async function dropLink(db, linkId) {
     db.prepare('DELETE FROM overrides WHERE link_id = ?').bind(linkId),
     db.prepare('DELETE FROM links WHERE id = ?').bind(linkId)
   ])
+}
+
+// ---------- push notifications ----------
+// Browsers hand us an endpoint on their vendor's push service; only those hosts are accepted,
+// so the Worker can't be pointed at arbitrary URLs.
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /\.push\.services\.mozilla\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/, /^web\.push\.apple\.com$/, /\.push\.apple\.com$/]
+const okEndpoint = e => { try { const u = new URL(e); return u.protocol === 'https:' && PUSH_HOSTS.some(r => r.test(u.hostname)) } catch { return false } }
+
+async function ensurePushSchema(db) {
+  await ensureSchema(db)
+  await db.prepare('CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, tz TEXT NOT NULL, prefs TEXT NOT NULL, next_at INTEGER, next_kind TEXT, created INTEGER NOT NULL, fails INTEGER NOT NULL DEFAULT 0)').run()
+  await db.prepare('CREATE INDEX IF NOT EXISTS push_due ON push_subs (next_at)').run()
+}
+
+async function pushRoutes(req, url, env, device, cors, ctx) {
+  const db = env.DB
+  if (!env.VAPID_JWK) return json({ error: 'push_not_configured' }, 503, cors)
+  await ensurePushSchema(db)
+  const me = await userOf(db, device.id)
+  const body = await req.json().catch(() => ({}))
+  const ok = v => json(v, 200, { ...cors, 'cache-control': 'no-store' })
+
+  if (url.pathname === '/api/push/subscribe' && req.method === 'POST') {
+    const sub = body.sub || {}
+    if (!okEndpoint(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: 'bad_subscription' }, 400, cors)
+    const tz = validTz(body.tz) ? body.tz : 'UTC'
+    const prefs = cleanPrefs(body.prefs)
+    const due = nextDue(prefs, tz)
+    await db.prepare(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, tz, prefs, next_at, next_kind, created) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+      ON CONFLICT(endpoint) DO UPDATE SET user_id = ?2, p256dh = ?3, auth = ?4, tz = ?5, prefs = ?6, next_at = ?7, next_kind = ?8, fails = 0`)
+      .bind(sub.endpoint, me, String(sub.keys.p256dh).slice(0, 200), String(sub.keys.auth).slice(0, 60), tz, JSON.stringify(prefs), due?.at ?? null, due?.kind ?? null, Date.now()).run()
+    return ok({ ok: true, prefs, next: due })
+  }
+  if (url.pathname === '/api/push/unsubscribe' && req.method === 'POST') {
+    await db.prepare('DELETE FROM push_subs WHERE endpoint = ? AND user_id = ?').bind(String(body.endpoint || ''), me).run()
+    return ok({ ok: true })
+  }
+  if (url.pathname === '/api/push/test' && req.method === 'POST') {
+    const row = await db.prepare('SELECT * FROM push_subs WHERE endpoint = ? AND user_id = ?').bind(String(body.endpoint || ''), me).first()
+    if (!row) return json({ error: 'not_subscribed' }, 404, cors)
+    const r = await sendPush({ endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth }, { title: 'BeetFit', body: 'Notifications are on. Reminders come at the times you picked.', url: '/', tag: 'test' }, env, { urgency: 'high' })
+    if (r.gone) await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(row.endpoint).run()
+    return ok({ ok: r.ok, status: r.status })
+  }
+  return json({ error: 'not_found' }, 404, cors)
+}
+
+// Push to every device of a user (coach messages). Runs after the response.
+function notify(ctx, env, userId, payload) {
+  if (!env.VAPID_JWK || !env.DB) return
+  const job = (async () => {
+    await ensurePushSchema(env.DB)
+    const { results } = await env.DB.prepare('SELECT endpoint, p256dh, auth, prefs FROM push_subs WHERE user_id = ?').bind(userId).all()
+    await Promise.all(results.filter(r => parse(r.prefs)?.coach !== false).map(async r => {
+      const res = await sendPush(r, payload, env, { urgency: 'high', topic: payload.tag?.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) }).catch(() => ({ ok: false }))
+      if (res.gone) await env.DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(r.endpoint).run()
+    }))
+  })().catch(() => {})
+  if (ctx?.waitUntil) ctx.waitUntil(job)
+  return job
+}
+
+export async function runReminders(env, now = Date.now()) {
+  if (!env.VAPID_JWK || !env.DB) return { sent: 0 }
+  const db = env.DB
+  await ensurePushSchema(db)
+  const { results } = await db.prepare('SELECT * FROM push_subs WHERE next_at IS NOT NULL AND next_at <= ? ORDER BY next_at LIMIT 200').bind(now).all()
+  const docs = new Map()
+  let sent = 0, quiet = 0
+  for (const row of results) {
+    const prefs = cleanPrefs(parse(row.prefs))
+    // Missed by more than 2 h (Worker paused, clock jump): skip rather than nag at the wrong time.
+    if (now - row.next_at < 2 * 3600 * 1000) {
+      if (!docs.has(row.user_id)) docs.set(row.user_id, parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(row.user_id).first())?.data))
+      const msg = message(row.next_kind, docs.get(row.user_id), localDay(row.next_at, row.tz))
+      if (msg) {
+        const r = await sendPush(row, msg, env, { ttl: 2 * 3600, topic: row.next_kind }).catch(() => ({ ok: false }))
+        if (r.gone) { await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(row.endpoint).run(); continue }
+        if (r.ok) sent++
+      } else quiet++
+    }
+    const due = nextDue(prefs, row.tz, Math.max(now, row.next_at) + 1000)
+    await db.prepare('UPDATE push_subs SET next_at = ?, next_kind = ? WHERE endpoint = ?').bind(due?.at ?? null, due?.kind ?? null, row.endpoint).run()
+  }
+  return { due: results.length, sent, quiet }
 }
 
 // ---------- helpers ----------

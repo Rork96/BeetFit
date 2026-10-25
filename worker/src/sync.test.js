@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { DatabaseSync } from 'node:sqlite'
+import { d1 } from '../test/d1.js'
 import worker, { issueToken } from './index.js'
-
-// Minimal D1 on top of node:sqlite: prepare/bind/first/run/all + batch.
-function d1() {
-  const db = new DatabaseSync(':memory:')
-  const stmt = (sql, args = []) => ({
-    bind: (...a) => stmt(sql, a),
-    first: async () => db.prepare(sql).get(...args) ?? null,
-    all: async () => ({ results: db.prepare(sql).all(...args) }),
-    run: async () => { const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes } } }
-  })
-  return { prepare: sql => stmt(sql), batch: async list => Promise.all(list.map(s => s.run())) }
-}
 
 const SECRET = 'sync-test-secret-0123456789'
 const env = { DEVICE_SECRET: SECRET, DB: d1() }

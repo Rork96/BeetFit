@@ -9,11 +9,12 @@ import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
 import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sync.js'
 import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
+import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
 const VERSION = '0.4.0'
 
-export default function Settings({ state, update, sync, coach, openChat, onClose }) {
-  const [coachHome, setCoachHome] = useState(false)
+export default function Settings({ state, update, sync, coach, openChat, startCoach, onClose }) {
+  const [coachHome, setCoachHome] = useState(!!startCoach)
   useBackClose(coachHome, () => setCoachHome(false))
   const s = state.settings || {}
   const p = state.profile
@@ -90,6 +91,8 @@ export default function Settings({ state, update, sync, coach, openChat, onClose
               onChange={v => { setMotion(v); applyMotionLevel(v) }} />
           </Row>
         </section>
+
+        <RemindersCard state={state} update={update} />
 
         {coach && <YourCoachCard coach={coach} syncOn={sync?.on} onChat={openChat} />}
 
@@ -199,6 +202,54 @@ function SyncCard({ sync, update }) {
         <button className="btn secondary" disabled={busy} onClick={show}>{mode === 'show' ? 'New code' : 'Link another phone'}</button>
         <button className="btn secondary" onClick={() => { haptic(); setErr(''); setMode(mode === 'enter' ? null : 'enter') }}>I have a code</button>
       </div>
+    </section>
+  )
+}
+
+const pad = n => String(n).padStart(2, '0')
+
+function RemindersCard({ state, update }) {
+  const prefs = remindersOf(state)
+  const support = pushSupport()
+  const [on, setOnState] = useState(() => pushOn() && (support === 'native' || permission() === 'granted'))
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const set = (id, patch) => update(prev => {
+    const cur = remindersOf(prev)
+    return { settings: { ...(prev.settings || {}), reminders: { ...cur, [id]: typeof cur[id] === 'object' ? { ...cur[id], ...patch } : patch } } }
+  })
+  const toggle = async v => {
+    haptic(); setMsg('')
+    if (!v) { setOnState(false); await disablePush(); return }
+    setBusy(true)
+    const r = await enablePush(prefs)
+    setBusy(false)
+    if (!r.ok) return setMsg(PUSH_ERR[r.error] || `Couldn’t turn on notifications (${r.error}).`)
+    hapticSuccess(); setOnState(true)
+    if (r.next) setMsg(`Next: ${REMINDERS.find(x => x.id === r.next.kind)?.label} at ${new Date(r.next.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`)
+  }
+  return (
+    <section className="card">
+      <span className="label">Reminders</span>
+      <Row label="Notifications on this phone" hint={support === 'native' ? 'Scheduled on the phone' : 'Smart: skipped when you already did it'}>
+        <Toggle on={on} onChange={v => { if (!busy) toggle(v) }} />
+      </Row>
+      {support === 'install' && !on && <p className="hint">{PUSH_ERR.install}</p>}
+      {REMINDERS.map(r => (
+        <div key={r.id} className={'rm-row' + (prefs[r.id].on ? '' : ' off')}>
+          <button className={'rm-check' + (prefs[r.id].on ? ' on' : '')} aria-label={r.label} onClick={() => { haptic(); set(r.id, { on: !prefs[r.id].on }) }} />
+          <div className="rm-t"><b>{r.label}</b><span className="hint">{r.hint}</span></div>
+          <input type="time" className="rm-time num" value={`${pad(prefs[r.id].h)}:${pad(prefs[r.id].m)}`} disabled={!prefs[r.id].on}
+            onChange={e => { const [h, m] = e.target.value.split(':').map(Number); if (Number.isFinite(h)) set(r.id, { h, m: m || 0 }) }} />
+        </div>
+      ))}
+      {support !== 'native' && (
+        <Row label="Coach messages" hint="Ping me when my coach or a client writes">
+          <Toggle on={prefs.coach !== false} onChange={v => { haptic(); update(prev => ({ settings: { ...(prev.settings || {}), reminders: { ...remindersOf(prev), coach: v } } })) }} />
+        </Row>
+      )}
+      {on && <button className="btn secondary" onClick={async () => { haptic(); const r = await testPush(); setMsg(r.ok ? 'Sent. It should arrive in a few seconds.' : (PUSH_ERR[r.error] || 'Test failed.')) }}>Send a test notification</button>}
+      {msg && <p className={msg.startsWith('Next') || msg.startsWith('Sent') ? 'hint' : 'sy-err'}>{msg}</p>}
     </section>
   )
 }

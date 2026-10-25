@@ -14,7 +14,8 @@
     "native:build": "VITE_API_URL=https://beetfit.wealthifai.xyz npm run build && cap sync",
     "native:permissions": "node scripts/native-permissions.mjs",
     "ios": "npm run native:build && cap open ios",
-    "android": "npm run native:build && cap open android"
+    "android": "npm run native:build && cap open android",
+    "vapid": "node scripts/vapid.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
@@ -22,6 +23,7 @@
     "@capacitor/core": "8.5.3",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
     "@capacitor/preferences": "8.0.1",
     "@fontsource-variable/space-grotesk": "5.3.0",
     "@fontsource-variable/unbounded": "5.3.0",

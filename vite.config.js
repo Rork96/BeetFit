@@ -28,6 +28,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        importScripts: ['push-sw.js'], // push + notification click handlers
         // App shell precached; the 13 MB WASM + 5.8 MB model are cached on first use instead.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['mediapipe/**'],

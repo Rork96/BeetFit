@@ -1,0 +1,36 @@
+/* Beet chat */
+.bt-mark { display: inline-grid; grid-template-columns: repeat(3, 6px); gap: 3px; align-items: end; height: 14px; }
+.bt-mark i { display: block; width: 6px; height: 6px; background: var(--accent); }
+.bt-mark i:nth-child(2) { height: 10px; }
+.bt-mark i:nth-child(3) { height: 14px; }
+.bt-mark.busy i { animation: btBar var(--beat) var(--ease-out) infinite alternate; }
+.bt-mark.busy i:nth-child(2) { animation-delay: calc(var(--beat) / 4); }
+.bt-mark.busy i:nth-child(3) { animation-delay: calc(var(--beat) / 2); }
+@keyframes btBar { from { height: 4px } to { height: 14px } }
+
+.bt-card { border-color: var(--accent-line); }
+.bt-head { display: flex; align-items: center; gap: 12px; }
+.bt-head > div { display: flex; flex-direction: column; }
+.bt-head b { font: 600 16px var(--f-display); }
+.bt-head .hint { font-size: 12px; }
+.bt-sugg { display: flex; gap: 6px; flex-wrap: wrap; }
+.bt-sugg .chip { text-align: left; white-space: normal; line-height: 1.35; padding: 8px 12px; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.bt-sugg.col { flex-direction: column; align-items: flex-start; }
+
+.bt-screen { display: flex; flex-direction: column; }
+.bt-title { display: flex; align-items: center; gap: 10px; }
+.bt-page { flex: 1; padding-top: 6px; padding-bottom: 12px; }
+.bt-empty { padding-top: 12vh; gap: 12px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.bt-empty h1 { font-size: 28px; }
+.bt-msgs { display: flex; flex-direction: column; gap: 10px; }
+.bt-msg { max-width: 88%; padding: 11px 13px; font-size: 14.5px; line-height: 1.5; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.bt-msg p { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.bt-msg p + p { margin-top: 6px; }
+.bt-msg.me { align-self: flex-end; background: var(--accent); color: var(--on-accent); }
+.bt-msg.beet { align-self: flex-start; background: var(--card); border: 1px solid var(--line-2); border-left: 2px solid var(--accent); }
+.bt-msg.err { border-color: rgba(255,107,107,.4); border-left-color: var(--danger); color: var(--danger); }
+.bt-msg.typing { padding: 14px 16px; }
+.bt-input { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  background: rgba(12,13,17,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+.bt-input textarea { flex: 1; min-height: 44px; max-height: 120px; resize: none; font-size: 15px; }
+.bt-input .btn { width: auto; padding-inline: 18px; }

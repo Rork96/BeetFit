@@ -29,7 +29,12 @@ binding = "RATE"
 binding = "DB"
 database_name = "beetfit"
 
+# Daily reminders: every 15 minutes, send the ones that came due (in each user's own time zone).
+[triggers]
+crons = ["*/15 * * * *"]
+
 # Secrets — set once, never commit:
 #   npx wrangler secret put DEVICE_SECRET    (any long random string: `openssl rand -hex 32`)
 #   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)
 #   npx wrangler secret put USDA_API_KEY     (optional, https://fdc.nal.usda.gov/api-key-signup)
+#   npm run --silent vapid | npx wrangler secret put VAPID_JWK   (push notifications; key never shown)

@@ -12,6 +12,10 @@ import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
 import { CoachChat } from './components/Coach.jsx'
+import BeetChat from './components/Beet.jsx'
+import Guides from './components/Read.jsx'
+import { remindersOf, updatePush, pushOn } from './lib/push.js'
+import { stable } from './lib/sync.js'
 
 // Top-level keys merged as a whole during sync: remember when each was last edited on this device.
 const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan']
@@ -37,12 +41,16 @@ export default function App() {
   const [intent, setIntent] = useState(null) // cross-tab action, e.g. { start: true } for Train
   const [settings, setSettings] = useState(false)
   const [chat, setChat] = useState(false)
+  const [beet, setBeet] = useState(null) // null | { first: question or null }
+  const [guides, setGuides] = useState(null) // null | { first: guide id or null }
   const prevTab = useRef(tab)
 
   useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state) saveState(state) }, [state])
-  useBackClose(settings, () => setSettings(false))
+  useBackClose(!!settings, () => setSettings(false))
   useBackClose(chat, () => setChat(false))
+  useBackClose(!!beet, () => setBeet(null))
+  useBackClose(!!guides, () => setGuides(null))
 
   // Accepts a patch object or a function of the previous state (camera logs arrive in bursts).
   const update = patch => setState(s => {
@@ -57,6 +65,34 @@ export default function App() {
   // Components read targets through state.coach.override; it never goes into the synced document.
   const link = coachHook.link
   const view = useMemo(() => (state && link?.coach ? { ...state, coach: { name: link.coach.name, override: link.override } } : state), [state, link])
+
+  // Reminder times live in settings (so they sync); reschedule this phone when they change.
+  const remKey = state?.profile ? stable(remindersOf(state)) : ''
+  const remSent = useRef(null)
+  useEffect(() => {
+    if (!remKey || !pushOn()) return
+    if (remSent.current === null) { remSent.current = remKey; return } // first render: already scheduled
+    if (remSent.current === remKey) return
+    const t = setTimeout(() => { remSent.current = remKey; updatePush(JSON.parse(remKey)) }, 1200)
+    return () => clearTimeout(t)
+  }, [remKey])
+
+  // Deep links from notifications: /?tab=meals, /?chat=coach, /?coach=1
+  const openLink = href => {
+    const q = new URL(href, location.origin).searchParams
+    const t = q.get('tab')
+    if (t && TABS.some(x => x.id === t)) { prevTab.current = tab; setTab(t) }
+    if (q.get('chat') === 'coach') setChat(true)
+    if (q.get('coach') === '1') setSettings('coach')
+  }
+  const openRef = useRef(openLink)
+  openRef.current = openLink
+  useEffect(() => {
+    if (location.search) { const href = location.href; history.replaceState(null, '', '/'); openRef.current(href) }
+    const onMsg = e => { if (e.data?.type === 'bf-open') openRef.current(e.data.url) }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, [])
 
   if (!state?.profile) {
     return <Onboarding onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode }) => {
@@ -77,7 +113,7 @@ export default function App() {
   return (
     <>
       <div key={tab} className={back ? 'tab-back' : ''}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} />}
         {tab === 'progress' && <ProgressTab state={view} update={update} />}
@@ -90,8 +126,10 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={view} update={update} sync={sync} coach={coach} openChat={() => setChat(true)} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
+      {guides && <Guides first={guides.first} onClose={() => history.back()} />}
+      {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} />}
     </>
   )
 }
