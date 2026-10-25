@@ -5,7 +5,7 @@
 import { api } from './api.js'
 
 const REV_KEY = 'beetfit_sync_rev'
-const SINGLETONS = ['profile', 'settings', 'intake', 'program', 'mealPlan']
+const SINGLETONS = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans']
 
 export const syncRev = () => { try { return +localStorage.getItem(REV_KEY) || 0 } catch { return 0 } }
 const setRev = r => { try { localStorage.setItem(REV_KEY, String(r)) } catch { /* ignore */ } }

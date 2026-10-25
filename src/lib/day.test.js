@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { streakInfo, weekReview, addDays, weekday, nextDayIndex } from './day.js'
+import { streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
 
 const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, targetKg: 75, goal: 'lose', activity: 'moderate' }
 const program = [{ name: 'A', exercises: [] }, { name: 'B', exercises: [] }, { name: 'C', exercises: [] }]
@@ -96,4 +96,26 @@ describe('nextDayIndex', () => {
   })
   it('starts at day A with no history', () => { expect(nextDayIndex(s({}), SUN)).toBe(0) })
   it('ignores warm-up only days', () => { expect(nextDayIndex(s({ [addDays(SUN, -1)]: { __warmup: 'done' } }), SUN)).toBe(0) })
+})
+
+describe('best streak and milestones', () => {
+  it('finds the longest run with the same freeze rule', () => {
+    // 5-day run (with one frozen day inside), a break, then 2 days
+    const run = [-14, -13, -11, -10, -9, -8].map(i => addDays(SUN, i))
+    const s = stateWith([...run, addDays(SUN, -1), SUN])
+    expect(bestStreak(s, SUN)).toBe(6)
+    expect(streakInfo(s, SUN).days).toBe(2)
+    expect(bestStreak(stateWith([]), SUN)).toBe(0)
+  })
+  it('milestones', () => {
+    expect(nextMilestone(0)).toBe(3)
+    expect(nextMilestone(7)).toBe(14)
+    expect(nextMilestone(400)).toBe(500)
+    expect(prevMilestone(8)).toBe(7)
+    expect(prevMilestone(2)).toBe(0)
+  })
+  it('today standing', () => {
+    expect(todayStanding(stateWith([SUN]), SUN)).toMatchObject({ done: 2, need: 0 })
+    expect(todayStanding(stateWith([]), SUN).need).toBe(2)
+  })
 })

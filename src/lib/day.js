@@ -103,6 +103,38 @@ export function streakInfo(state, key = dayKey()) {
 
 export const streak = (state, key = dayKey()) => streakInfo(state, key).days
 
+// Longest streak ever, same rules walked forward from the first logged day.
+export function bestStreak(state, key = dayKey()) {
+  const first = firstDay(state)
+  if (!first) return 0
+  let run = 0, best = 0
+  const used = new Set()
+  for (let k = first; k <= key; k = addDays(k, 1)) {
+    if (dayScore(state, k) >= 2) { run++; best = Math.max(best, run); continue }
+    if (k === key) break // today isn't over
+    const wk = mondayOf(k)
+    if (run > 0 && !used.has(wk)) { used.add(wk); continue }
+    run = 0
+  }
+  return best
+}
+
+function firstDay(state) {
+  const keys = [...Object.keys(state.foodLog || {}), ...Object.keys(state.workoutLog || {}), ...Object.keys(state.water || {})]
+  return keys.length ? keys.sort()[0] : null
+}
+
+export const MILESTONES = [3, 7, 14, 30, 60, 100, 180, 365]
+export const nextMilestone = n => MILESTONES.find(m => m > n) ?? Math.ceil((n + 1) / 100) * 100
+export const prevMilestone = n => [...MILESTONES].reverse().find(m => m <= n) ?? 0
+
+// Today's standing for the streak: how many of the 3 tasks are done and what's left.
+export function todayStanding(state, key = dayKey()) {
+  const tasks = dayTasks(state, key)
+  const done = tasks.filter(t => t.done).length
+  return { done, need: Math.max(0, 2 - done), todo: tasks.filter(t => !t.done) }
+}
+
 // Mon–Sun of the current week.
 export function week(state, key = dayKey()) {
   const monday = mondayOf(key)

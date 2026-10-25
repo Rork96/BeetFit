@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
-import { useCountUp } from '../lib/hooks.js'
+import { useCountUp, useBackClose } from '../lib/hooks.js'
+import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
+import { plansOn, planTitle, planDone } from '../lib/plans.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote } from './Coach.jsx'
@@ -11,7 +13,7 @@ import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead, openCalendar }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -27,6 +29,11 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const shownRemaining = useCountUp(remaining)
   const kcalPct = Math.min(1, e.kcal / t.kcal)
   const [splash, setSplash] = useState(0)
+  const [streakOpen, setStreakOpen] = useState(false)
+  useBackClose(streakOpen, () => setStreakOpen(false))
+  const [milestone, closeMilestone] = useMilestone(state)
+  const todayPlans = plansOn(state, key)
+  const calendar = o => { if (!openCalendar) return; history.back(); setTimeout(() => openCalendar(o), 60) }
 
   const prog = program(state)
   const dayIdx = nextDayIndex(state, key)
@@ -62,10 +69,18 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
       <div className="stk td-stack">
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
-        <button className={'td-streak' + (st >= 7 ? ' hot' : '')} onClick={() => go('progress')}>
-          <span className="td-mark" /><span className="num">{st > 0 ? `${st}-day streak` : 'Start your streak today'}</span>
-        </button>
-        <WeekReview state={state} today={key} streak={st} units={units} />
+        <StreakPill state={state} onOpen={() => setStreakOpen(true)} />
+        <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
+        {todayPlans.length > 0 && (
+          <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
+            <span className="label">On your calendar today</span>
+            {todayPlans.map(p => (
+              <span key={p.id} className={'td-plan' + (planDone(state, p, key) ? ' done' : '')}>
+                <i />{planTitle(p)}<span className="num">{p.time || ''}</span>
+              </span>
+            ))}
+          </button>
+        )}
 
         {/* Calories */}
         <div className="card td-kcal">
@@ -130,7 +145,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
         {/* Week */}
         <div className="card">
-          <div className="row"><span className="label">This week</span><span className="td-small num">{wk.filter(d => d.score >= 2).length}/7 days · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</span></div>
+          <div className="row"><span className="label">This week · <span className="num">{wk.filter(d => d.score >= 2).length}/7</span> · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</span><button className="rd-all" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>Calendar →</button></div>
           <div className="td-week">
             {wk.map(d => (
               <div key={d.key} className={'td-day' + (d.today ? ' today' : '')}>
@@ -154,6 +169,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
         {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
+      {streakOpen && <StreakSheet state={state} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
+      {milestone && <Milestone days={milestone} onClose={closeMilestone} />}
     </div>
   )
 }
@@ -162,7 +179,7 @@ const SEEN = 'beetfit_week_seen'
 const seenWeek = () => { try { return localStorage.getItem(SEEN) } catch { return null } }
 
 // Sunday: this week so far. Monday: last week. Dismissed per week.
-function WeekReview({ state, today, streak, units }) {
+function WeekReview({ state, today, streak, units, onPlan }) {
   const r = weekReview(state, today)
   const [seen, setSeen] = useState(seenWeek)
   if (!r || seen === r.id + (r.final ? 'f' : '')) return null
@@ -174,7 +191,7 @@ function WeekReview({ state, today, streak, units }) {
     : r.final ? `${r.sessions} of ${r.planned} sessions last week.`
       : `${r.sessions} of ${r.planned} sessions so far.`
   const sub = r.kept ? (streak >= 3 ? `${streak}-day streak going into ${r.final ? 'this' : 'next'} week.` : `Same again ${r.final ? 'this' : 'next'} week.`)
-    : r.final ? `Plan for ${r.planned} this week. Put them in your calendar now.`
+    : r.final ? `Plan for ${r.planned} this week. Pick the days now.`
       : r.planned - r.sessions === 1 ? 'One session today hits the week.' : 'Today still counts. Do one session.'
   return (
     <div className={'card td-review' + (r.kept ? ' kept' : '')}>
@@ -192,6 +209,7 @@ function WeekReview({ state, today, streak, units }) {
         <div><b className="num">{r.protein ?? '—'}{r.protein != null && <small>g</small>}</b><span>protein avg{r.protein != null ? ` / ${r.proteinTarget}` : ''}</span></div>
         <div><b className="num">{wcText}{wc != null && <small>{units}</small>}</b><span>weight trend</span></div>
       </div>
+      {!r.kept && onPlan && <button className="btn secondary small" onClick={onPlan}>Plan my training days</button>}
     </div>
   )
 }

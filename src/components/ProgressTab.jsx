@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import BodyFigure from './BodyFigure.jsx'
 import { bmi, bmiCategory, macros, bmr, tdee } from '../lib/calories.js'
-import { dayKey, weightSeries, weeklyRate, monthGrid, eaten, waterOf, dayTasks, KG_TO_LB, currentWeight } from '../lib/day.js'
-import { useBackClose } from '../lib/hooks.js'
+import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import './progress.css'
 
@@ -10,7 +9,7 @@ const RANGES = [['2W', 14], ['1M', 30], ['3M', 90], ['6M', 180]]
 const MEAS = [['waist', 'Waist'], ['chest', 'Chest'], ['hips', 'Hips'], ['arm', 'Arm']]
 const MOODS = ['awful', 'low', 'ok', 'good', 'great']
 
-export default function ProgressTab({ state, update }) {
+export default function ProgressTab({ state, update, openCalendar }) {
   const { profile } = state
   const units = state.settings?.units || 'kg'
   const lb = units === 'lb'
@@ -22,9 +21,7 @@ export default function ProgressTab({ state, update }) {
   const [entry, setEntry] = useState(+toU(now).toFixed(1))
   const [range, setRange] = useState(30)
   const [meas, setMeas] = useState('waist')
-  const [day, setDay] = useState(null)
   const [cal, setCal] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
-  useBackClose(!!day, () => setDay(null))
 
   const total = Math.abs(profile.targetKg - start)
   const pct = total === 0 ? 100 : Math.max(0, Math.min(100, Math.round((Math.abs(now - start) / total) * 100) * Math.sign((start - now) * (start - profile.targetKg) || 1)))
@@ -130,10 +127,13 @@ export default function ProgressTab({ state, update }) {
         <div className="pg-cal" key={`${cal.y}-${cal.m}`}>
           {'MTWTFSS'.split('').map((d, i) => <span key={i} className="pg-dow">{d}</span>)}
           {monthGrid(state, cal.y, cal.m).map((c, i) => c
-            ? <button key={c.key} className={`pg-d s${c.score ?? 'f'}${c.today ? ' today' : ''}`} disabled={c.score == null} onClick={() => { haptic(); setDay(c.key) }}><span className="num">{c.d}</span></button>
+            ? <button key={c.key} className={`pg-d s${c.score ?? 'f'}${c.today ? ' today' : ''}`} onClick={() => { haptic(); openCalendar?.(c.key) }}><span className="num">{c.d}</span></button>
             : <span key={'e' + i} />)}
         </div>
-        <p className="td-small">Fill = daily tasks done (food, water, training). Tap a day for details.</p>
+        <div className="row">
+          <p className="td-small" style={{ margin: 0 }}>Fill = daily tasks done. Tap a day for details.</p>
+          <button className="btn small secondary" onClick={() => { haptic(); openCalendar?.(null) }}>Calendar</button>
+        </div>
       </div>
 
       <div className="card">
@@ -147,7 +147,6 @@ export default function ProgressTab({ state, update }) {
         <p className="hint num">BMR {bmr({ ...profile, weightKg: now })} kcal · TDEE {tdee({ ...profile, weightKg: now })} kcal</p>
       </div>
 
-      {day && <DaySheet state={state} k={day} toU={toU} units={units} />}
     </div>
   )
 }
@@ -196,35 +195,4 @@ function MiniTrend({ points }) {
   const min = Math.min(...points) - 1, max = Math.max(...points) + 1
   const d = points.map((v, i) => `${(i / (points.length - 1)) * w},${h - ((v - min) / (max - min)) * h}`).join(' ')
   return <svg viewBox={`0 -4 ${w} ${h + 8}`} className="pg-mini"><polyline points={d} fill="none" stroke="var(--data-2)" strokeWidth="2.5" className="pg-line" /></svg>
-}
-
-function DaySheet({ state, k, toU, units }) {
-  const e = eaten(state, k)
-  const tasks = dayTasks(state, k)
-  const food = state.foodLog?.[k] || []
-  const wl = state.workoutLog?.[k] || {}
-  const ci = state.checkins?.[k]
-  const wt = (state.weightLog || []).find(x => x.date === k)
-  const ex = Object.entries(wl).filter(([n]) => !n.startsWith('__'))
-  return (
-    <>
-      <div className="sheet-back" onClick={() => history.back()} />
-      <div className="sheet">
-        <span className="label">{new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-        <div className="chips wrap">{tasks.map(t => <span key={t.id} className={'chip' + (t.done ? ' on' : '')}>{t.done ? '✓ ' : ''}{t.label}</span>)}</div>
-        <div className="grid4">
-          <div className="stat"><div className="v">{e.kcal}</div><div className="l">kcal</div></div>
-          <div className="stat"><div className="v">{e.p}g</div><div className="l">protein</div></div>
-          <div className="stat"><div className="v">{waterOf(state, k)}</div><div className="l">glasses</div></div>
-          <div className="stat"><div className="v">{wt ? toU(wt.kg).toFixed(1) : '—'}</div><div className="l">{units}</div></div>
-        </div>
-        {food.length > 0 && <div><span className="label">Food</span>{food.map(f => <p key={f.at} className="td-small num">{f.name} · {f.grams} g · {f.kcal} kcal</p>)}</div>}
-        {ex.length > 0 && <div><span className="label">Training{wl.__warmup ? ' · warm-up ✓' : ''}</span>{ex.map(([n, v]) => (
-          <p key={n} className="td-small num">{n}: {v?.skipped ? `skipped (${v.pain})` : (v?.sets || []).filter(Boolean).map(s => `${s.w ? s.w + '×' : ''}${s.reps ?? (s.secs != null ? s.secs + 's' : '✓')}${s.rpe ? '@' + s.rpe : ''}`).join(', ')}</p>
-        ))}</div>}
-        {ci && <p className="td-small">Check-in: sleep {ci.sleep ?? '—'} h · mood {ci.mood ? MOODS[ci.mood - 1] : '—'}</p>}
-        <button className="btn secondary" onClick={() => history.back()}>Close</button>
-      </div>
-    </>
-  )
 }

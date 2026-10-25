@@ -9,9 +9,10 @@ import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
 import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sync.js'
 import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
+import { planEvents } from '../lib/plans.js'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.4.1'
+const VERSION = '0.5.0'
 
 export default function Settings({ state, update, sync, coach, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
@@ -222,11 +223,11 @@ function RemindersCard({ state, update }) {
     haptic(); setMsg('')
     if (!v) { setOnState(false); await disablePush(); return }
     setBusy(true)
-    const r = await enablePush(prefs)
+    const r = await enablePush(prefs, planEvents(state))
     setBusy(false)
     if (!r.ok) return setMsg(PUSH_ERR[r.error] || `Couldn’t turn on notifications (${r.error}).`)
     hapticSuccess(); setOnState(true)
-    if (r.next) setMsg(`Next: ${REMINDERS.find(x => x.id === r.next.kind)?.label} at ${new Date(r.next.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`)
+    if (r.next) setMsg(`Next: ${r.next.kind === 'event' ? 'Calendar' : REMINDERS.find(x => x.id === r.next.kind)?.label} at ${new Date(r.next.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`)
   }
   return (
     <section className="card">
@@ -273,7 +274,7 @@ function Seg({ value, options, onChange }) {
   )
 }
 
-function Toggle({ on, onChange }) {
+export function Toggle({ on, onChange }) {
   return (
     <button className={'tgl' + (on ? ' on' : '')} role="switch" aria-checked={on} onClick={() => { haptic(); onChange(!on) }}><i /></button>
   )

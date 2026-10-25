@@ -15,7 +15,7 @@
 // Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
 
 import { sendPush, vapidPublic } from './webpush.js'
-import { cleanPrefs, validTz, nextDue, message, localDay } from './reminders.js'
+import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
 
 const OFF = 'https://world.openfoodfacts.org'
 const UA = 'BeetFit/0.3 (https://beetfit.wealthifai.xyz)' // OFF asks for AppName/Version (contact)
@@ -556,6 +556,7 @@ async function ensurePushSchema(db) {
   await ensureSchema(db)
   await db.prepare('CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, tz TEXT NOT NULL, prefs TEXT NOT NULL, next_at INTEGER, next_kind TEXT, created INTEGER NOT NULL, fails INTEGER NOT NULL DEFAULT 0)').run()
   await db.prepare('CREATE INDEX IF NOT EXISTS push_due ON push_subs (next_at)').run()
+  try { await db.prepare('ALTER TABLE push_subs ADD COLUMN events TEXT').run() } catch { /* already there */ }
 }
 
 async function pushRoutes(req, url, env, device, cors, ctx) {
@@ -571,11 +572,12 @@ async function pushRoutes(req, url, env, device, cors, ctx) {
     if (!okEndpoint(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: 'bad_subscription' }, 400, cors)
     const tz = validTz(body.tz) ? body.tz : 'UTC'
     const prefs = cleanPrefs(body.prefs)
-    const due = nextDue(prefs, tz)
-    await db.prepare(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, tz, prefs, next_at, next_kind, created) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-      ON CONFLICT(endpoint) DO UPDATE SET user_id = ?2, p256dh = ?3, auth = ?4, tz = ?5, prefs = ?6, next_at = ?7, next_kind = ?8, fails = 0`)
-      .bind(sub.endpoint, me, String(sub.keys.p256dh).slice(0, 200), String(sub.keys.auth).slice(0, 60), tz, JSON.stringify(prefs), due?.at ?? null, due?.kind ?? null, Date.now()).run()
-    return ok({ ok: true, prefs, next: due })
+    const events = cleanEvents(body.events)
+    const due = nextDue(prefs, tz, Date.now(), events)
+    await db.prepare(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, tz, prefs, next_at, next_kind, created, events) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+      ON CONFLICT(endpoint) DO UPDATE SET user_id = ?2, p256dh = ?3, auth = ?4, tz = ?5, prefs = ?6, next_at = ?7, next_kind = ?8, fails = 0, events = ?10`)
+      .bind(sub.endpoint, me, String(sub.keys.p256dh).slice(0, 200), String(sub.keys.auth).slice(0, 60), tz, JSON.stringify(prefs), due?.at ?? null, due?.kind ?? null, Date.now(), JSON.stringify(events)).run()
+    return ok({ ok: true, prefs, events: events.length, next: due })
   }
   if (url.pathname === '/api/push/unsubscribe' && req.method === 'POST') {
     await db.prepare('DELETE FROM push_subs WHERE endpoint = ? AND user_id = ?').bind(String(body.endpoint || ''), me).run()
@@ -615,18 +617,23 @@ export async function runReminders(env, now = Date.now()) {
   let sent = 0, quiet = 0
   for (const row of results) {
     const prefs = cleanPrefs(parse(row.prefs))
+    const events = (parse(row.events) || []).filter(e => e && e.at > now - 3 * 3600e3)
     // Missed by more than 2 h (Worker paused, clock jump): skip rather than nag at the wrong time.
     if (now - row.next_at < 2 * 3600 * 1000) {
       if (!docs.has(row.user_id)) docs.set(row.user_id, parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(row.user_id).first())?.data))
-      const msg = message(row.next_kind, docs.get(row.user_id), localDay(row.next_at, row.tz))
+      const day = localDay(row.next_at, row.tz)
+      const msg = row.next_kind === 'event'
+        ? eventMessage(events.find(e => e.at === row.next_at), docs.get(row.user_id), day)
+        : message(row.next_kind, docs.get(row.user_id), day)
       if (msg) {
-        const r = await sendPush(row, msg, env, { ttl: 2 * 3600, topic: row.next_kind }).catch(() => ({ ok: false }))
+        const r = await sendPush(row, msg, env, { ttl: 2 * 3600, topic: (msg.tag || row.next_kind).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) }).catch(() => ({ ok: false }))
         if (r.gone) { await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(row.endpoint).run(); continue }
         if (r.ok) sent++
       } else quiet++
     }
-    const due = nextDue(prefs, row.tz, Math.max(now, row.next_at) + 1000)
-    await db.prepare('UPDATE push_subs SET next_at = ?, next_kind = ? WHERE endpoint = ?').bind(due?.at ?? null, due?.kind ?? null, row.endpoint).run()
+    const left = events.filter(e => e.at > row.next_at)
+    const due = nextDue(prefs, row.tz, Math.max(now, row.next_at) + 1000, left)
+    await db.prepare('UPDATE push_subs SET next_at = ?, next_kind = ?, events = ? WHERE endpoint = ?').bind(due?.at ?? null, due?.kind ?? null, JSON.stringify(left), row.endpoint).run()
   }
   return { due: results.length, sent, quiet }
 }

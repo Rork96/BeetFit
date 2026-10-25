@@ -14,11 +14,15 @@ import { useCoach } from './lib/useCoach.js'
 import { CoachChat } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
 import Guides from './components/Read.jsx'
+import Calendar from './components/Calendar.jsx'
 import { remindersOf, updatePush, pushOn } from './lib/push.js'
 import { stable } from './lib/sync.js'
+import { planEvents } from './lib/plans.js'
+
+const REM_SENT = 'beetfit_rem_sent'
 
 // Top-level keys merged as a whole during sync: remember when each was last edited on this device.
-const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan']
+const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans']
 
 // 2px geometric line icons, square-based.
 const Icon = {
@@ -43,6 +47,7 @@ export default function App() {
   const [chat, setChat] = useState(false)
   const [beet, setBeet] = useState(null) // null | { first: question or null }
   const [guides, setGuides] = useState(null) // null | { first: guide id or null }
+  const [cal, setCal] = useState(null) // null | { day, plan }
   const prevTab = useRef(tab)
 
   useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,6 +56,7 @@ export default function App() {
   useBackClose(chat, () => setChat(false))
   useBackClose(!!beet, () => setBeet(null))
   useBackClose(!!guides, () => setGuides(null))
+  useBackClose(!!cal, () => setCal(null))
 
   // Accepts a patch object or a function of the previous state (camera logs arrive in bursts).
   const update = patch => setState(s => {
@@ -66,24 +72,29 @@ export default function App() {
   const link = coachHook.link
   const view = useMemo(() => (state && link?.coach ? { ...state, coach: { name: link.coach.name, override: link.override } } : state), [state, link])
 
-  // Reminder times live in settings (so they sync); reschedule this phone when they change.
-  const remKey = state?.profile ? stable(remindersOf(state)) : ''
-  const remSent = useRef(null)
+  // Reminder times live in settings and calendar plans in state.plans (both sync). Reschedule this
+  // phone when either changes, and on open (calendar reminders only cover the next two weeks).
+  const remKey = state?.profile ? stable({ prefs: remindersOf(state), events: planEvents(state) }) : ''
   useEffect(() => {
     if (!remKey || !pushOn()) return
-    if (remSent.current === null) { remSent.current = remKey; return } // first render: already scheduled
-    if (remSent.current === remKey) return
-    const t = setTimeout(() => { remSent.current = remKey; updatePush(JSON.parse(remKey)) }, 1200)
+    let last = null
+    try { last = localStorage.getItem(REM_SENT) } catch { /* ignore */ }
+    if (last === remKey) return
+    const t = setTimeout(() => {
+      const { prefs, events } = JSON.parse(remKey)
+      updatePush(prefs, events).then(r => { if (r?.ok) try { localStorage.setItem(REM_SENT, remKey) } catch { /* ignore */ } })
+    }, 1200)
     return () => clearTimeout(t)
   }, [remKey])
 
-  // Deep links from notifications: /?tab=meals, /?chat=coach, /?coach=1
+  // Deep links from notifications: /?tab=meals, /?chat=coach, /?coach=1, /?cal=2026-10-28
   const openLink = href => {
     const q = new URL(href, location.origin).searchParams
     const t = q.get('tab')
     if (t && TABS.some(x => x.id === t)) { prevTab.current = tab; setTab(t) }
     if (q.get('chat') === 'coach') setChat(true)
     if (q.get('coach') === '1') setSettings('coach')
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('cal') || '')) setCal({ day: q.get('cal') })
   }
   const openRef = useRef(openLink)
   openRef.current = openLink
@@ -113,10 +124,10 @@ export default function App() {
   return (
     <>
       <div key={tab} className={back ? 'tab-back' : ''}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} />}
-        {tab === 'progress' && <ProgressTab state={view} update={update} />}
+        {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} />}
       </div>
       <nav className="tabbar">
         {TABS.map(t => (
@@ -129,6 +140,8 @@ export default function App() {
       {settings && <Settings state={view} update={update} sync={sync} coach={coach} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
+      {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
+        onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
       {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} />}
     </>
   )

@@ -7,13 +7,15 @@ export const REMINDERS = [
   { id: 'meals', label: 'Log meals', hint: 'Only if nothing is logged yet' },
   { id: 'workout', label: 'Workout', hint: 'Skipped once the week’s sessions are done' },
   { id: 'water', label: 'Water', hint: 'Only if you’re behind' },
-  { id: 'weigh', label: 'Weigh-in', hint: 'Skipped if you already weighed in' }
+  { id: 'weigh', label: 'Weigh-in', hint: 'Skipped if you already weighed in' },
+  { id: 'streak', label: 'Streak', hint: 'Evening nudge, only if today isn’t counted yet' }
 ]
 export const DEFAULT_REMINDERS = {
   meals: { on: true, h: 12, m: 30 },
   workout: { on: true, h: 18, m: 0 },
   water: { on: false, h: 15, m: 0 },
   weigh: { on: false, h: 7, m: 30 },
+  streak: { on: true, h: 20, m: 30 },
   coach: true
 }
 export const remindersOf = state => ({ ...DEFAULT_REMINDERS, ...(state.settings?.reminders || {}) })
@@ -48,9 +50,9 @@ async function currentSub() {
 }
 
 // Turn reminders on for this device. Must be called from a tap (permission prompt).
-export async function enablePush(prefs) {
+export async function enablePush(prefs, events = []) {
   const kind = pushSupport()
-  if (kind === 'native') return enableNative(prefs)
+  if (kind === 'native') return enableNative(prefs, true, events)
   if (kind !== 'web') return { ok: false, error: kind }
   const perm = await Notification.requestPermission()
   if (perm !== 'granted') return { ok: false, error: 'denied' }
@@ -63,24 +65,24 @@ export async function enablePush(prefs) {
     sub = await reg.pushManager.getSubscription()
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64u(keyRes.key) })
   } catch (e) { return { ok: false, error: 'subscribe_failed', detail: String(e?.message || e) } }
-  const r = await save(sub, prefs)
+  const r = await save(sub, prefs, events)
   if (r.status !== 200) return { ok: false, error: r.error || 'offline' }
   setOn(true)
   return { ok: true, next: r.next }
 }
 
-const save = (sub, prefs) => api('/api/push/subscribe', {
+const save = (sub, prefs, events) => api('/api/push/subscribe', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ sub: sub.toJSON(), tz: tz(), prefs })
+  body: JSON.stringify({ sub: sub.toJSON(), tz: tz(), prefs, events })
 })
 
-// Times changed (here or on another synced phone): reschedule on this device.
-export async function updatePush(prefs) {
+// Times or calendar changed (here or on another synced phone): reschedule on this device.
+export async function updatePush(prefs, events = []) {
   if (!pushOn()) return { ok: false }
-  if (isNative()) return enableNative(prefs, false)
+  if (isNative()) return enableNative(prefs, false, events)
   const sub = await currentSub()
   if (!sub) { setOn(false); return { ok: false, error: 'gone' } }
-  const r = await save(sub, prefs)
+  const r = await save(sub, prefs, events)
   return { ok: r.status === 200, next: r.next }
 }
 
@@ -116,9 +118,10 @@ const NATIVE_TEXT = {
   meals: ['Log what you ate', 'A photo or a barcode takes ten seconds.'],
   workout: ['Training today?', 'Start with the warm-up. The camera counts your reps.'],
   water: ['Water check', 'Have a glass now.'],
-  weigh: ['Morning weigh-in', 'Same time, before breakfast.']
+  weigh: ['Morning weigh-in', 'Same time, before breakfast.'],
+  streak: ['Keep your streak', 'Two of three today: a meal logged, water done, a session.']
 }
-async function enableNative(prefs, ask = true) {
+async function enableNative(prefs, ask = true, events = []) {
   const { LocalNotifications } = await import('@capacitor/local-notifications')
   if (ask) {
     const p = await LocalNotifications.requestPermissions()
@@ -130,6 +133,8 @@ async function enableNative(prefs, ask = true) {
     id: 100 + i, title: NATIVE_TEXT[r.id][0], body: NATIVE_TEXT[r.id][1],
     schedule: { on: { hour: prefs[r.id].h, minute: prefs[r.id].m }, repeats: true, allowWhileIdle: true }
   }))
+  // Calendar items: one-off notifications at their time (the list rolls forward each time the app opens).
+  events.forEach((e, i) => list.push({ id: 2000 + i, title: e.title, body: e.body, schedule: { at: new Date(e.at), allowWhileIdle: true }, extra: { url: e.url } }))
   if (list.length) await LocalNotifications.schedule({ notifications: list })
   setOn(true)
   return { ok: true }

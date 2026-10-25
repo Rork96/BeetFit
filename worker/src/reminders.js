@@ -1,13 +1,25 @@
 // Daily reminders: when each one is next due in the user's own time zone, and what it says
 // (or whether to stay quiet because the thing is already done today).
 
-export const KINDS = ['meals', 'workout', 'water', 'weigh']
+export const KINDS = ['meals', 'workout', 'water', 'weigh', 'streak']
 export const DEFAULT_PREFS = {
   meals: { on: true, h: 12, m: 30 },
   workout: { on: true, h: 18, m: 0 },
   water: { on: false, h: 15, m: 0 },
   weigh: { on: false, h: 7, m: 30 },
+  streak: { on: true, h: 20, m: 30 },
   coach: true
+}
+
+// One-off reminders from the user's calendar, timed on their phone. Kept small and near-term.
+const EV_KINDS = ['workout', 'weigh', 'note']
+const clip = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n)
+export function cleanEvents(list, now = Date.now()) {
+  if (!Array.isArray(list)) return []
+  return list
+    .filter(e => e && Number.isFinite(+e.at) && +e.at > now - 3600e3 && +e.at < now + 16 * 864e5 && EV_KINDS.includes(e.kind))
+    .map(e => ({ at: Math.round(+e.at), kind: e.kind, title: clip(e.title, 80) || 'BeetFit', body: clip(e.body, 160), url: /^\/\?[a-z]+=[\w-]+$/.test(e.url || '') ? e.url : '/', tag: clip(e.tag, 40).replace(/[^\w-]/g, '') || 'plan' }))
+    .sort((a, b) => a.at - b.at).slice(0, 40)
 }
 
 export function cleanPrefs(p = {}) {
@@ -53,8 +65,10 @@ export function localDay(ts, tz) {
 }
 
 // Next reminder strictly after `from` → { at, kind } or null when everything is off.
-export function nextDue(prefs, tz, from = Date.now()) {
+// Calendar events count too: kind 'event', matched back by time when it fires.
+export function nextDue(prefs, tz, from = Date.now(), events = []) {
   let best = null
+  for (const e of events) if (e.at > from && (!best || e.at < best.at)) best = { at: e.at, kind: 'event' }
   const p = parts(from, tz)
   for (let add = 0; add < 3; add++) {
     const day = new Date(Date.UTC(p.year, p.month - 1, p.day + add))
@@ -64,7 +78,6 @@ export function nextDue(prefs, tz, from = Date.now()) {
       const at = localToUtc(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), r.h, r.m, tz)
       if (at > from && (!best || at < best.at)) best = { at, kind: k }
     }
-    if (best) return best
   }
   return best
 }
@@ -98,5 +111,32 @@ export function message(kind, doc, today) {
     if ((doc?.weightLog || []).some(w => w.date === today)) return null
     return { title: 'Morning weigh-in', body: 'Same time, before breakfast. The weekly average is what counts.', url: '/?tab=progress', tag: 'weigh' }
   }
+  if (kind === 'streak') {
+    // Only with a synced doc (we must know what's done), only when there's a streak to keep.
+    if (!doc) return null
+    const now = tasks(doc, today), before = tasks(doc, addDays(today, -1))
+    if (now.n >= 2 || before.n < 2) return null
+    const body = now.n === 1 ? `Today isn’t counted yet. ${cap(now.todo.join(' or '))} and it is.`
+      : `Today isn’t counted yet. Two of these keep it: ${now.todo.join(', ')}.`
+    return { title: 'Keep your streak', body, url: '/', tag: 'streak' }
+  }
   return null
+}
+
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
+// The app's daily tasks: food logged, water target, trained. 2 of 3 counts the day.
+function tasks(doc, key) {
+  const food = (doc.foodLog?.[key]?.length || 0) > 0 || doc.mealPlan?.date === key
+  const water = (doc.water?.[key] || 0) >= (doc.settings?.waterTarget || 8)
+  const train = setsOn(doc.workoutLog?.[key]) > 0
+  const todo = [!food && 'log a meal', !water && 'finish your water', !train && 'do a short session'].filter(Boolean)
+  return { n: [food, water, train].filter(Boolean).length, todo }
+}
+
+// A calendar reminder, unless the thing is already done that day.
+export function eventMessage(ev, doc, today) {
+  if (!ev) return null
+  if (ev.kind === 'workout' && setsOn(doc?.workoutLog?.[today]) > 0) return null
+  if (ev.kind === 'weigh' && (doc?.weightLog || []).some(w => w.date === today)) return null
+  return { title: ev.title, body: ev.body, url: ev.url, tag: ev.tag }
 }
