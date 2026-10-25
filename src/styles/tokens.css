@@ -1,0 +1,115 @@
+/* BeetFit × Paulrork hybrid tokens.
+ * Frame: BeetFit dark shell (bg / cards / text / hint).
+ * Brand layer: Paulrork lime / electric blue / violet, wide geometric display, tight corners,
+ * square-in-square bullet, the blurred lime highlight as the only soft effect.
+ * Display face: Unbounded (SIL OFL, self-hosted via @fontsource) — the free stand-in for Ruberoid:
+ * same wide geometric build, Latin + Cyrillic, variable 200–900.
+ * Numerals: Space Grotesk (OFL) with tabular figures so live counters don't jitter. */
+
+@import '@fontsource-variable/unbounded/wght.css';
+@import '@fontsource-variable/space-grotesk/wght.css';
+
+:root {
+  /* Paulrork palette (source: tokens.json, Rork96/Design-file@779a2d4) */
+  --rork-lime: #E0FD90;
+  --rork-lime-2: #CCFD80;
+  --rork-blue: #303BFF;
+  --rork-blue-deep: #1128F3;
+  --rork-violet: #7D70F6;
+  --rork-indigo: #534DC6;
+  --rork-periwinkle-2: #CFD9FC;
+  --rork-ink: #1D1D1D;
+  --rork-paper: #FCFCFC;
+
+  /* BeetFit shell */
+  --bg: #0c0d11;
+  --bg-2: #08090c;
+  --card: #16181f;
+  --card-2: #1d2029;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .14);
+  --text: #f1f2f6;
+  --hint: #8a8f9c;
+  --dim: rgba(255, 255, 255, .45);
+
+  /* Roles */
+  --accent: var(--rork-lime);
+  --on-accent: var(--rork-ink);
+  --accent-soft: rgba(224, 253, 144, .14);
+  --accent-line: rgba(224, 253, 144, .32);
+  --data: var(--rork-blue);
+  --data-2: var(--rork-violet);
+  --ok: #6fd39a;
+  --warn: #f4c95d;
+  --danger: #ff6b6b;
+  --water: #7cc3ff;
+
+  /* Type */
+  --f-display: 'Unbounded Variable', system-ui, sans-serif;
+  --f-num: 'Space Grotesk Variable', system-ui, sans-serif;
+  --f-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Shape — hybrid: Paulrork is radius 0, BeetFit was 20–24. Meet at "tight". */
+  --r-0: 0;
+  --r-1: 6px;   /* chips, inputs, small buttons */
+  --r-2: 10px;  /* cards, sheets, primary buttons */
+  --r-pill: 999px; /* only status pills */
+
+  /* Spacing (4pt) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+
+  /* Motion — 128 BPM beat grid carried over from the prototype.
+   * s16 = 117.19ms; every duration and stagger is a multiple of s64. */
+  --beat: 468.75ms;
+  --bar: calc(var(--beat) * 4);
+  --s16: calc(var(--beat) / 4);
+  --s32: calc(var(--s16) / 2);
+  --s64: calc(var(--s16) / 4);
+  --dur-1: var(--s16);                /* 117ms  taps, toggles */
+  --dur-2: calc(var(--s16) * 2);      /* 234ms  small state changes */
+  --dur-3: calc(var(--s16) * 3);      /* 352ms  enters, sheets */
+  --dur-4: calc(var(--s16) * 5);      /* 586ms  hero / screen cuts */
+  --dur-5: calc(var(--s16) * 9);      /* 1055ms ambient */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-spring: cubic-bezier(.2, 1.6, .4, 1);
+  --ease-inout: cubic-bezier(.4, 0, .2, 1);
+  --ease-expo: cubic-bezier(.87, 0, .13, 1);
+}
+
+/* Motion levels: html[data-motion="lite"] drops delays/staggers, "off" collapses everything. */
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation-duration: .01ms !important; animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0ms !important;
+}
+html[data-motion="lite"] *, html[data-motion="lite"] *::before, html[data-motion="lite"] *::after {
+  animation-delay: 0ms !important; transition-delay: 0ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) *, html:not([data-motion="full"]) *::before, html:not([data-motion="full"]) *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important;
+  }
+}
+
+/* Keyframes */
+@keyframes riseIn { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes cutIn { from { opacity: 0; transform: translateX(24px) } to { opacity: 1; transform: none } }
+@keyframes cutBack { from { opacity: 0; transform: translateX(-24px) } to { opacity: 1; transform: none } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(.94) } to { opacity: 1; transform: none } }
+@keyframes popIn { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
+@keyframes sheetIn { from { transform: translateY(100%) } to { transform: none } }
+@keyframes repBounce { 0% { transform: scale(1.22) } 100% { transform: scale(1) } }
+@keyframes ripple { 0% { transform: scale(.5); opacity: .9 } 100% { transform: scale(3.2); opacity: 0 } }
+@keyframes tick { from { stroke-dashoffset: 26 } to { stroke-dashoffset: 0 } }
+@keyframes ringDrain { from { stroke-dashoffset: 0 } to { stroke-dashoffset: var(--len) } }
+@keyframes shimmer { 0% { background-position: -300px 0 } 100% { background-position: 300px 0 } }
+@keyframes scanline { from { transform: translateY(0) } to { transform: translateY(var(--h, 140px)) } }
+@keyframes beatPulse { 0%, 100% { transform: scale(1); opacity: 1 } 12% { transform: scale(1.06); opacity: 1 } 50% { opacity: .7 } }
+@keyframes floatUp { 0% { transform: translateY(10px); opacity: 0 } 20% { opacity: 1 } 100% { transform: translateY(-28px); opacity: 0 } }
+@keyframes shake { 0%, 100% { transform: none } 20% { transform: translateX(-7px) } 40% { transform: translateX(7px) } 60% { transform: translateX(-5px) } 80% { transform: translateX(5px) } }
+@keyframes barX { from { transform: scaleX(0) } }
+@keyframes glowDrift { 0%, 100% { transform: translate(-4px, 2px) } 50% { transform: translate(4px, -2px) } }
+
+/* Stagger helper: children rise in on half-s16 steps. */
+.stk > * { animation: riseIn var(--dur-3) var(--ease-out) backwards; animation-delay: calc(var(--i, 8) * var(--s32)); }
+.stk > :nth-child(1) { --i: 0 } .stk > :nth-child(2) { --i: 1 } .stk > :nth-child(3) { --i: 2 } .stk > :nth-child(4) { --i: 3 }
+.stk > :nth-child(5) { --i: 4 } .stk > :nth-child(6) { --i: 5 } .stk > :nth-child(7) { --i: 6 } .stk > :nth-child(8) { --i: 7 }

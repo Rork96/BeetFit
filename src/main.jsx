@@ -2,14 +2,12 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
+import { applyMotionLevel } from './lib/motion.js'
+import { bindNativeBack, isNative } from './lib/platform.js'
 
-try {
-  const tg = window.Telegram?.WebApp
-  if (tg) {
-    tg.ready()
-    tg.expand()
-  }
-} catch { /* never block startup on Telegram API */ }
+applyMotionLevel()
+bindNativeBack()
+if (isNative()) document.documentElement.classList.add('native')
 
 // Error boundary: show the error instead of a blank screen.
 class ErrorBoundary extends React.Component {
@@ -24,16 +22,11 @@ class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div style={{ padding: 20, fontFamily: 'monospace' }}>
-          <h2 style={{ color: '#ef4444' }}>App error</h2>
+          <h2 style={{ color: '#ff6b6b' }}>Something broke</h2>
           <p style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
             {String(this.state.error?.message || this.state.error)}
           </p>
-          <button
-            style={{ marginTop: 12, padding: '10px 16px' }}
-            onClick={() => { try { localStorage.clear() } catch {} location.reload() }}
-          >
-            Reset & reload
-          </button>
+          <button style={{ marginTop: 12, padding: '10px 16px' }} onClick={() => location.reload()}>Reload</button>
         </div>
       )
     }

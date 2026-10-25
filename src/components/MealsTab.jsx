@@ -1,63 +1,185 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { generateDayPlan, swapMeal } from '../data/meals.js'
-import { targetCalories } from '../lib/calories.js'
+import FoodCamera, { PortionCard, portion } from '../camera/FoodCamera.jsx'
+import { searchFood } from '../lib/api.js'
+import { dayKey, eaten, targets } from '../lib/day.js'
+import { useBackClose } from '../lib/hooks.js'
+import { haptic } from '../lib/platform.js'
+
+const slotByHour = () => { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack' }
 
 export default function MealsTab({ state, update }) {
-  const { profile, mealPlan } = state
-  const daily = targetCalories(profile)
-  const today = new Date().toISOString().slice(0, 10)
+  const { mealPlan } = state
+  const t = targets(state)
+  const today = dayKey()
+  const [cam, setCam] = useState(null) // 'barcode' | 'snap'
+  const [toast, setToast] = useState(null)
+  useBackClose(!!cam, () => setCam(null))
 
   const plan = mealPlan?.date === today ? mealPlan.items : null
+  const logged = state.foodLog?.[today] || []
+  const totals = eaten(state, today)
+  const pct = Math.round((totals.kcal / t.kcal) * 100)
 
-  const regenerate = () => update({ mealPlan: { date: today, items: generateDayPlan(daily) } })
-  const swap = i => update({ mealPlan: { date: today, items: swapMeal(plan, i, daily) } })
+  const regenerate = () => { haptic(); update({ mealPlan: { date: today, items: generateDayPlan(t.kcal) } }) }
+  const swap = i => { haptic(); update({ mealPlan: { date: today, items: swapMeal(plan, i, t.kcal) } }) }
 
-  const totals = plan?.reduce(
-    (a, m) => ({ kcal: a.kcal + m.kcal, p: a.p + m.p, f: a.f + m.f_, c: a.c + m.c }),
-    { kcal: 0, p: 0, f: 0, c: 0 }
-  )
+  const addFoods = items => {
+    const slot = slotByHour()
+    update(prev => {
+      const fl = prev.foodLog || {}
+      const day = fl[today] || []
+      return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot, at: Date.now() + i }))] } }
+    })
+    if (cam) history.back()
+    setToast(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${slot}`)
+    setTimeout(() => setToast(null), 2200)
+  }
+  const removeFood = at => { haptic(); update(prev => ({ foodLog: { ...prev.foodLog, [today]: (prev.foodLog?.[today] || []).filter(x => x.at !== at) } })) }
+
+  if (cam) return <FoodCamera initialMode={cam} slotLabel={slotByHour()} onAdd={addFoods} onClose={() => history.back()} />
 
   return (
     <div className="page">
       <div className="row">
-        <h1>Meals</h1>
-        {plan && <button className="btn small secondary" onClick={regenerate}>↻ New day plan</button>}
+        <div className="hero"><span className="glow" /><h1>Food</h1></div>
+        {plan && <button className="btn small secondary" onClick={regenerate}>↻ New plan</button>}
       </div>
-      <p className="hint">Target: {daily} kcal/day. Swap any meal you don't like.</p>
 
-      {!plan && <button className="btn" onClick={regenerate}>Generate today's plan</button>}
-
-      {plan && plan.map((m, i) => (
-        <div className="card" key={i}>
-          <span className="slot-tag">{m.slot}</span>
-          <div className="meal">
-            <div>
-              <h3>{m.name}</h3>
-              <div className="macros">
-                {m.kcal} kcal · P {m.p}g · F {m.f_}g · C {m.c}g
-                {m.factor !== 1 && ` · portion ×${m.factor}`}
-              </div>
-            </div>
-            <button className="btn small secondary" onClick={() => swap(i)}>Swap</button>
-          </div>
+      <div className="card">
+        <div className="row"><span className="label">Today</span><span className="num td-small">{totals.kcal} / {t.kcal} kcal</span></div>
+        <div className="progressbar"><div style={{ width: `${Math.min(100, pct)}%`, background: pct > 110 ? 'var(--warn)' : undefined }} /></div>
+        <div className="grid4">
+          <div className="stat"><div className="v">{Math.max(0, t.kcal - totals.kcal)}</div><div className="l">kcal left</div></div>
+          <div className="stat"><div className="v">{totals.p}g</div><div className="l">protein</div></div>
+          <div className="stat"><div className="v">{totals.c}g</div><div className="l">carbs</div></div>
+          <div className="stat"><div className="v">{totals.f}g</div><div className="l">fat</div></div>
         </div>
-      ))}
+      </div>
 
-      {totals && (
-        <div className="card">
-          <h3>Day total</h3>
-          <div className="grid4">
-            <div className="stat"><div className="v">{totals.kcal}</div><div className="l">kcal</div></div>
-            <div className="stat"><div className="v">{totals.p}g</div><div className="l">protein</div></div>
-            <div className="stat"><div className="v">{totals.f}g</div><div className="l">fat</div></div>
-            <div className="stat"><div className="v">{totals.c}g</div><div className="l">carbs</div></div>
+      <FoodSearch slotLabel={slotByHour()} onAdd={(item, g) => addFoods([portion(item, g)])} />
+
+      <div className="grid2">
+        <button className="btn secondary" onClick={() => { haptic(); setCam('barcode') }}>▥ Barcode</button>
+        <button className="btn secondary" onClick={() => { haptic(); setCam('snap') }}>◰ Photo</button>
+      </div>
+
+      {logged.length > 0 && (
+        <div className="card stk">
+          <span className="label">Logged today</span>
+          {logged.map(x => (
+            <div className="meal" key={x.at}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{x.name}</div>
+                <div className="macros num">{x.grams} g · {x.kcal} kcal · P {x.p} · C {x.c} · F {x.f} · {x.slot}{x.source === 'snap' ? ' · photo' : ''}</div>
+              </div>
+              <button className="btn small secondary" onClick={() => removeFood(x.at)} aria-label={`Remove ${x.name}`}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!plan && <button className="btn secondary" onClick={regenerate}>Suggest a meal plan for today</button>}
+      <div className="stk" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {plan && plan.map((m, i) => (
+          <div className="card" key={m.name + i}>
+            <span className="slot-tag">{m.slot}</span>
+            <div className="meal">
+              <div>
+                <h3>{m.name}</h3>
+                <div className="macros num">{m.kcal} kcal · P {m.p}g · F {m.f_}g · C {m.c}g{m.factor !== 1 && ` · ×${m.factor}`}</div>
+              </div>
+              <button className="btn small secondary" onClick={() => swap(i)}>Swap</button>
+            </div>
           </div>
-          <div className="progressbar">
-            <div style={{ width: `${Math.min(100, Math.round((totals.kcal / daily) * 100))}%` }} />
-          </div>
-          <p className="hint">{Math.round((totals.kcal / daily) * 100)}% of daily target</p>
+        ))}
+      </div>
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  )
+}
+
+function FoodSearch({ onAdd, slotLabel }) {
+  const [q, setQ] = useState('')
+  const [res, setRes] = useState({ items: [], busy: false, error: null })
+  const seq = useRef(0)
+  const [open, setOpen] = useState(null) // key of the expanded result
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    const query = q.trim()
+    if (query.length < 2) { setRes({ items: [], busy: false, error: null }); return }
+    const n = ++seq.current
+    setRes(r => ({ ...r, busy: true }))
+    const id = setTimeout(async () => {
+      const r = await searchFood(query)
+      if (n !== seq.current) return
+      setRes({ items: r.items || [], busy: false, error: r.status && r.status !== 200 ? 'offline' : r.error || null })
+    }, 350)
+    return () => clearTimeout(id)
+  }, [q])
+
+  return (
+    <div className="card">
+      <div className="fs-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="13" height="13" /><path d="M14 14l7 7" /></svg>
+        <input ref={inputRef} type="search" placeholder="Search food — e.g. greek yogurt" value={q} onChange={e => setQ(e.target.value)} enterKeyHint="search" />
+      </div>
+      {res.busy && <div className="fc-skel"><i /><i /></div>}
+      {!res.busy && res.error && <p className="hint">Search needs the BeetFit server — it's offline right now. Scanning a barcode still works.</p>}
+      {!res.busy && !res.error && q.trim().length >= 2 && res.items.length === 0 && <p className="hint">Nothing found. Try a simpler name, or scan the barcode.</p>}
+      {res.items.length > 0 && (
+        <div className="fs-results stk">
+          {res.items.map(it => {
+            const key = it.code + it.name
+            return (
+              <div key={key} className={'fs-row' + (open === key ? ' open' : '')}>
+                <button className="fs-item" onClick={() => {
+                  haptic()
+                  inputRef.current?.blur() // drop the keyboard first so the dialog sits in the visible area
+                  setOpen(key)
+                }}>
+                  {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph" />}
+                  <div><b>{it.name}</b><span className="num">{it.brand ? it.brand + ' · ' : ''}{it.per100.kcal} kcal / 100 g</span></div>
+                  <span className="fs-src">{it.source === 'usda' ? 'USDA' : 'OFF'}</span>
+                </button>
+                {open === key && (
+                  <CenterDialog onClose={() => setOpen(null)}>
+                    <PortionCard item={it} slotLabel={slotLabel} onAdd={g => { onAdd(it, g); setOpen(null); setQ('') }} onRescan={() => setOpen(null)} backLabel="Cancel" />
+                  </CenterDialog>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
+}
+
+// Opens in the middle of whatever the person is looking at — never at the bottom of the page.
+function CenterDialog({ onClose, children }) {
+  useBackClose(true, onClose)
+  const [vv, setVv] = useState(() => readViewport())
+  useEffect(() => {
+    const v = window.visualViewport
+    if (!v) return
+    const on = () => setVv(readViewport())
+    v.addEventListener('resize', on); v.addEventListener('scroll', on)
+    return () => { v.removeEventListener('resize', on); v.removeEventListener('scroll', on) }
+  }, [])
+  // Portal to <body>: animated ancestors (transform) would otherwise turn position:fixed into page-relative.
+  return createPortal(
+    <div className="cdlg" style={{ top: vv.top, height: vv.height }} onClick={e => { if (e.target === e.currentTarget) history.back() }}>
+      <div className="cdlg-box" role="dialog" aria-modal="true">{children}</div>
+    </div>,
+    document.body
+  )
+}
+
+function readViewport() {
+  const v = typeof window !== 'undefined' ? window.visualViewport : null
+  return v ? { top: v.offsetTop, height: v.height } : { top: 0, height: typeof window !== 'undefined' ? window.innerHeight : 800 }
 }
