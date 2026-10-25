@@ -4,6 +4,8 @@
 //   GET  /api/food/barcode/:code   Open Food Facts product → normalized per-100 g macros (cached 7 days)
 //   GET  /api/food/search?q=       Open Food Facts text search (+ USDA FoodData Central when USDA_API_KEY is set)
 //   POST /api/snap                 JPEG body → Gemini vision → [{ name, grams, kcal, p, c, f, confidence }]
+//   /api/sync, /api/pair           cross-device sync (D1), 6-digit pairing codes
+//   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
 //   everything else                → static assets (SPA fallback to index.html)
 //
 // /api/food/* and /api/snap need `Authorization: Bearer <device token>`. Tokens are HMAC-signed with
@@ -62,6 +64,10 @@ export default {
         if (!buf.byteLength || buf.byteLength > 4 * 1024 * 1024) return json({ error: 'bad_image' }, 400, cors)
         const result = await snap(buf, req.headers.get('content-type') || 'image/jpeg', env)
         return json(result, 200, cors)
+      }
+      if (url.pathname.startsWith('/api/coach')) {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        return await coachRoutes(req, url, env, device, ip, cors)
       }
       if (url.pathname.startsWith('/api/sync') || url.pathname.startsWith('/api/pair')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
@@ -230,8 +236,15 @@ async function ensureSchema(db) {
   await db.batch([
     db.prepare('CREATE TABLE IF NOT EXISTS devices (device_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created INTEGER NOT NULL, seen INTEGER)'),
     db.prepare('CREATE TABLE IF NOT EXISTS docs (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, rev INTEGER NOT NULL, updated INTEGER NOT NULL)'),
-    db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL)')
+    db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS coaches (user_id TEXT PRIMARY KEY, name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, created INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, coach_id TEXT NOT NULL, client_id TEXT NOT NULL UNIQUE, since INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, link_id TEXT NOT NULL, by TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL, seen INTEGER NOT NULL DEFAULT 0)'),
+    db.prepare('CREATE INDEX IF NOT EXISTS messages_link ON messages (link_id, id)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS overrides (link_id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)')
   ])
+  // Added after the first release: the light per-user summary coaches see in their client list.
+  try { await db.prepare('ALTER TABLE docs ADD COLUMN summary TEXT').run() } catch { /* already there */ }
   schemaReady = true
 }
 
@@ -267,8 +280,8 @@ async function syncRoutes(req, url, env, device, ip, cors) {
     if (cur.rev !== body.baseRev) return json({ error: 'conflict', ...cur }, 409, cors)
     const rev = cur.rev + 1, now = Date.now()
     const res = await db.prepare(
-      'INSERT INTO docs (user_id, data, rev, updated) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(user_id) DO UPDATE SET data = ?2, rev = ?3, updated = ?4 WHERE docs.rev = ?5'
-    ).bind(userId, JSON.stringify(body.data), rev, now, cur.rev).run()
+      'INSERT INTO docs (user_id, data, rev, updated, summary) VALUES (?1, ?2, ?3, ?4, ?6) ON CONFLICT(user_id) DO UPDATE SET data = ?2, rev = ?3, updated = ?4, summary = ?6 WHERE docs.rev = ?5'
+    ).bind(userId, JSON.stringify(body.data), rev, now, cur.rev, body.summary && typeof body.summary === 'object' ? JSON.stringify(body.summary).slice(0, 4000) : null).run()
     if (!res.meta.changes) return json({ error: 'conflict', ...(await readDoc(db, userId)) }, 409, cors)
     return json({ rev, updated: now, devices: cur.devices }, 200, cors)
   }
@@ -306,6 +319,156 @@ async function syncRoutes(req, url, env, device, ip, cors) {
   }
 
   return json({ error: 'not_found' }, 404, cors)
+}
+
+// ---------- coach mode ----------
+// A coach is any user who set a coach name; they get a 6-character invite code. A client joins with it
+// (one coach per client). The coach then reads the client's synced doc, messages them and can override
+// calorie / protein targets. Either side can end the link.
+
+const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no 0/O/1/I/L
+const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => CODE_ABC[b % CODE_ABC.length]).join('')
+const cleanText = (t, max) => String(t || '').replace(/[\u0000-\u0008\u000b-\u001f]/g, '').trim().slice(0, max)
+const parse = t => { try { return t ? JSON.parse(t) : null } catch { return null } }
+
+async function thread(db, linkId, limit = 100) {
+  const { results } = await db.prepare('SELECT id, by, text, at, seen FROM messages WHERE link_id = ? ORDER BY id DESC LIMIT ?').bind(linkId, limit).all()
+  return results.reverse().map(m => ({ ...m, seen: !!m.seen }))
+}
+
+async function override(db, linkId) {
+  const row = await db.prepare('SELECT data, at FROM overrides WHERE link_id = ?').bind(linkId).first()
+  return row ? { ...parse(row.data), at: row.at } : null
+}
+
+async function coachRoutes(req, url, env, device, ip, cors) {
+  const db = env.DB
+  await ensureSchema(db)
+  const me = await userOf(db, device.id)
+  const body = req.method === 'GET' ? {} : await req.json().catch(() => ({}))
+  const path = url.pathname.replace(/\/+$/, '')
+  const ok = (v, s = 200) => json(v, s, { ...cors, 'cache-control': 'no-store' })
+  const err = (e, s = 400) => json({ error: e }, s, cors)
+
+  // ----- client side -----
+  if (path === '/api/coach/peek' && req.method === 'POST') {
+    if (!(await underLimit(env, `coachtry:${ip}`, 30))) return err('too_many_tries', 429)
+    const code = cleanText(body.code, 12).toUpperCase()
+    const c = await db.prepare('SELECT user_id, name FROM coaches WHERE code = ?').bind(code).first()
+    if (!c) return err('bad_code', 404)
+    if (c.user_id === me) return err('own_code')
+    return ok({ name: c.name })
+  }
+  if (path === '/api/coach/join' && req.method === 'POST') {
+    if (!(await underLimit(env, `coachtry:${ip}`, 30))) return err('too_many_tries', 429)
+    const code = cleanText(body.code, 12).toUpperCase()
+    const c = await db.prepare('SELECT user_id, name FROM coaches WHERE code = ?').bind(code).first()
+    if (!c) return err('bad_code', 404)
+    if (c.user_id === me) return err('own_code')
+    const id = crypto.randomUUID(), now = Date.now()
+    await db.prepare('INSERT INTO links (id, coach_id, client_id, since) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(client_id) DO UPDATE SET id = ?1, coach_id = ?2, since = ?4')
+      .bind(id, c.user_id, me, now).run()
+    return ok({ coach: { name: c.name, since: now }, msgs: [], override: null })
+  }
+  const asClient = await db.prepare('SELECT l.id, l.since, c.name FROM links l JOIN coaches c ON c.user_id = l.coach_id WHERE l.client_id = ?').bind(me).first()
+  if (path === '/api/coach/link' && req.method === 'GET') {
+    if (!asClient) return ok({ coach: null })
+    return ok({ coach: { name: asClient.name, since: asClient.since }, msgs: await thread(db, asClient.id), override: await override(db, asClient.id) })
+  }
+  if (path === '/api/coach/leave' && req.method === 'POST') {
+    if (asClient) await dropLink(db, asClient.id)
+    return ok({ ok: true })
+  }
+  if (path === '/api/coach/msg' && req.method === 'POST') {
+    if (!asClient) return err('no_coach', 404)
+    return postMsg(env, db, me, asClient.id, 'client', body.text, ok, err)
+  }
+  if (path === '/api/coach/seen' && req.method === 'POST') {
+    if (asClient) await db.prepare("UPDATE messages SET seen = 1 WHERE link_id = ? AND by = 'coach'").bind(asClient.id).run()
+    return ok({ ok: true })
+  }
+
+  // ----- coach side -----
+  if (path === '/api/coach/setup' && req.method === 'POST') {
+    const name = cleanText(body.name, 40)
+    if (name.length < 2) return err('bad_name')
+    const cur = await db.prepare('SELECT code FROM coaches WHERE user_id = ?').bind(me).first()
+    if (cur) {
+      await db.prepare('UPDATE coaches SET name = ? WHERE user_id = ?').bind(name, me).run()
+      return ok({ name, code: cur.code })
+    }
+    for (let i = 0; i < 5; i++) {
+      const code = newCode()
+      try {
+        await db.prepare('INSERT INTO coaches (user_id, name, code, created) VALUES (?, ?, ?, ?)').bind(me, name, code, Date.now()).run()
+        return ok({ name, code })
+      } catch { /* code collision, try another */ }
+    }
+    return err('server_busy', 503)
+  }
+  const coach = await db.prepare('SELECT name, code FROM coaches WHERE user_id = ?').bind(me).first()
+  if (path === '/api/coach/code' && req.method === 'POST') {
+    if (!coach) return err('not_coach', 403)
+    for (let i = 0; i < 5; i++) {
+      const code = newCode()
+      try { await db.prepare('UPDATE coaches SET code = ? WHERE user_id = ?').bind(code, me).run(); return ok({ name: coach.name, code }) } catch { /* collision */ }
+    }
+    return err('server_busy', 503)
+  }
+  if (path === '/api/coach/clients' && req.method === 'GET') {
+    if (!coach) return ok({ coach: null, clients: [] })
+    const { results } = await db.prepare(
+      `SELECT l.id, l.since, d.summary, d.updated,
+        (SELECT COUNT(*) FROM messages m WHERE m.link_id = l.id AND m.by = 'client' AND m.seen = 0) AS unread
+       FROM links l LEFT JOIN docs d ON d.user_id = l.client_id WHERE l.coach_id = ? ORDER BY l.since DESC LIMIT 200`
+    ).bind(me).all()
+    return ok({ coach, clients: results.map(r => ({ id: r.id, since: r.since, updated: r.updated || 0, unread: r.unread, summary: parse(r.summary) })) })
+  }
+  const m = path.match(/^\/api\/coach\/client\/([0-9a-f-]{36})(?:\/(msg|override|remove|seen))?$/)
+  if (m) {
+    if (!coach) return err('not_coach', 403)
+    const link = await db.prepare('SELECT id, client_id, since FROM links WHERE id = ? AND coach_id = ?').bind(m[1], me).first()
+    if (!link) return err('not_found', 404)
+    if (!m[2] && req.method === 'GET') {
+      const doc = await db.prepare('SELECT data, updated FROM docs WHERE user_id = ?').bind(link.client_id).first()
+      return ok({ id: link.id, since: link.since, updated: doc?.updated || 0, data: parse(doc?.data), msgs: await thread(db, link.id), override: await override(db, link.id) })
+    }
+    if (m[2] === 'msg' && req.method === 'POST') return postMsg(env, db, me, link.id, 'coach', body.text, ok, err)
+    if (m[2] === 'seen' && req.method === 'POST') {
+      await db.prepare("UPDATE messages SET seen = 1 WHERE link_id = ? AND by = 'client'").bind(link.id).run()
+      return ok({ ok: true })
+    }
+    if (m[2] === 'override' && req.method === 'PUT') {
+      const n = (v, lo, hi) => (Number.isFinite(+v) && +v >= lo && +v <= hi ? Math.round(+v) : null)
+      const o = { kcal: n(body.kcal, 900, 6000), protein: n(body.protein, 30, 400), note: cleanText(body.note, 280) || null }
+      if (o.kcal == null && o.protein == null && !o.note) {
+        await db.prepare('DELETE FROM overrides WHERE link_id = ?').bind(link.id).run()
+        return ok({ override: null })
+      }
+      const at = Date.now()
+      await db.prepare('INSERT OR REPLACE INTO overrides (link_id, data, at) VALUES (?, ?, ?)').bind(link.id, JSON.stringify(o), at).run()
+      return ok({ override: { ...o, at } })
+    }
+    if (m[2] === 'remove' && req.method === 'POST') { await dropLink(db, link.id); return ok({ ok: true }) }
+  }
+  return err('not_found', 404)
+}
+
+async function postMsg(env, db, me, linkId, by, raw, ok, err) {
+  const text = cleanText(raw, 1000)
+  if (!text) return err('empty')
+  if (!(await underLimit(env, `msg:${me}`, 200))) return err('daily_limit', 429)
+  const at = Date.now()
+  const r = await db.prepare('INSERT INTO messages (link_id, by, text, at) VALUES (?, ?, ?, ?)').bind(linkId, by, text, at).run()
+  return ok({ msg: { id: r.meta?.last_row_id ?? null, by, text, at, seen: false } })
+}
+
+async function dropLink(db, linkId) {
+  await db.batch([
+    db.prepare('DELETE FROM messages WHERE link_id = ?').bind(linkId),
+    db.prepare('DELETE FROM overrides WHERE link_id = ?').bind(linkId),
+    db.prepare('DELETE FROM links WHERE id = ?').bind(linkId)
+  ])
 }
 
 // ---------- helpers ----------

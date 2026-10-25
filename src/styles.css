@@ -41,7 +41,7 @@ h3 { font: 700 16px/1.25 var(--f-display); }
 
 label { font: 200 11.5px var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--hint); display: block; margin-bottom: 6px; }
 
-input, select {
+input, select, textarea {
   width: 100%;
   padding: 12px 13px;
   border-radius: var(--r-1);
@@ -52,7 +52,7 @@ input, select {
   appearance: none;
   transition: border-color var(--dur-2) var(--ease-inout);
 }
-input:focus, select:focus { outline: none; border-color: var(--accent); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
 .btn {
   display: block;

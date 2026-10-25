@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { loadState, saveState, loadNativeBackup } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
 import TodayTab from './components/TodayTab.jsx'
@@ -10,6 +10,8 @@ import { haptic } from './lib/platform.js'
 import { useBackClose } from './lib/hooks.js'
 import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
+import { useCoach } from './lib/useCoach.js'
+import { CoachChat } from './components/Coach.jsx'
 
 // Top-level keys merged as a whole during sync: remember when each was last edited on this device.
 const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan']
@@ -34,11 +36,13 @@ export default function App() {
   const [tab, setTab] = useState('today')
   const [intent, setIntent] = useState(null) // cross-tab action, e.g. { start: true } for Train
   const [settings, setSettings] = useState(false)
+  const [chat, setChat] = useState(false)
   const prevTab = useRef(tab)
 
   useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state) saveState(state) }, [state])
   useBackClose(settings, () => setSettings(false))
+  useBackClose(chat, () => setChat(false))
 
   // Accepts a patch object or a function of the previous state (camera logs arrive in bursts).
   const update = patch => setState(s => {
@@ -47,14 +51,23 @@ export default function App() {
     return { ...s, ...p, ...(hit.length ? { _t: { ...(s._t || {}), ...Object.fromEntries(hit.map(k => [k, Date.now()])) } } : {}) }
   })
   const sync = useSync(state, setState)
+  const coachHook = useCoach(sync.on)
+  // Joining a coach turns sync on: the coach reads the synced copy.
+  const coach = { ...coachHook, join: async code => { const r = await coachHook.join(code); if (r.status === 200) sync.setOn(true); return r } }
+  // Components read targets through state.coach.override; it never goes into the synced document.
+  const link = coachHook.link
+  const view = useMemo(() => (state && link?.coach ? { ...state, coach: { name: link.coach.name, override: link.override } } : state), [state, link])
 
   if (!state?.profile) {
-    return <Onboarding onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings }) => setState({
-      _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
-      profile, intake, program, settings,
-      weightLog: [{ date: dayKey(), kg: profile.weightKg }],
-      mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
-    })} />
+    return <Onboarding onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode }) => {
+      setState({
+        _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
+        profile, intake, program, settings,
+        weightLog: [{ date: dayKey(), kg: profile.weightKg }],
+        mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
+      })
+      if (coachCode) coach.join(coachCode)
+    }} />
   }
 
   const order = TABS.map(t => t.id)
@@ -64,10 +77,10 @@ export default function App() {
   return (
     <>
       <div key={tab} className={back ? 'tab-back' : ''}>
-        {tab === 'today' && <TodayTab state={state} update={update} go={go} openSettings={() => setSettings(true)} />}
-        {tab === 'workout' && <WorkoutTab state={state} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
-        {tab === 'meals' && <MealsTab state={state} update={update} />}
-        {tab === 'progress' && <ProgressTab state={state} update={update} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} />}
+        {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
+        {tab === 'meals' && <MealsTab state={view} update={update} />}
+        {tab === 'progress' && <ProgressTab state={view} update={update} />}
       </div>
       <nav className="tabbar">
         {TABS.map(t => (
@@ -77,7 +90,8 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={state} update={update} sync={sync} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} openChat={() => setChat(true)} onClose={() => history.back()} />}
+      {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
     </>
   )
 }

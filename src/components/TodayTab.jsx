@@ -4,11 +4,12 @@ import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
+import { CoachNote } from './Coach.jsx'
 import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -57,6 +58,7 @@ export default function TodayTab({ state, update, go, openSettings }) {
       </div>
 
       <div className="stk td-stack">
+        {coach && <CoachNote coach={coach} onOpen={openChat} />}
         <button className={'td-streak' + (st >= 7 ? ' hot' : '')} onClick={() => go('progress')}>
           <span className="td-mark" /><span className="num">{st > 0 ? `${st}-day streak` : 'Start your streak today'}</span>
         </button>
@@ -76,7 +78,7 @@ export default function TodayTab({ state, update, go, openSettings }) {
           </div>
           <div className="td-kcal-side">
             <div><span className="label">Eaten</span><b className="num">{e.kcal}</b></div>
-            <div><span className="label">Target</span><b className="num">{t.kcal}</b></div>
+            <div><span className="label">{t.coach ? <span className="ch-tag">Coach target</span> : 'Target'}</span><b className="num">{t.kcal}</b></div>
             <Macro label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
             <Macro label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
             <Macro label="Fat" v={e.f} max={t.fat} color="var(--water)" />

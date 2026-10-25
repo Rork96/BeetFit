@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { syncNow, mergeStates, stable, syncEnabled, setSyncEnabled } from './sync.js'
+import { summarize } from './coach.js'
 
 // Runs sync on start, when the app comes back to the foreground or online, and 3 s after local edits.
 export function useSync(state, setState) {
@@ -13,7 +14,7 @@ export function useSync(state, setState) {
     if (busy.current) { again.current = true; return }
     busy.current = true
     setInfo(i => ({ ...i, status: 'syncing' }))
-    const r = await syncNow(ref.current)
+    const r = await syncNow(ref.current, summarize)
     if (r.status === 'ok') {
       last.current = stable(r.state)
       setState(cur => { const m = mergeStates(cur, r.state); return stable(m) === stable(cur) ? cur : m })

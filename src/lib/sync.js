@@ -73,14 +73,24 @@ export const syncEnabled = () => { try { return localStorage.getItem(ON_KEY) ===
 export const setSyncEnabled = v => { try { v ? localStorage.setItem(ON_KEY, '1') : localStorage.removeItem(ON_KEY) } catch { /* ignore */ } }
 
 // Pull → merge → push. Returns { state, status } — state is the merged one if anything came from the server.
-export async function syncNow(local) {
+// `summarize(state)` → small object stored beside the doc for the coach's client list; pushed when it changes.
+const SUM_KEY = 'beetfit_sync_summary'
+const lastSum = () => { try { return localStorage.getItem(SUM_KEY) || '' } catch { return '' } }
+
+export async function syncNow(local, summarize) {
   let r = await api('/api/sync')
   if (r.status !== 200) return { state: local, status: r.error || `http_${r.status}` }
   for (let attempt = 0; attempt < 2; attempt++) {
     const merged = mergeStates(local, r.data)
-    if (r.data && same(merged, r.data)) { setRev(r.rev); return { state: merged, status: 'ok', devices: r.devices } }
-    const put = await api('/api/sync', { method: 'PUT', body: JSON.stringify({ data: merged, baseRev: r.rev }), headers: { 'content-type': 'application/json' } })
-    if (put.status === 200) { setRev(put.rev); return { state: merged, status: 'ok', devices: put.devices } }
+    const summary = summarize ? summarize(merged) : null
+    const sumJs = summary ? stable(summary) : ''
+    if (r.data && same(merged, r.data) && sumJs === lastSum()) { setRev(r.rev); return { state: merged, status: 'ok', devices: r.devices } }
+    const put = await api('/api/sync', { method: 'PUT', body: JSON.stringify({ data: merged, baseRev: r.rev, summary }), headers: { 'content-type': 'application/json' } })
+    if (put.status === 200) {
+      setRev(put.rev)
+      try { localStorage.setItem(SUM_KEY, sumJs) } catch { /* ignore */ }
+      return { state: merged, status: 'ok', devices: put.devices }
+    }
     if (put.status !== 409) return { state: merged, status: put.error || `http_${put.status}` }
     r = put // conflict: server copy came back, merge again
     local = merged
@@ -99,5 +109,6 @@ export async function claimPairCode(code) {
 export async function leaveSync() {
   const r = await api('/api/sync/leave', { method: 'POST' })
   setRev(0); setSyncEnabled(false)
+  try { localStorage.removeItem(SUM_KEY) } catch { /* ignore */ }
   return r
 }

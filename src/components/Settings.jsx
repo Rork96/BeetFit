@@ -7,10 +7,14 @@ import { haptic } from '../lib/platform.js'
 import { KG_TO_LB } from '../lib/day.js'
 import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
 import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sync.js'
+import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
+import { useBackClose } from '../lib/hooks.js'
 
-const VERSION = '0.3.0'
+const VERSION = '0.4.0'
 
-export default function Settings({ state, update, sync, onClose }) {
+export default function Settings({ state, update, sync, coach, openChat, onClose }) {
+  const [coachHome, setCoachHome] = useState(false)
+  useBackClose(coachHome, () => setCoachHome(false))
   const s = state.settings || {}
   const p = state.profile
   const [motion, setMotion] = useState(getMotionLevel())
@@ -87,7 +91,11 @@ export default function Settings({ state, update, sync, onClose }) {
           </Row>
         </section>
 
+        {coach && <YourCoachCard coach={coach} syncOn={sync?.on} onChat={openChat} />}
+
         {sync && <SyncCard sync={sync} update={update} />}
+
+        <CoachModeCard onOpen={() => setCoachHome(true)} />
 
         <section className="card">
           <span className="label">Your data</span>
@@ -106,6 +114,7 @@ export default function Settings({ state, update, sync, onClose }) {
 
         <p className="hint" style={{ textAlign: 'center' }}>BeetFit {VERSION}</p>
       </div>
+      {coachHome && <CoachHome onClose={() => history.back()} />}
     </div>
   )
 }

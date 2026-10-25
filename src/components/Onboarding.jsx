@@ -7,6 +7,7 @@ import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
 import { S16 } from '../lib/motion.js'
 import { claimPairCode } from '../lib/sync.js'
+import { coachPeek, cleanCode, CODE_RE } from '../lib/coach.js'
 import { migrate } from '../lib/store.js'
 import './onboarding.css'
 
@@ -21,6 +22,15 @@ const CLAIM_ERR = {
   offline: 'No connection.'
 }
 
+const COACH_ERR = {
+  bad_code: "That code isn't recognised. Check it with your coach.",
+  own_code: 'That is your own coach code.',
+  too_many_tries: 'Too many tries today. Try again tomorrow.',
+  sync_not_configured: 'Coaching is not set up on the server yet.',
+  unauthorized: 'Server key missing. Try again later.',
+  offline: 'No connection.'
+}
+
 export default function Onboarding({ onDone, onRestore }) {
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
@@ -28,6 +38,7 @@ export default function Onboarding({ onDone, onRestore }) {
   const [units, setUnits] = useState('kg')
   const [p, setP] = useState({ sex: 'male', age: 28, heightCm: 178, weightKg: 82, targetKg: 76, goal: 'lose' })
   const [it, setIt] = useState({ ...DEFAULT_INTAKE })
+  const [coach, setCoach] = useState(null) // { code, name } picked on the welcome screen
   const setI = (k, v) => { haptic(); setIt(s => ({ ...s, [k]: v })) }
   const setPf = (k, v) => setP(s => ({ ...s, [k]: v }))
 
@@ -48,7 +59,7 @@ export default function Onboarding({ onDone, onRestore }) {
   const finish = () => {
     hapticSuccess()
     window.scrollTo(0, 0)
-    onDone({ profile, intake: it, program, settings: { name: name.trim(), units, waterTarget: 8, stepsTarget: stepsTarget(it) } })
+    onDone({ profile, intake: it, program, settings: { name: name.trim(), units, waterTarget: 8, stepsTarget: stepsTarget(it) }, coachCode: coach?.code })
   }
 
   const progress = (step / (STEPS.length - 2)) * 100
@@ -63,7 +74,7 @@ export default function Onboarding({ onDone, onRestore }) {
         </header>
       )}
       <div className={'ob-step ' + (dir > 0 ? 'fwd' : 'back')} key={id}>
-        {id === 'welcome' && <Welcome onStart={() => go(1)} onRestore={onRestore} />}
+        {id === 'welcome' && <Welcome onStart={c => { setCoach(c || null); go(1) }} onRestore={onRestore} />}
 
         {id === 'goal' && (
           <Step title="What's your goal?" sub="Your program, calories and pace are built around it.">
@@ -171,10 +182,12 @@ export default function Onboarding({ onDone, onRestore }) {
 }
 
 function Welcome({ onStart, onRestore }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(null) // null | 'sync' | 'coach'
   const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [coach, setCoach] = useState(null)
+  const pick = v => { haptic(); setErr(''); setCode(''); setCoach(null); setOpen(open === v ? null : v) }
   const claim = async () => {
     haptic('medium'); setErr(''); setBusy(true)
     const r = await claimPairCode(code)
@@ -183,6 +196,34 @@ function Welcome({ onStart, onRestore }) {
     if (!r.data?.profile) return setErr('Linked, but that phone has not synced a plan yet. Open BeetFit there and try again.')
     onRestore(migrate(r.data))
   }
+  const peek = async () => {
+    haptic('medium'); setErr(''); setBusy(true)
+    const r = await coachPeek(code)
+    setBusy(false)
+    if (r.status !== 200) return setErr(COACH_ERR[r.error] || 'Could not check the code. Check your connection.')
+    hapticSuccess(); setCoach({ code, name: r.name })
+  }
+
+  if (coach) {
+    return (
+      <div className="ob-welcome ob-coach">
+        <div className="ob-coach-hero stk">
+          <div className="ob-coach-mark"><span>{coach.name.trim().charAt(0).toUpperCase()}</span></div>
+          <span className="label">Coach found</span>
+          <h1>{coach.name}</h1>
+          <p>BeetFit builds your program from your answers. {coach.name} sees your logs and check-ins, can message you and can change your calorie and protein targets.</p>
+        </div>
+        <ul className="ob-privacy stk">
+          <li>Your coach sees: weight, meals, workouts, water, check-ins and pain reports.</li>
+          <li>Camera video never leaves your phone, not even for your coach.</li>
+          <li>Disconnect any time in Settings → Your coach.</li>
+        </ul>
+        <button className="btn" onClick={() => onStart(coach)}>Continue with {coach.name.split(' ')[0]}</button>
+        <button className="btn ghost" onClick={() => pick('coach')}>Start on my own instead</button>
+      </div>
+    )
+  }
+
   return (
     <div className="ob-welcome">
       <div className="ob-logo"><span /><b>BeetFit</b></div>
@@ -196,16 +237,29 @@ function Welcome({ onStart, onRestore }) {
         <li>Your data stays on this device unless you turn on sync. Export or erase it any time.</li>
         <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
       </ul>
-      <button className="btn" onClick={onStart}>Get started</button>
-      {!open ? (
-        <button className="btn ghost ob-have" onClick={() => { haptic(); setOpen(true) }}>I already use BeetFit</button>
-      ) : (
-        <div className="ob-claim stk">
+      <button className="btn" onClick={() => onStart(null)}>Get started</button>
+      <div className="ob-alt">
+        <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => pick('sync')}>I already use BeetFit</button>
+        <button className={'chip' + (open === 'coach' ? ' on' : '')} onClick={() => pick('coach')}>I have a coach code</button>
+      </div>
+      {open === 'sync' && (
+        <div className="ob-claim stk" key="sync">
           <p className="hint">On your other phone: Settings → Sync & devices → Link another phone. Enter the code here.</p>
           <div className="sy-enter">
             <input inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" value={code} autoFocus
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
             <button className="btn" disabled={code.length !== 6 || busy} onClick={claim}>{busy ? 'Linking…' : 'Link'}</button>
+          </div>
+          {err && <p className="sy-err">{err}</p>}
+        </div>
+      )}
+      {open === 'coach' && (
+        <div className="ob-claim stk" key="coach">
+          <p className="hint">Your coach sends this with your invite. Six letters and numbers.</p>
+          <div className="sy-enter">
+            <input autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="K7PQ2X" value={code} autoFocus
+              onChange={e => setCode(cleanCode(e.target.value))} />
+            <button className="btn" disabled={!CODE_RE.test(code) || busy} onClick={peek}>{busy ? 'Checking…' : 'Connect'}</button>
           </div>
           {err && <p className="sy-err">{err}</p>}
         </div>

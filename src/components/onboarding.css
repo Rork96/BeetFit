@@ -75,3 +75,11 @@
 .ob input[type=number] { -moz-appearance: textfield; }
 .ob-have { margin-top: -4px; }
 .ob-claim { gap: 8px; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.ob-alt { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ob-coach { justify-content: center; }
+.ob-coach-hero { align-items: flex-start; gap: 10px; animation: zoomIn var(--dur-3) var(--ease-out) backwards; }
+.ob-coach-hero h1 { font-size: 34px; line-height: 1.05; }
+.ob-coach-hero p { color: rgba(241,242,246,.8); line-height: 1.5; }
+.ob-coach-mark { width: 72px; height: 72px; margin: 8px 0 14px 8px; display: grid; place-items: center; border: 2px solid var(--accent); position: relative; }
+.ob-coach-mark::after { content: ''; position: absolute; inset: -8px; border: 1px solid var(--accent-line); animation: beatPulse var(--bar) linear infinite; }
+.ob-coach-mark span { font: 700 30px var(--f-display); color: var(--accent); }

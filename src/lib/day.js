@@ -20,7 +20,8 @@ export function currentWeight(state) {
 
 export function targets(state) {
   const m = macros({ ...state.profile, weightKg: currentWeight(state) })
-  return { kcal: m.kcal, protein: m.protein, fat: m.fat, carbs: m.carbs, water: state.settings?.waterTarget || 8 }
+  const o = state.coach?.override // set by the client's coach; wins over the formula
+  return { kcal: o?.kcal ?? m.kcal, protein: o?.protein ?? m.protein, coach: !!(o?.kcal || o?.protein), fat: m.fat, carbs: m.carbs, water: state.settings?.waterTarget || 8 }
 }
 
 // Eaten = today's plan meals (if generated for that day) + everything logged by scan, photo or search.
