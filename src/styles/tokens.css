@@ -110,6 +110,6 @@ html[data-motion="lite"] *, html[data-motion="lite"] *::before, html[data-motion
 @keyframes glowDrift { 0%, 100% { transform: translate(-4px, 2px) } 50% { transform: translate(4px, -2px) } }
 
 /* Stagger helper: children rise in on half-s16 steps. */
-.stk > * { animation: riseIn var(--dur-3) var(--ease-out) both; animation-delay: calc(var(--i, 8) * var(--s32)); }
+.stk > * { animation: riseIn var(--dur-3) var(--ease-out) backwards; animation-delay: calc(var(--i, 8) * var(--s32)); }
 .stk > :nth-child(1) { --i: 0 } .stk > :nth-child(2) { --i: 1 } .stk > :nth-child(3) { --i: 2 } .stk > :nth-child(4) { --i: 3 }
 .stk > :nth-child(5) { --i: 4 } .stk > :nth-child(6) { --i: 5 } .stk > :nth-child(7) { --i: 6 } .stk > :nth-child(8) { --i: 7 }

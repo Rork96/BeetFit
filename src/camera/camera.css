@@ -1,6 +1,6 @@
 /* Camera tracker — hybrid style. Dark stage, lime brand layer, tight corners, square marks. */
 .ct { position: fixed; inset: 0; z-index: 60; background: #000; color: #fff; overflow: hidden;
-  font-family: var(--f-body); animation: zoomIn var(--dur-2) var(--ease-out) both; }
+  font-family: var(--f-body); animation: zoomIn var(--dur-2) var(--ease-out) backwards; }
 .ct .num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 
 .ct-video, .ct-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
@@ -25,7 +25,7 @@
 
 /* Live range bar */
 .ct-range { position: absolute; left: 16px; right: 16px; top: calc(max(14px, env(safe-area-inset-top)) + 62px); z-index: 4;
-  animation: riseIn var(--dur-3) var(--ease-out) both; }
+  animation: riseIn var(--dur-3) var(--ease-out) backwards; }
 .ct-range-bar { height: 4px; background: rgba(255,255,255,.14); overflow: hidden; }
 .ct-range-bar i { display: block; height: 100%; transform-origin: left;
   transition: transform var(--dur-1) linear, background var(--dur-2) var(--ease-inout); }
@@ -63,7 +63,7 @@
 /* Overlays */
 .ct-overlay { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 80px 24px calc(28px + env(safe-area-inset-bottom)); text-align: center;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(6px); animation: riseIn var(--dur-3) var(--ease-out) both; }
+  background: rgba(0,0,0,.7); backdrop-filter: blur(6px); animation: riseIn var(--dur-3) var(--ease-out) backwards; }
 .ct-overlay.solid { background: rgba(8,9,12,.9); }
 .ct-overlay.scroll { justify-content: flex-start; overflow-y: auto; text-align: left; align-items: stretch; }
 .ct-cd { font-size: 150px; font-weight: 700; line-height: 1; color: var(--accent); letter-spacing: -.04em;
@@ -106,7 +106,7 @@
   animation: popIn var(--dur-3) var(--ease-spring) both; }
 .ct-check svg { width: 44px; height: 44px; fill: none; stroke: var(--on-accent); stroke-width: 3.2;
   stroke-linecap: square; stroke-dasharray: 26; animation: tick var(--dur-3) var(--ease-out) var(--dur-2) both; }
-.ct-big { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -.03em; animation: riseIn var(--dur-3) var(--ease-out) var(--s32) both; }
+.ct-big { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -.03em; animation: riseIn var(--dur-3) var(--ease-out) var(--s32) backwards; }
 .ct-rpe { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 300px; }
 .ct-rpe button { width: 46px; height: 40px; border-radius: var(--r-1); border: 1.5px solid var(--line-2); background: transparent;
   color: rgba(255,255,255,.8); font: 600 13px var(--f-num); transition: all var(--dur-1) var(--ease-out); }
@@ -118,7 +118,7 @@
 
 /* Up next */
 .ct-next { width: 100%; max-width: 340px; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-2);
-  text-align: left; animation: cutIn var(--dur-3) var(--ease-out) both; }
+  text-align: left; animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .ct-next-n { font: 700 24px/1.15 var(--f-display); margin-bottom: 4px; }
 .ct-next .ct-cue { font-size: 15px; margin-top: 12px; color: rgba(255,255,255,.75); }
 

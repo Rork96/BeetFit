@@ -13,14 +13,14 @@
 .ss-ex.skipped { opacity: .55; }
 .ss-cue { font: 400 13px/1.45 var(--f-display); color: rgba(241,242,246,.8); padding-left: 10px; border-left: 2px solid var(--accent); }
 .ss-more { width: 36px; height: 36px; flex: none; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font-size: 16px; }
-.ss-actions { display: flex; gap: 8px; flex-wrap: wrap; animation: riseIn var(--dur-2) var(--ease-out) both; }
+.ss-actions { display: flex; gap: 8px; flex-wrap: wrap; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
 .chip.ss-pain { color: var(--danger); border-color: rgba(255,107,107,.4); }
 
 .ss-sets { display: flex; flex-direction: column; gap: 6px; }
 .ss-set { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-1);
   transition: border-color var(--dur-2), background var(--dur-2); }
 .ss-set.active { border-color: var(--accent-line); background: var(--accent-soft); }
-.ss-set.done { font-size: 13px; color: var(--hint); animation: riseIn var(--dur-2) var(--ease-out) both; }
+.ss-set.done { font-size: 13px; color: var(--hint); animation: riseIn var(--dur-2) var(--ease-out) backwards; }
 .ss-set.done .num { color: var(--text); }
 .ss-n { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--line-2); font-size: 12px; }
 .ss-set.active .ss-n { border-color: var(--accent); color: var(--accent); }
@@ -36,15 +36,17 @@
 .ss-done { min-width: 150px; min-height: 44px; margin-left: auto; }
 @media (max-width: 400px) { .ss-done { min-width: 0; flex: 1; } }
 
-.ss-rest { position: fixed; left: 16px; right: 16px; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 45;
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 10px; background: var(--text); color: var(--bg);
-  border-radius: var(--r-2); animation: riseIn var(--dur-3) var(--ease-spring) both; }
-.ss-rest svg { width: 40px; height: 40px; transform: rotate(-90deg); }
-.ss-rest .trk { fill: none; stroke: rgba(12,13,17,.15); stroke-width: 4; }
-.ss-rest .val { fill: none; stroke: var(--bg); stroke-width: 4; transition: stroke-dashoffset 1s linear; }
-.ss-rest .label { color: rgba(12,13,17,.55); display: block; }
-.ss-rest b { font-size: 20px; }
-.ss-rest button { min-height: 40px; padding: 6px 12px; border: 1.5px solid rgba(12,13,17,.25); border-radius: var(--r-1); background: transparent; color: var(--bg); font: 600 12px var(--f-display); }
+/* Rest timer: docked bar across the bottom, not a floating pill */
+.ss-rest { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; max-width: 520px; margin: 0 auto;
+  background: var(--card-2); border-top: 1px solid var(--accent-line); padding-bottom: env(safe-area-inset-bottom);
+  animation: sheetIn var(--dur-3) var(--ease-out) backwards; }
+.ss-rest-bar { position: absolute; left: 0; right: 0; top: -1px; height: 3px; background: var(--accent); transform-origin: left; transition: transform 1s linear; }
+.ss-rest-in { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.ss-rest-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ss-rest-t .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-rest-t b { font-size: 28px; line-height: 1.1; letter-spacing: -.02em; }
+.ss-rest button { min-height: 44px; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font: 600 13px var(--f-display); }
+.ss-rest button.go { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 .ss-alt-mark { width: 14px; height: 14px; flex: none; border: 1.5px solid var(--accent); }
 .ss-recap { z-index: 50; }
@@ -67,7 +69,7 @@
 .wu-dots i { width: 8px; height: 8px; border: 1.5px solid var(--line-2); transition: background var(--dur-2); }
 .wu-dots i.d { background: var(--accent); border-color: var(--accent); }
 .wu-dots i.c { border-color: var(--accent); animation: beatPulse var(--bar) linear infinite; }
-.wu-now { display: flex; align-items: center; gap: 16px; animation: cutIn var(--dur-3) var(--ease-out) both; }
+.wu-now { display: flex; align-items: center; gap: 16px; animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .wu-now h3 { font-size: 18px; margin-bottom: 4px; }
 .wu-ring { position: relative; width: 84px; height: 84px; flex: none; display: grid; place-items: center; }
 .wu-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }

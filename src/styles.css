@@ -14,7 +14,7 @@ button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: tra
 
 #root { max-width: 520px; margin: 0 auto; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 
-.page { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; animation: cutIn var(--dur-3) var(--ease-out) both; }
+.page { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .page.back { animation-name: cutBack; }
 h1 { font: 700 28px/1.1 var(--f-display); letter-spacing: -.015em; }
 h2 { font: 700 19px/1.2 var(--f-display); }
@@ -136,19 +136,19 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .hero h1 { position: relative; }
 
 /* Sheet */
-.sheet-back { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); animation: riseIn var(--dur-2) var(--ease-out) both; }
+.sheet-back { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); animation: riseIn var(--dur-2) var(--ease-out) backwards; }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-width: 520px; margin: 0 auto; max-height: 88vh; overflow-y: auto;
   background: var(--card); border-top: 1px solid var(--line-2); border-radius: var(--r-2) var(--r-2) 0 0;
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
-  animation: sheetIn var(--dur-3) var(--ease-out) both; }
+  animation: sheetIn var(--dur-3) var(--ease-out) backwards; }
 .toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70;
   padding: 11px 16px; background: var(--text); color: var(--bg); font-size: 14px; border-radius: var(--r-1);
-  animation: riseIn var(--dur-3) var(--ease-out) both; white-space: nowrap; }
+  animation: toastIn var(--dur-3) var(--ease-out) backwards; white-space: nowrap; }
 .tab-back > .page { animation-name: cutBack; }
 
 /* Pushed screens (settings, detail) */
 .screen { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; max-width: 520px; margin: 0 auto;
-  padding-bottom: env(safe-area-inset-bottom); animation: cutIn var(--dur-3) var(--ease-out) both; }
+  padding-bottom: env(safe-area-inset-bottom); animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .screen-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: max(12px, env(safe-area-inset-top)) 16px 10px; background: rgba(12,13,17,.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .screen-top h2 { font-size: 17px; }
@@ -194,5 +194,13 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .bf-delta { text-align: center; font: 600 13px var(--f-num); animation: floatUp 1.4s var(--ease-out) both; }
 .fs-row { scroll-margin-top: 12px; }
 .fs-row.open .fs-item { border-bottom-color: transparent; }
-.fs-inline { padding-bottom: 10px; animation: riseIn var(--dur-3) var(--ease-out) both; }
+.fs-inline { padding-bottom: 10px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
 .fs-inline .fc-card { background: var(--bg-2); }
+
+/* Viewport-centred dialog (food portion) */
+.cdlg { position: fixed; left: 0; right: 0; z-index: 55; display: grid; place-items: center; padding: 16px;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.cdlg-box { width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; animation: zoomIn var(--dur-3) var(--ease-spring) backwards; }
+.cdlg-box .fc-card { background: var(--card); border-color: var(--line-2); }
+
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { generateDayPlan, swapMeal } from '../data/meals.js'
 import FoodCamera, { PortionCard, portion } from '../camera/FoodCamera.jsx'
 import { searchFood } from '../lib/api.js'
@@ -135,21 +136,19 @@ function FoodSearch({ onAdd, slotLabel }) {
             const key = it.code + it.name
             return (
               <div key={key} className={'fs-row' + (open === key ? ' open' : '')}>
-                <button className="fs-item" onClick={e => {
+                <button className="fs-item" onClick={() => {
                   haptic()
-                  inputRef.current?.blur() // drop the keyboard so the portion editor is visible
-                  const row = e.currentTarget
-                  setOpen(o => (o === key ? null : key))
-                  setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+                  inputRef.current?.blur() // drop the keyboard first so the dialog sits in the visible area
+                  setOpen(key)
                 }}>
                   {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph" />}
                   <div><b>{it.name}</b><span className="num">{it.brand ? it.brand + ' · ' : ''}{it.per100.kcal} kcal / 100 g</span></div>
                   <span className="fs-src">{it.source === 'usda' ? 'USDA' : 'OFF'}</span>
                 </button>
                 {open === key && (
-                  <div className="fs-inline">
+                  <CenterDialog onClose={() => setOpen(null)}>
                     <PortionCard item={it} slotLabel={slotLabel} onAdd={g => { onAdd(it, g); setOpen(null); setQ('') }} onRescan={() => setOpen(null)} backLabel="Cancel" />
-                  </div>
+                  </CenterDialog>
                 )}
               </div>
             )
@@ -158,4 +157,29 @@ function FoodSearch({ onAdd, slotLabel }) {
       )}
     </div>
   )
+}
+
+// Opens in the middle of whatever the person is looking at — never at the bottom of the page.
+function CenterDialog({ onClose, children }) {
+  useBackClose(true, onClose)
+  const [vv, setVv] = useState(() => readViewport())
+  useEffect(() => {
+    const v = window.visualViewport
+    if (!v) return
+    const on = () => setVv(readViewport())
+    v.addEventListener('resize', on); v.addEventListener('scroll', on)
+    return () => { v.removeEventListener('resize', on); v.removeEventListener('scroll', on) }
+  }, [])
+  // Portal to <body>: animated ancestors (transform) would otherwise turn position:fixed into page-relative.
+  return createPortal(
+    <div className="cdlg" style={{ top: vv.top, height: vv.height }} onClick={e => { if (e.target === e.currentTarget) history.back() }}>
+      <div className="cdlg-box" role="dialog" aria-modal="true">{children}</div>
+    </div>,
+    document.body
+  )
+}
+
+function readViewport() {
+  const v = typeof window !== 'undefined' ? window.visualViewport : null
+  return v ? { top: v.offsetTop, height: v.height } : { top: 0, height: typeof window !== 'undefined' ? window.innerHeight : 800 }
 }

@@ -135,11 +135,16 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
       </div>
 
       {rest && (
-        <div className="ss-rest" role="timer">
-          <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" className="trk" /><circle cx="20" cy="20" r="16" className="val" style={{ strokeDasharray: 100.5, strokeDashoffset: 100.5 * (1 - rest.left / rest.total) }} /></svg>
-          <div><span className="label">Rest</span><b className="num">{fmt(rest.left)}</b></div>
-          <button onClick={() => setRest(r => ({ ...r, left: r.left + 15, total: r.total + 15 }))}>+15</button>
-          <button onClick={() => setRest(null)}>Skip</button>
+        <div className="ss-rest" role="timer" aria-live="polite">
+          <i className="ss-rest-bar" style={{ transform: `scaleX(${rest.left / rest.total})` }} />
+          <div className="ss-rest-in">
+            <div className="ss-rest-t">
+              <span className="label">Rest · {rest.label}</span>
+              <b className="num">{fmt(rest.left)}</b>
+            </div>
+            <button onClick={() => { haptic(); setRest(r => ({ ...r, left: r.left + 15, total: r.total + 15 })) }}>+15 s</button>
+            <button className="go" onClick={() => { haptic(); setRest(null) }}>Skip</button>
+          </div>
         </div>
       )}
 

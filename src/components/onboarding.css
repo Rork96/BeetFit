@@ -4,7 +4,7 @@
 .ob-back { width: 40px; height: 40px; flex: none; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font-size: 16px; }
 .ob-bar { flex: 1; height: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
 .ob-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-4) var(--ease-out); }
-.ob-step { animation: cutIn var(--dur-3) var(--ease-out) both; }
+.ob-step { animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .ob-step.back { animation-name: cutBack; }
 .ob-page { padding-top: 8px; animation: none; }
 .ob-page h1 { font-size: 24px; }
