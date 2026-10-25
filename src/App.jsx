@@ -9,6 +9,10 @@ import Settings from './components/Settings.jsx'
 import { haptic } from './lib/platform.js'
 import { useBackClose } from './lib/hooks.js'
 import { dayKey } from './lib/day.js'
+import { useSync } from './lib/useSync.js'
+
+// Top-level keys merged as a whole during sync: remember when each was last edited on this device.
+const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan']
 
 // 2px geometric line icons, square-based.
 const Icon = {
@@ -37,10 +41,16 @@ export default function App() {
   useBackClose(settings, () => setSettings(false))
 
   // Accepts a patch object or a function of the previous state (camera logs arrive in bursts).
-  const update = patch => setState(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) }))
+  const update = patch => setState(s => {
+    const p = typeof patch === 'function' ? patch(s) : patch
+    const hit = STAMPED.filter(k => k in p)
+    return { ...s, ...p, ...(hit.length ? { _t: { ...(s._t || {}), ...Object.fromEntries(hit.map(k => [k, Date.now()])) } } : {}) }
+  })
+  const sync = useSync(state, setState)
 
   if (!state?.profile) {
-    return <Onboarding onDone={({ profile, intake, program, settings }) => setState({
+    return <Onboarding onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings }) => setState({
+      _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
       profile, intake, program, settings,
       weightLog: [{ date: dayKey(), kg: profile.weightKg }],
       mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
@@ -67,7 +77,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={state} update={update} onClose={() => history.back()} />}
+      {settings && <Settings state={state} update={update} sync={sync} onClose={() => history.back()} />}
     </>
   )
 }

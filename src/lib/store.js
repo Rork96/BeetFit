@@ -42,7 +42,7 @@ export function clearState() {
   if (isNative()) import('@capacitor/preferences').then(({ Preferences }) => Preferences.remove({ key: KEY })).catch(() => {})
 }
 
-function migrate(s) {
+export function migrate(s) {
   if (!s || typeof s !== 'object') return null
   return {
     foodLog: {}, workoutLog: {}, water: {}, settings: {},

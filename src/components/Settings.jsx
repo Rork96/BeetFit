@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { GOALS, ACTIVITY_LEVELS } from '../lib/calories.js'
 import { applyMotionLevel, getMotionLevel } from '../lib/motion.js'
 import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.js'
@@ -6,10 +6,11 @@ import { exportState, clearState } from '../lib/store.js'
 import { haptic } from '../lib/platform.js'
 import { KG_TO_LB } from '../lib/day.js'
 import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
+import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sync.js'
 
 const VERSION = '0.3.0'
 
-export default function Settings({ state, update, onClose }) {
+export default function Settings({ state, update, sync, onClose }) {
   const s = state.settings || {}
   const p = state.profile
   const [motion, setMotion] = useState(getMotionLevel())
@@ -86,15 +87,18 @@ export default function Settings({ state, update, onClose }) {
           </Row>
         </section>
 
+        {sync && <SyncCard sync={sync} update={update} />}
+
         <section className="card">
           <span className="label">Your data</span>
-          <p className="hint">Everything is stored on this device. Camera video never leaves it. Meal photos are sent to Google Gemini only when you tap the shutter.</p>
+          <p className="hint">{sync?.on ? 'Stored on this device and backed up to BeetFit sync.' : 'Everything is stored on this device.'} Camera video never leaves it. Meal photos are sent to Google Gemini only when you tap the shutter.</p>
           <button className="btn secondary" onClick={() => { haptic(); exportState(state) }}>Export all data (JSON)</button>
           <button className={'btn ' + (armReset ? 'danger' : 'secondary')}
             onClick={() => {
               haptic('medium')
               if (!armReset) { setArmReset(true); setTimeout(() => setArmReset(false), 3000); return }
-              clearState(); location.reload()
+              const done = () => { clearState(); location.reload() }
+              if (sync?.on) leaveSync().finally(done); else done()
             }}>
             {armReset ? 'Tap again to erase everything' : 'Reset app'}
           </button>
@@ -103,6 +107,90 @@ export default function Settings({ state, update, onClose }) {
         <p className="hint" style={{ textAlign: 'center' }}>BeetFit {VERSION}</p>
       </div>
     </div>
+  )
+}
+
+const SYNC_ERR = {
+  offline: 'No connection. Will retry when you are back online.',
+  sync_not_configured: 'Sync is not set up on the server yet.',
+  unauthorized: 'Server key missing (DEVICE_SECRET).',
+  bad_code: 'That code is wrong or expired.',
+  same_device: 'That code was made on this phone. Enter it on the other one.',
+  too_many_tries: 'Too many tries today. Try again tomorrow.',
+  daily_limit: 'Too many codes today. Try again tomorrow.',
+  too_large: 'Your data is too big to sync.'
+}
+const errText = e => SYNC_ERR[e] || (e ? `Sync failed (${e}).` : '')
+
+function ago(t) {
+  if (!t) return 'never'
+  const s = Math.round((Date.now() - t) / 1000)
+  return s < 10 ? 'just now' : s < 60 ? `${s} s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : new Date(t).toLocaleString()
+}
+
+function SyncCard({ sync, update }) {
+  const { on, setOn, info, run } = sync
+  const [mode, setMode] = useState(null) // 'show' | 'enter'
+  const [pair, setPair] = useState(null)
+  const [code, setCode] = useState('')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [, tick] = useState(0)
+  useEffect(() => { const t = setInterval(() => tick(x => x + 1), 1000); return () => clearInterval(t) }, [])
+
+  const left = pair ? Math.max(0, Math.round((pair.expires - Date.now()) / 1000)) : 0
+  const show = async () => {
+    haptic(); setErr(''); setBusy(true)
+    if (!on) setOn(true)
+    const r = await createPairCode()
+    setBusy(false)
+    if (r.status === 200) { setPair(r); setMode('show') } else setErr(errText(r.error || 'offline'))
+  }
+  const claim = async () => {
+    haptic('medium'); setErr(''); setBusy(true)
+    const r = await claimPairCode(code)
+    setBusy(false)
+    if (r.status !== 200) return setErr(errText(r.error || 'offline'))
+    // Joined the other phone's account: fold what this phone has into it, then sync.
+    if (r.data) update(prev => mergeStates(prev, r.data))
+    setOn(true); setMode(null); setCode('')
+  }
+  const status = info.status === 'syncing' ? 'Syncing…' : info.status === 'ok' || info.status === 'idle' ? `Synced ${ago(info.at)}` : errText(info.status)
+
+  return (
+    <section className="card">
+      <span className="label">Sync & devices</span>
+      <Row label="Back up & sync" hint="Keeps your plan and logs on all your phones. No email or password.">
+        <Toggle on={on} onChange={v => { haptic(); if (v) setOn(true); else { leaveSync(); setOn(false); setMode(null) } }} />
+      </Row>
+      {on && (
+        <div className="sy-status">
+          <i className={'sy-dot ' + (info.status === 'syncing' ? 'busy' : info.status === 'ok' || info.status === 'idle' ? 'ok' : 'bad')} />
+          <span>{status}</span>
+          <span className="num sy-dev">{info.devices} {info.devices === 1 ? 'device' : 'devices'}</span>
+          <button className="chip" onClick={() => { haptic(); run() }} disabled={info.status === 'syncing'}>Sync now</button>
+        </div>
+      )}
+      {mode === 'show' && pair && (
+        <div className="sy-code">
+          <span className="label">Enter on your other phone</span>
+          <b className="num">{pair.code.slice(0, 3)} {pair.code.slice(3)}</b>
+          <span className="hint num">{left ? `Expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Expired. Make a new one.'}</span>
+        </div>
+      )}
+      {mode === 'enter' && (
+        <div className="sy-enter">
+          <input inputMode="numeric" autoComplete="one-time-code" maxLength={7} placeholder="6-digit code" value={code}
+            onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+          <button className="btn" disabled={code.length !== 6 || busy} onClick={claim}>{busy ? 'Linking…' : 'Link'}</button>
+        </div>
+      )}
+      {err && <p className="sy-err">{err}</p>}
+      <div className="grid2">
+        <button className="btn secondary" disabled={busy} onClick={show}>{mode === 'show' ? 'New code' : 'Link another phone'}</button>
+        <button className="btn secondary" onClick={() => { haptic(); setErr(''); setMode(mode === 'enter' ? null : 'enter') }}>I have a code</button>
+      </div>
+    </section>
   )
 }
 

@@ -27,7 +27,7 @@ export default {
     const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
       if (url.pathname === '/api/health') {
-        const out = { ok: true, device: !!env.DEVICE_SECRET, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
+        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
         // ?check=gemini makes one tiny real call so a bad key or retired model shows up here. Cached 5 min.
         if (url.searchParams.get('check') === 'gemini' && env.GEMINI_API_KEY) {
           return withCache(new Request(url.origin + '/api/health?check=gemini'), ctx, 300, async () => json({ ...out, geminiCheck: await geminiPing(env) }), cors)
@@ -62,6 +62,10 @@ export default {
         if (!buf.byteLength || buf.byteLength > 4 * 1024 * 1024) return json({ error: 'bad_image' }, 400, cors)
         const result = await snap(buf, req.headers.get('content-type') || 'image/jpeg', env)
         return json(result, 200, cors)
+      }
+      if (url.pathname.startsWith('/api/sync') || url.pathname.startsWith('/api/pair')) {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        return await syncRoutes(req, url, env, device, ip, cors)
       }
       return json({ error: 'not_found' }, 404, cors)
     } catch (e) {
@@ -214,6 +218,96 @@ async function hmac(keyBytes, msg) {
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg)))
 }
 
+// ---------- sync (Cloudflare D1) ----------
+// One JSON document per user. Devices map to users; a 6-digit pairing code links a new device to an
+// existing user. Optimistic concurrency: PUT carries the rev it was based on, a stale rev gets 409 + server copy.
+
+const MAX_DOC = 900 * 1024
+let schemaReady = false
+
+async function ensureSchema(db) {
+  if (schemaReady) return
+  await db.batch([
+    db.prepare('CREATE TABLE IF NOT EXISTS devices (device_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created INTEGER NOT NULL, seen INTEGER)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS docs (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, rev INTEGER NOT NULL, updated INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL)')
+  ])
+  schemaReady = true
+}
+
+async function userOf(db, deviceId) {
+  const row = await db.prepare('SELECT user_id FROM devices WHERE device_id = ?').bind(deviceId).first()
+  const now = Date.now()
+  if (row) { await db.prepare('UPDATE devices SET seen = ? WHERE device_id = ?').bind(now, deviceId).run(); return row.user_id }
+  const userId = crypto.randomUUID()
+  await db.prepare('INSERT INTO devices (device_id, user_id, created, seen) VALUES (?, ?, ?, ?)').bind(deviceId, userId, now, now).run()
+  return userId
+}
+
+async function readDoc(db, userId) {
+  const row = await db.prepare('SELECT data, rev, updated FROM docs WHERE user_id = ?').bind(userId).first()
+  const devices = (await db.prepare('SELECT COUNT(*) AS n FROM devices WHERE user_id = ?').bind(userId).first())?.n || 1
+  return row ? { rev: row.rev, updated: row.updated, data: JSON.parse(row.data), devices } : { rev: 0, updated: 0, data: null, devices }
+}
+
+async function syncRoutes(req, url, env, device, ip, cors) {
+  const db = env.DB
+  await ensureSchema(db)
+  const userId = await userOf(db, device.id)
+
+  if (url.pathname === '/api/sync' && req.method === 'GET') return json(await readDoc(db, userId), 200, { ...cors, 'cache-control': 'no-store' })
+
+  if (url.pathname === '/api/sync' && req.method === 'PUT') {
+    const raw = await req.text()
+    if (raw.length > MAX_DOC) return json({ error: 'too_large' }, 413, cors)
+    let body
+    try { body = JSON.parse(raw) } catch { return json({ error: 'bad_json' }, 400, cors) }
+    if (!body || typeof body.data !== 'object' || !Number.isInteger(body.baseRev)) return json({ error: 'bad_request' }, 400, cors)
+    const cur = await readDoc(db, userId)
+    if (cur.rev !== body.baseRev) return json({ error: 'conflict', ...cur }, 409, cors)
+    const rev = cur.rev + 1, now = Date.now()
+    const res = await db.prepare(
+      'INSERT INTO docs (user_id, data, rev, updated) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(user_id) DO UPDATE SET data = ?2, rev = ?3, updated = ?4 WHERE docs.rev = ?5'
+    ).bind(userId, JSON.stringify(body.data), rev, now, cur.rev).run()
+    if (!res.meta.changes) return json({ error: 'conflict', ...(await readDoc(db, userId)) }, 409, cors)
+    return json({ rev, updated: now, devices: cur.devices }, 200, cors)
+  }
+
+  if (url.pathname === '/api/pair' && req.method === 'POST') {
+    if (!(await underLimit(env, `paircreate:${userId}`, 20))) return json({ error: 'daily_limit' }, 429, cors)
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0')
+    const expires = Date.now() + 10 * 60 * 1000
+    await db.batch([
+      db.prepare('DELETE FROM pairs WHERE user_id = ? OR expires < ?').bind(userId, Date.now()),
+      db.prepare('INSERT OR REPLACE INTO pairs (code, user_id, expires) VALUES (?, ?, ?)').bind(code, userId, expires)
+    ])
+    return json({ code, expires }, 200, cors)
+  }
+
+  if (url.pathname === '/api/pair/claim' && req.method === 'POST') {
+    // 10 tries per IP per day: guessing 1 of 1,000,000 codes in a 10-minute window is not practical.
+    if (!(await underLimit(env, `pairclaim:${ip}`, 10))) return json({ error: 'too_many_tries' }, 429, cors)
+    const { code } = await req.json().catch(() => ({}))
+    if (!/^\d{6}$/.test(code || '')) return json({ error: 'bad_code' }, 400, cors)
+    const pair = await db.prepare('SELECT user_id, expires FROM pairs WHERE code = ?').bind(code).first()
+    if (!pair || pair.expires < Date.now()) return json({ error: 'bad_code' }, 404, cors)
+    if (pair.user_id === userId) return json({ error: 'same_device' }, 400, cors)
+    await db.batch([
+      db.prepare('UPDATE devices SET user_id = ? WHERE device_id = ?').bind(pair.user_id, device.id),
+      db.prepare('DELETE FROM pairs WHERE code = ?').bind(code)
+    ])
+    return json(await readDoc(db, pair.user_id), 200, cors)
+  }
+
+  if (url.pathname === '/api/sync/leave' && req.method === 'POST') {
+    // Unlink this device: it gets a fresh empty user next time.
+    await db.prepare('DELETE FROM devices WHERE device_id = ?').bind(device.id).run()
+    return json({ ok: true }, 200, cors)
+  }
+
+  return json({ error: 'not_found' }, 404, cors)
+}
+
 // ---------- helpers ----------
 
 async function underLimit(env, key, max) {
@@ -245,7 +339,7 @@ function corsHeaders(req, env) {
   const ok = allowed.includes('*') || allowed.includes(origin)
   return {
     'access-control-allow-origin': ok ? origin || '*' : allowed[0],
-    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-methods': 'GET,POST,PUT,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization',
     'access-control-max-age': '86400',
     vary: 'origin'

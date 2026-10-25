@@ -24,6 +24,11 @@ GEMINI_MODEL = "gemini-2.5-flash"
 [[kv_namespaces]]
 binding = "RATE"
 
+# Cross-device sync. No id: wrangler creates the database on the first deploy.
+[[d1_databases]]
+binding = "DB"
+database_name = "beetfit"
+
 # Secrets — set once, never commit:
 #   npx wrangler secret put DEVICE_SECRET    (any long random string: `openssl rand -hex 32`)
 #   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)

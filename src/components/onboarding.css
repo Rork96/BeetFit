@@ -73,3 +73,5 @@
 .ob-day { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--accent-line); color: var(--accent); font-size: 13px; }
 .ob input[type=number]::-webkit-inner-spin-button, .ob input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .ob input[type=number] { -moz-appearance: textfield; }
+.ob-have { margin-top: -4px; }
+.ob-claim { gap: 8px; animation: riseIn var(--dur-2) var(--ease-out) backwards; }

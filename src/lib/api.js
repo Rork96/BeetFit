@@ -17,6 +17,10 @@ async function deviceToken(force = false) {
   return tokenP
 }
 
+export async function api(path, opts = {}) {
+  try { return await call(path, opts) } catch { return { status: 0, error: 'offline' } }
+}
+
 async function call(path, opts = {}, retry = true) {
   let token = ''
   try { token = await deviceToken() } catch { /* API offline → call fails below with a clear status */ }

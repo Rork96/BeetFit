@@ -21,10 +21,10 @@ npx wrangler secret put USDA_API_KEY   # optional: https://fdc.nal.usda.gov/api-
 npm run deploy
 ```
 
-`npm run deploy` builds the app, downloads the pose model, creates the KV namespace for rate limits, and attaches `beetfit.wealthifai.xyz`. Cloudflare creates the DNS record and certificate for you; give it 1–2 minutes.
+`npm run deploy` builds the app, downloads the pose model, creates the KV namespace for rate limits and the D1 database for sync, and attaches `beetfit.wealthifai.xyz`. Cloudflare creates the DNS record and certificate for you; give it 1–2 minutes.
 
 Check:
-- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"gemini":true,…}`
+- https://beetfit.wealthifai.xyz/api/health → `{"ok":true,"device":true,"sync":true,"gemini":true,…}` (all must be true)
 - https://beetfit.wealthifai.xyz → the app
 
 If `wrangler secret put` complains the Worker doesn't exist yet, run `npm run deploy` first, then the secrets, then deploy again.

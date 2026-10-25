@@ -6,12 +6,22 @@ import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
 import { S16 } from '../lib/motion.js'
+import { claimPairCode } from '../lib/sync.js'
+import { migrate } from '../lib/store.js'
 import './onboarding.css'
 
 const STEPS = ['welcome', 'goal', 'body', 'days', 'training', 'building', 'ready']
 const KG_LB = 2.20462
 
-export default function Onboarding({ onDone }) {
+const CLAIM_ERR = {
+  bad_code: 'That code is wrong or expired.',
+  too_many_tries: 'Too many tries today. Try again tomorrow.',
+  sync_not_configured: 'Sync is not set up on the server yet.',
+  unauthorized: 'Server key missing. Try again later.',
+  offline: 'No connection.'
+}
+
+export default function Onboarding({ onDone, onRestore }) {
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
   const [name, setName] = useState('')
@@ -53,7 +63,7 @@ export default function Onboarding({ onDone }) {
         </header>
       )}
       <div className={'ob-step ' + (dir > 0 ? 'fwd' : 'back')} key={id}>
-        {id === 'welcome' && <Welcome onStart={() => go(1)} />}
+        {id === 'welcome' && <Welcome onStart={() => go(1)} onRestore={onRestore} />}
 
         {id === 'goal' && (
           <Step title="What's your goal?" sub="Your program, calories and pace are built around it.">
@@ -160,7 +170,19 @@ export default function Onboarding({ onDone }) {
   )
 }
 
-function Welcome({ onStart }) {
+function Welcome({ onStart, onRestore }) {
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const claim = async () => {
+    haptic('medium'); setErr(''); setBusy(true)
+    const r = await claimPairCode(code)
+    setBusy(false)
+    if (r.status !== 200) return setErr(CLAIM_ERR[r.error] || 'Could not link. Check your connection.')
+    if (!r.data?.profile) return setErr('Linked, but that phone has not synced a plan yet. Open BeetFit there and try again.')
+    onRestore(migrate(r.data))
+  }
   return (
     <div className="ob-welcome">
       <div className="ob-logo"><span /><b>BeetFit</b></div>
@@ -171,10 +193,23 @@ function Welcome({ onStart }) {
       </div>
       <ul className="ob-privacy stk">
         <li>Camera tracking runs on your phone and is never uploaded.</li>
-        <li>Your data stays on this device. Export or erase it any time.</li>
+        <li>Your data stays on this device unless you turn on sync. Export or erase it any time.</li>
         <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
       </ul>
       <button className="btn" onClick={onStart}>Get started</button>
+      {!open ? (
+        <button className="btn ghost ob-have" onClick={() => { haptic(); setOpen(true) }}>I already use BeetFit</button>
+      ) : (
+        <div className="ob-claim stk">
+          <p className="hint">On your other phone: Settings → Sync & devices → Link another phone. Enter the code here.</p>
+          <div className="sy-enter">
+            <input inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" value={code} autoFocus
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+            <button className="btn" disabled={code.length !== 6 || busy} onClick={claim}>{busy ? 'Linking…' : 'Link'}</button>
+          </div>
+          {err && <p className="sy-err">{err}</p>}
+        </div>
+      )}
       <p className="hint" style={{ textAlign: 'center', fontSize: 11.5 }}>Not medical advice. Check with a physician before starting a new program.</p>
     </div>
   )

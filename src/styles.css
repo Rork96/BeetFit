@@ -71,6 +71,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .btn.secondary { background: rgba(255, 255, 255, .08); color: var(--text); }
 .btn.small { width: auto; min-height: 36px; padding: 8px 12px; font-size: 12px; border-radius: var(--r-1); }
 .btn.danger { background: var(--danger); color: #fff; }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-2); }
 .btn:disabled { opacity: .45; }
 
 .stat { text-align: center; background: var(--bg-2); border-radius: var(--r-1); padding: 10px 4px; }
@@ -204,3 +205,18 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .cdlg-box .fc-card { background: var(--card); border-color: var(--line-2); }
 
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+/* Sync & devices */
+.sy-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hint); }
+.sy-status .chip { margin-left: auto; }
+.sy-dev { color: var(--text); }
+.sy-dot { width: 8px; height: 8px; flex: none; background: var(--hint); }
+.sy-dot.ok { background: var(--accent); }
+.sy-dot.bad { background: var(--danger); }
+.sy-dot.busy { background: var(--accent); animation: beatPulse var(--beat) linear infinite; }
+.sy-code { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0; border: 1.5px dashed var(--accent-line); animation: zoomIn var(--dur-3) var(--ease-out) backwards; }
+.sy-code b { font-size: 40px; letter-spacing: .12em; color: var(--accent); }
+.sy-enter { display: flex; gap: 8px; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.sy-enter input { flex: 1; font: 700 20px var(--f-num); letter-spacing: .2em; text-align: center; }
+.sy-enter .btn { width: auto; padding-inline: 20px; }
+.sy-err { color: var(--danger); font-size: 13px; margin: 0; }
