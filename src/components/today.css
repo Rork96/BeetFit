@@ -64,6 +64,7 @@
 .td-day i.s1 { background: rgba(224,253,144,.18); border-color: var(--accent-line); }
 .td-day i.s2 { background: rgba(224,253,144,.55); border-color: transparent; }
 .td-day i.s3 { background: var(--accent); border-color: transparent; }
+.td-day i.frz { border-color: #8fd3ff; background: repeating-linear-gradient(135deg, rgba(143,211,255,.28) 0 3px, transparent 3px 6px); }
 .td-day i.future { opacity: .35; border-style: dashed; }
 .td-day.today span { color: var(--accent); }
 .td-day.today i { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -71,3 +72,14 @@
 .td-body { position: relative; overflow: hidden; }
 .td-fig { position: absolute; right: 6px; bottom: 6px; opacity: .9; pointer-events: none; }
 .td-body > :not(.td-fig) { position: relative; }
+
+/* Weekly review */
+.td-review { display: flex; flex-direction: column; gap: 12px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.td-review.kept { border-color: var(--accent-line); }
+.td-review-h { font: 700 18px/1.25 var(--f-display); letter-spacing: -.01em; }
+.td-review-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.td-review-g > div { display: flex; flex-direction: column; gap: 3px; padding: 10px 6px; background: rgba(255,255,255,.04); border-radius: var(--r-1); }
+.td-review-g b { font-size: 18px; letter-spacing: -.01em; }
+.td-review-g small { font-size: 11px; color: var(--hint); margin-left: 1px; }
+.td-review-g span { font: 200 10px var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--hint); line-height: 1.3; }
+.td-x { width: 32px; height: 32px; border: none; background: transparent; color: var(--hint); font-size: 14px; }

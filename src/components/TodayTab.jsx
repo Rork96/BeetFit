@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { dayKey, eaten, targets, waterOf, dayTasks, streak, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight } from '../lib/day.js'
+import { dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp } from '../lib/hooks.js'
 import BodyFigure from './BodyFigure.jsx'
@@ -17,7 +17,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const e = eaten(state, key)
   const water = waterOf(state, key)
   const tasks = dayTasks(state, key)
-  const st = streak(state, key)
+  const si = streakInfo(state, key)
+  const st = si.days
   const wk = week(state, key)
   const units = state.settings?.units || 'kg'
   const name = state.settings?.name
@@ -64,6 +65,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         <button className={'td-streak' + (st >= 7 ? ' hot' : '')} onClick={() => go('progress')}>
           <span className="td-mark" /><span className="num">{st > 0 ? `${st}-day streak` : 'Start your streak today'}</span>
         </button>
+        <WeekReview state={state} today={key} streak={st} units={units} />
 
         {/* Calories */}
         <div className="card td-kcal">
@@ -128,11 +130,11 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
         {/* Week */}
         <div className="card">
-          <div className="row"><span className="label">This week</span><span className="td-small num">{wk.filter(d => d.score >= 2).length}/7 days</span></div>
+          <div className="row"><span className="label">This week</span><span className="td-small num">{wk.filter(d => d.score >= 2).length}/7 days · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</span></div>
           <div className="td-week">
             {wk.map(d => (
               <div key={d.key} className={'td-day' + (d.today ? ' today' : '')}>
-                <i className={d.score == null ? 'future' : `s${d.score}`} />
+                <i className={d.score == null ? 'future' : si.frozen.includes(d.key) ? 'frz' : `s${d.score}`} />
                 <span>{d.label}</span>
               </div>
             ))}
@@ -141,7 +143,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
         {/* Tasks */}
         <div className="card">
-          <span className="label">Daily tasks · 2 of 3 keeps the streak</span>
+          <span className="label">Daily tasks · 2 of 3 keeps the streak · 1 miss a week is free</span>
           {tasks.map(tk => (
             <div className="ex-row" key={tk.id}>
               <span className={'ex-mark' + (tk.done ? ' on' : '')}>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</span>
@@ -151,6 +153,44 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
 
         {openRead && <ReadCard state={state} onOpen={openRead} />}
+      </div>
+    </div>
+  )
+}
+
+const SEEN = 'beetfit_week_seen'
+const seenWeek = () => { try { return localStorage.getItem(SEEN) } catch { return null } }
+
+// Sunday: this week so far. Monday: last week. Dismissed per week.
+function WeekReview({ state, today, streak, units }) {
+  const r = weekReview(state, today)
+  const [seen, setSeen] = useState(seenWeek)
+  if (!r || seen === r.id + (r.final ? 'f' : '')) return null
+  const close = () => { haptic(); const id = r.id + (r.final ? 'f' : ''); try { localStorage.setItem(SEEN, id) } catch { /* ignore */ } setSeen(id) }
+  const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const wc = r.weightChange
+  const wcText = wc == null ? '—' : `${wc > 0 ? '+' : ''}${units === 'lb' ? +(wc * KG_TO_LB).toFixed(1) : wc}`
+  const head = r.kept ? `Week kept: ${r.sessions} of ${r.planned} sessions.`
+    : r.final ? `${r.sessions} of ${r.planned} sessions last week.`
+      : `${r.sessions} of ${r.planned} sessions so far.`
+  const sub = r.kept ? (streak >= 3 ? `${streak}-day streak going into ${r.final ? 'this' : 'next'} week.` : `Same again ${r.final ? 'this' : 'next'} week.`)
+    : r.final ? `Plan for ${r.planned} this week. Put them in your calendar now.`
+      : r.planned - r.sessions === 1 ? 'One session today hits the week.' : 'Today still counts. Do one session.'
+  return (
+    <div className={'card td-review' + (r.kept ? ' kept' : '')}>
+      <div className="row">
+        <span className="label">{r.final ? 'Last week' : 'This week'} · {fmtD(r.start)}–{fmtD(r.end)}</span>
+        <button className="td-x" onClick={close} aria-label="Dismiss">✕</button>
+      </div>
+      <div>
+        <b className="td-review-h">{head}</b>
+        <p className="hint" style={{ margin: '4px 0 0' }}>{sub}</p>
+      </div>
+      <div className="td-review-g">
+        <div><b className="num">{r.sessions}/{r.planned}</b><span>sessions</span></div>
+        <div><b className="num">{r.foodDays}/7</b><span>days logged</span></div>
+        <div><b className="num">{r.protein ?? '—'}{r.protein != null && <small>g</small>}</b><span>protein avg{r.protein != null ? ` / ${r.proteinTarget}` : ''}</span></div>
+        <div><b className="num">{wcText}{wc != null && <small>{units}</small>}</b><span>weight trend</span></div>
       </div>
     </div>
   )

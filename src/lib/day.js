@@ -52,12 +52,21 @@ function planName(state) {
   return `${g} · ${state.program.filter(d => !d.run).length} days/week`
 }
 
-// Next training day = rotate through the program by sessions done in the last 7 days.
+// Next training day = the plan day after the last one trained (matched by exercise names, last 14 days).
+// Falls back to counting sessions in the last 7 days when nothing matches (e.g. the plan was rebuilt).
 export function nextDayIndex(state, key = dayKey()) {
-  const days = program(state).days.length
+  const days = program(state).days
+  for (let i = 1; i <= 14; i++) {
+    const k = addDays(key, -i)
+    if (setsLogged(state, k) === 0) continue
+    const names = new Set(Object.keys(state.workoutLog[k]))
+    let best = -1, hit = 0
+    days.forEach((d, j) => { const h = d.exercises.filter(e => names.has(e.name)).length; if (h > hit) { hit = h; best = j } })
+    if (best >= 0) return (best + 1) % days.length
+  }
   let done = 0
   for (let i = 1; i <= 7; i++) if (setsLogged(state, addDays(key, -i)) > 0) done++
-  return done % days
+  return done % days.length
 }
 
 // Three daily tasks: log food, hit water, train. A day "counts" for the streak at 2 of 3.
@@ -72,22 +81,55 @@ export function dayTasks(state, key = dayKey()) {
 
 export const dayScore = (state, key) => dayTasks(state, key).filter(t => t.done).length
 
-export function streak(state, key = dayKey()) {
-  let n = 0
+// 0 = Monday … 6 = Sunday
+export const weekday = key => { const [y, m, d] = key.split('-').map(Number); return (new Date(y, m - 1, d).getDay() + 6) % 7 }
+export const mondayOf = key => addDays(key, -weekday(key))
+
+// A day counts at 2 of 3 tasks. One missed day per Mon–Sun week is covered by a freeze:
+// the streak holds through it but doesn't grow. A second miss in the same week ends it.
+export function streakInfo(state, key = dayKey()) {
+  let days = 0, oldest = null
+  const frozen = [], used = new Set()
   let k = dayScore(state, key) >= 2 ? key : addDays(key, -1) // today doesn't break it until it's over
-  while (dayScore(state, k) >= 2 && n < 3650) { n++; k = addDays(k, -1) }
-  return n
+  for (let i = 0; i < 3650; i++, k = addDays(k, -1)) {
+    if (dayScore(state, k) >= 2) { days++; oldest = k; continue }
+    const wk = mondayOf(k)
+    if (used.has(wk)) break
+    used.add(wk); frozen.push(k)
+  }
+  const real = days ? frozen.filter(f => f > oldest) : [] // a freeze only counts inside the streak
+  return { days, frozen: real, freezeLeft: !real.some(f => mondayOf(f) === mondayOf(key)) }
 }
+
+export const streak = (state, key = dayKey()) => streakInfo(state, key).days
 
 // Mon–Sun of the current week.
 export function week(state, key = dayKey()) {
-  const [y, m, d] = key.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const monday = addDays(key, -((date.getDay() + 6) % 7))
+  const monday = mondayOf(key)
   return Array.from({ length: 7 }, (_, i) => {
     const k = addDays(monday, i)
     return { key: k, label: 'MTWTFSS'[i], score: k > key ? null : dayScore(state, k), today: k === key }
   })
+}
+
+const foodLogged = (state, k) => (state.foodLog?.[k]?.length || 0) > 0 || state.mealPlan?.date === k
+
+// Weekly review, shown Sunday (this week so far) and Monday (last week). Training, logging, protein, weight trend.
+// No calorie verdicts here on purpose: a "you ate under target" line rewards restriction.
+export function weekReview(state, key = dayKey()) {
+  const dow = weekday(key)
+  if (dow !== 6 && dow !== 0) return null
+  const start = dow === 6 ? mondayOf(key) : addDays(mondayOf(key), -7)
+  const end = addDays(start, 6)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i)).filter(k => k <= key)
+  const planned = program(state).days.length
+  const sessions = days.filter(k => setsLogged(state, k) > 0).length
+  const logged = days.filter(k => foodLogged(state, k))
+  const protein = logged.length ? Math.round(logged.reduce((a, k) => a + eaten(state, k).p, 0) / logged.length) : null
+  const series = weightSeries(state, 15, end <= key ? end : key)
+  const a = series.find(p => p.key === addDays(start, -1))?.avg, b = series[series.length - 1]?.avg
+  const weightChange = a != null && b != null && (state.weightLog || []).filter(w => w.date >= addDays(start, -7)).length >= 2 ? +(b - a).toFixed(1) : null
+  return { id: start, final: dow === 0, start, end, sessions, planned, kept: sessions >= planned, foodDays: logged.length, protein, proteinTarget: targets(state).protein, weightChange, goal: state.profile.goal }
 }
 
 export const KG_TO_LB = 2.20462

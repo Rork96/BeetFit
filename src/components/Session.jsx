@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import RepTracker, { trackerFor, parseTarget } from '../camera/RepTracker.jsx'
 import { alternativesFor, DEFAULT_INTAKE } from '../lib/program.js'
-import { dayKey } from '../lib/day.js'
+import { dayKey, addDays, week, program, nextDayIndex, setsLogged, streakInfo } from '../lib/day.js'
 import { haptic, hapticSuccess, hapticError } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { speak } from '../lib/voice.js'
@@ -97,7 +98,6 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
 
   const allSets = day.exercises.reduce((n, e) => n + (e.sets || 1), 0)
   const doneSets = day.exercises.reduce((n, e) => n + setsOf(log[e.name]).filter(s => s && (s.reps != null || s.secs != null)).length, 0)
-  const volume = day.exercises.reduce((v, e) => v + setsOf(log[e.name]).reduce((a, s) => a + (s?.w || 0) * (s?.reps || 0), 0), 0)
   const elapsed = Math.floor((Date.now() - t0.current) / 1000)
 
   if (cam) {
@@ -158,20 +158,115 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
         </>
       )}
 
-      {recap && (
-        <div className="ct-overlay solid ss-recap">
-          <div className="ct-check"><svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg></div>
-          <div className="ct-h">{doneSets ? 'Session done' : 'End without logging?'}</div>
-          <div className="ct-stats stk">
-            <div><b className="num">{doneSets}</b><span>sets</span></div>
-            <div><b className="num">{Math.round(volume)}</b><span>kg moved</span></div>
-            <div><b className="num">{Math.max(1, Math.round(elapsed / 60))}</b><span>min</span></div>
-          </div>
-          <button className="btn" onClick={() => { hapticSuccess(); onClose() }}>Done</button>
-          {doneSets < allSets && <button className="ct-link" onClick={() => setRecap(false)}>Keep training</button>}
-        </div>
-      )}
+      {recap && <Recap state={state} day={day} log={log} elapsed={elapsed} doneSets={doneSets} allSets={allSets}
+        onDone={() => { hapticSuccess(); onClose() }} onBack={() => { haptic(); setRecap(false) }} />}
     </div>
+  )
+}
+
+// Best set of an exercise: heaviest × reps, then reps, then seconds held.
+const score = s => (s.w || 0) * 1000 + (s.reps || 0) + (s.secs || 0)
+const bestOf = sets => sets.filter(s => s && (s.reps != null || s.secs != null)).reduce((a, b) => (!a || score(b) > score(a) ? b : a), null)
+
+// What got better than the last session with the same exercise.
+export function improvements(workoutLog, exercises, today = dayKey()) {
+  const out = []
+  let firsts = 0
+  for (const ex of exercises) {
+    const now = bestOf(setsOf(workoutLog?.[today]?.[ex.name]))
+    if (!now) continue
+    const last = lastTime(workoutLog, ex.name, today)?.best
+    if (!last) { firsts++; continue }
+    const lw = last.w || 0, w = now.w || 0
+    let what = null
+    if (w > lw) what = `${w} kg × ${now.reps} (+${+(w - lw).toFixed(1)} kg)`
+    else if (w === lw && (now.reps || 0) > (last.reps || 0)) what = `${w ? `${w} kg × ` : ''}${now.reps} reps (+${now.reps - (last.reps || 0)})`
+    else if ((now.secs || 0) > (last.secs || 0)) what = `${now.secs} s (+${now.secs - (last.secs || 0)} s)`
+    if (what) out.push({ name: ex.name, what })
+  }
+  return { better: out, firsts }
+}
+
+function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) {
+  const today = dayKey()
+  const sets = day.exercises.flatMap(e => setsOf(log[e.name]).filter(s => s && (s.reps != null || s.secs != null)))
+  const reps = sets.reduce((a, s) => a + (s.reps || 0), 0)
+  const secs = sets.reduce((a, s) => a + (s.secs || 0), 0)
+  const kg = Math.round(sets.reduce((a, s) => a + (s.w || 0) * (s.reps || 0), 0))
+  const tiles = [
+    { v: doneSets, l: doneSets === 1 ? 'set' : 'sets' },
+    kg > 0 ? { v: kg.toLocaleString('en-US'), l: 'kg moved' } : { v: reps, l: 'reps' },
+    ...(secs > 0 ? [{ v: fmt(secs), l: 'held' }] : []),
+    { v: fmt(elapsed), l: 'time' }
+  ]
+  const { better, firsts } = improvements(state.workoutLog, day.exercises, today)
+  const planned = program(state).days.length
+  const wk = week(state, today)
+  const sessions = wk.filter(d => d.score != null && setsLogged(state, d.key) > 0).length
+  const st = streakInfo(state, today).days
+  const nextDay = program(state).days[nextDayIndex(state, addDays(today, 1))]
+  const empty = doneSets === 0
+
+  return createPortal(
+    <div className="rc" role="dialog" aria-modal="true" aria-label={empty ? 'End session' : 'Session done'}>
+      <div className="rc-in">
+        {empty ? (
+          <>
+            <div className="rc-mark idle" />
+            <h1 className="rc-h">Nothing logged yet</h1>
+            <p className="rc-sub">End now and this session won’t count. Your plan stays where it is.</p>
+            <div className="rc-actions">
+              <button className="btn" onClick={onBack}>Keep training</button>
+              <button className="btn secondary" onClick={onDone}>End session</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ct-check rc-check"><svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg></div>
+            <h1 className="rc-h">Session done</h1>
+            <p className="rc-sub">{day.name} · {doneSets < allSets ? `${doneSets} of ${allSets} sets` : 'every set logged'}</p>
+
+            <div className={'rc-tiles n' + tiles.length}>
+              {tiles.map((t, i) => (
+                <div key={t.l} style={{ animationDelay: `${120 + i * 60}ms` }}><b className="num">{t.v}</b><span>{t.l}</span></div>
+              ))}
+            </div>
+
+            {(better.length > 0 || firsts > 0) && (
+              <div className="rc-card" style={{ animationDelay: '360ms' }}>
+                <span className="label">{better.length ? 'Better than last time' : 'Baseline set'}</span>
+                {better.slice(0, 4).map(b => (
+                  <div key={b.name} className="rc-pr"><span>{b.name}</span><b className="num">{b.what}</b></div>
+                ))}
+                {!better.length && <p className="hint">First time logging {firsts === 1 ? 'this exercise' : 'these exercises'}. Next session shows what to beat.</p>}
+              </div>
+            )}
+
+            <div className="rc-card" style={{ animationDelay: '420ms' }}>
+              <div className="row">
+                <span className="label">This week</span>
+                <span className="num rc-wk">{sessions} of {planned} sessions</span>
+              </div>
+              <div className="rc-dots">
+                {Array.from({ length: Math.max(planned, sessions) }).map((_, i) => <i key={i} className={i < sessions ? 'on' : ''} style={{ animationDelay: `${480 + i * 70}ms` }} />)}
+              </div>
+              <p className="hint">
+                {sessions >= planned ? 'Week goal hit.' : `${planned - sessions} more to hit the week.`}
+                {st > 0 && ` ${st}-day streak.`}
+              </p>
+            </div>
+
+            {nextDay && <p className="rc-next">Next: <b>{nextDay.name}</b> · {nextDay.exercises.length} exercises</p>}
+
+            <div className="rc-actions">
+              <button className="btn" onClick={onDone}>Done</button>
+              {doneSets < allSets && <button className="btn secondary" onClick={onBack}>Keep training</button>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
   )
 }
 

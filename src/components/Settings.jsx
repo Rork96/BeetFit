@@ -11,7 +11,7 @@ import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.4.0'
+const VERSION = '0.4.1'
 
 export default function Settings({ state, update, sync, coach, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
