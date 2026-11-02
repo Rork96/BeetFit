@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { occursOn, plansOn, planEvents, setWeekPlan, weekPlanOf, toICS, dropPlan, toggleNote, planDone } from './plans.js'
+import { movePlan, occursOn, plansOn, planEvents, setWeekPlan, weekPlanOf, toICS, dropPlan, toggleNote, planDone } from './plans.js'
 import { weekday } from './day.js'
 
 const MON = '2026-10-26'
@@ -63,5 +63,21 @@ describe('plans', () => {
     expect(ics).toContain('DTSTART;VALUE=DATE:20261028\r\nDTEND;VALUE=DATE:20261029')
     expect(ics.split('\r\n').every(l => l.length <= 75)).toBe(true)
     expect((ics.match(/BEGIN:VEVENT/g) || []).length).toBe(2)
+  })
+})
+
+describe('move to another day', () => {
+  it('weekly: skips this day, adds a one-off on the new day', () => {
+    const w = { id: 'a', kind: 'workout', date: '2026-11-02', repeat: 'weekly', auto: 'week', time: '18:00' }
+    const out = movePlan([w], w, '2026-11-09', '2026-11-10')
+    expect(occursOn(out[0], '2026-11-09')).toBe(false)
+    expect(occursOn(out[0], '2026-11-16')).toBe(true)
+    expect(out[1]).toMatchObject({ kind: 'workout', date: '2026-11-10', repeat: 'once', time: '18:00', movedFrom: '2026-11-09' })
+    expect(out[1].auto).toBeUndefined()
+    expect(occursOn(out[1], '2026-11-10')).toBe(true)
+  })
+  it('one-off: just changes the date', () => {
+    const n = { id: 'b', kind: 'note', date: '2026-11-03', title: 'Physio' }
+    expect(movePlan([n], n, '2026-11-03', '2026-11-04')[0].date).toBe('2026-11-04')
   })
 })

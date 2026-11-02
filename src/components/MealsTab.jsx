@@ -5,7 +5,7 @@ import { recentFoods, lastMeal, slotByHour, SLOTS } from '../lib/foods.js'
 import { generateDayPlan, swapMeal } from '../data/meals.js'
 import FoodCamera, { PortionCard, portion } from '../camera/FoodCamera.jsx'
 import { searchFood } from '../lib/api.js'
-import { dayKey, eaten, targets, addDays } from '../lib/day.js'
+import { dayKey, eaten, targets, addDays, mondayOf } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 
@@ -72,6 +72,7 @@ export default function MealsTab({ state, update }) {
           <div className="stat"><div className="v">{totals.c}g</div><div className="l">carbs</div></div>
           <div className="stat"><div className="v">{totals.f}g</div><div className="l">fat</div></div>
         </div>
+        <WeekBars state={state} today={today} />
       </div>
 
       {(again || recent.length > 0) && (
@@ -98,6 +99,8 @@ export default function MealsTab({ state, update }) {
 
       <FoodSearch slotLabel={slot} onAdd={(item, g) => addFoods([portion(item, g)])} />
 
+      <QuickKcal onAdd={x => { hapticSuccess(); addFoods([x]) }} />
+
       <div className="grid2">
         <button className="btn secondary" onClick={() => { haptic(); setCam('barcode') }}>▥ Barcode</button>
         <button className="btn secondary" onClick={() => { haptic(); setCam('snap') }}>◰ Photo</button>
@@ -117,7 +120,7 @@ export default function MealsTab({ state, update }) {
                       exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
                       <div>
                         <div style={{ fontWeight: 600 }}>{x.name}{x.est && <span className="ml-est">estimate</span>}</div>
-                        <div className="macros num">{x.grams} g · {x.kcal} kcal · P {x.p} · C {x.c} · F {x.f}{x.source === 'snap' ? ' · photo' : ''}</div>
+                        <div className="macros num">{x.source === 'quick' ? `${x.kcal} kcal${x.p ? ` · P ${x.p}` : ''} · ballpark` : `${x.grams} g · ${x.kcal} kcal · P ${x.p} · C ${x.c} · F ${x.f}${x.source === 'snap' ? ' · photo' : ''}`}</div>
                       </div>
                       <button className="btn small secondary" onClick={() => removeFood(x)} aria-label={`Remove ${x.name}`}>×</button>
                     </motion.div>
@@ -212,6 +215,64 @@ function FoodSearch({ onAdd, slotLabel }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// Mon–Sun: what you ate against each day's target. The week matters more than any single day.
+function WeekBars({ state, today }) {
+  const mon = mondayOf(today)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const k = addDays(mon, i)
+    return { k, future: k > today, e: k > today ? 0 : eaten(state, k).kcal, t: targets(state, k).kcal }
+  })
+  const past = days.filter(d => !d.future && (d.e > 0 || d.k === today))
+  const eatenSum = past.reduce((a, d) => a + d.e, 0), targetSum = past.reduce((a, d) => a + d.t, 0)
+  const max = Math.max(...days.map(d => Math.max(d.e, d.t)), 1)
+  if (past.length < 2) return null
+  return (
+    <div className="wb">
+      <div className="row"><span className="label">This week</span><span className="num td-small">{eatenSum.toLocaleString('en-US')} / {targetSum.toLocaleString('en-US')} kcal · {past.length} days</span></div>
+      <div className="wb-bars" aria-hidden="true">
+        {days.map((d, i) => (
+          <div key={d.k} className={'wb-day' + (d.k === today ? ' now' : '') + (d.future ? ' fut' : '')}>
+            <div className="wb-col">
+              <i className="wb-t" style={{ height: `${(d.t / max) * 100}%` }} />
+              <i className={'wb-e' + (d.e > d.t * 1.1 ? ' over' : '')} style={{ height: `${(d.e / max) * 100}%`, animationDelay: `${i * 40}ms` }} />
+            </div>
+            <span>{'MTWTFSS'[i]}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Eating out, no label, no scale: log a ballpark number and move on. Consistency beats precision.
+function QuickKcal({ onAdd }) {
+  const [open, setOpen] = useState(false)
+  const [kcal, setKcal] = useState('')
+  const [p, setP] = useState('')
+  const [name, setName] = useState('')
+  const ok = +kcal > 0 && +kcal < 5000
+  const add = () => {
+    if (!ok) return
+    onAdd({ name: name.trim() || 'Quick estimate', grams: 0, kcal: Math.round(+kcal), p: Math.round(+p || 0), c: 0, f: 0, source: 'quick', est: true })
+    setKcal(''); setP(''); setName(''); setOpen(false)
+  }
+  if (!open) return <button className="qk-open" onClick={() => { haptic(); setOpen(true) }}>No label? Log a ballpark number</button>
+  return (
+    <div className="card qk">
+      <span className="label">Ballpark</span>
+      <input placeholder="What was it? (optional)" value={name} onChange={e => setName(e.target.value.slice(0, 50))} />
+      <div className="qk-row">
+        <label>kcal<input inputMode="numeric" autoFocus value={kcal} onChange={e => setKcal(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter') add() }} /></label>
+        <label>protein g<input inputMode="numeric" value={p} onChange={e => setP(e.target.value.replace(/\D/g, '').slice(0, 3))} onKeyDown={e => { if (e.key === 'Enter') add() }} /></label>
+      </div>
+      <div className="grid2">
+        <button className="btn secondary" onClick={() => setOpen(false)}>Cancel</button>
+        <button className="btn" disabled={!ok} onClick={add}>Log it</button>
+      </div>
     </div>
   )
 }

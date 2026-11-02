@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { dayKey, addDays, weekday, dayScore, dayTasks, eaten, waterOf, setsLogged, streakInfo, program, KG_TO_LB } from '../lib/day.js'
-import { plansOf, plansOn, planDone, planTitle, dropPlan, toggleNote, newId, weekPlanOf, setWeekPlan, exportICS, PLAN_KINDS, DOW, planEvents } from '../lib/plans.js'
+import { plansOf, plansOn, planDone, planTitle, dropPlan, movePlan, toggleNote, newId, weekPlanOf, setWeekPlan, exportICS, PLAN_KINDS, DOW, planEvents } from '../lib/plans.js'
 import { pushOn, pushSupport, enablePush, remindersOf, PUSH_ERR } from '../lib/push.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
@@ -103,6 +103,7 @@ export default function Calendar({ state, update, first, planWeek, onStartWorkou
         <Day state={state} k={sel} today={today} onAdd={() => { haptic(); setSheet({ kind: 'add' }) }}
           onTick={p => { hapticSuccess(); savePlans(toggleNote(plans, p, sel)) }}
           onDrop={(p, all) => { haptic('medium'); savePlans(dropPlan(plans, p, sel, all)) }}
+          onMove={p => { haptic('medium'); savePlans(movePlan(plans, p, sel, addDays(sel, 1))) }}
           onShare={p => share([p])} onStart={onStartWorkout} />
       </div>
 
@@ -139,7 +140,7 @@ export default function Calendar({ state, update, first, planWeek, onStartWorkou
   )
 }
 
-function Day({ state, k, today, onAdd, onTick, onDrop, onShare, onStart }) {
+function Day({ state, k, today, onAdd, onTick, onDrop, onMove, onShare, onStart }) {
   const ps = plansOn(state, k)
   const past = k <= today
   const [open, setOpen] = useState(null) // plan id with actions shown
@@ -171,6 +172,7 @@ function Day({ state, k, today, onAdd, onTick, onDrop, onShare, onStart }) {
                 {open === p.id && (
                   <div className="cl-plan-acts">
                     <button className="chip" onClick={() => onShare(p)}>Add to phone calendar</button>
+                    {k >= today && !done && <button className="chip" onClick={() => onMove(p)}>Move to {k === today ? 'tomorrow' : 'next day'}</button>}
                     {p.repeat === 'weekly' && <button className="chip" onClick={() => onDrop(p, false)}>Skip this day</button>}
                     <button className="chip cl-del" onClick={() => onDrop(p, true)}>{p.repeat === 'weekly' ? 'Delete every week' : 'Delete'}</button>
                   </div>

@@ -139,6 +139,8 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
         {day.exercises.map((ex, ei) => (
           <ExerciseCard key={ex.name + ei} ex={ex} ei={ei} entry={log[ex.name]} locked={warm === 'todo'}
             last={lastTime(state.workoutLog, ex.name)} prev={prevSets(state.workoutLog, ex.name)}
+            note={state.exNotes?.[ex.name] || ''}
+            onNote={text => update(prev => ({ exNotes: { ...(prev.exNotes || {}), [ex.name]: text.slice(0, 120) } }))}
             onSet={(si, patch, rested) => { writeSet(ex.name, si, patch); if (rested) setRest({ left: ex.rest || 75, total: ex.rest || 75, label: ex.name }) }}
             onCamera={si => { haptic(); setCam({ ei, si }) }}
             onSwap={() => setSheet({ kind: 'swap', ei })}
@@ -283,9 +285,17 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
   )
 }
 
-function ExerciseCard({ ex, ei, entry, last, prev = [], locked, onSet, onCamera, onSwap, onPain }) {
+// Work done: kg × reps when there's weight, otherwise reps (or seconds held).
+const work = sets => sets.filter(s => s && (s.reps != null || s.secs != null)).reduce((a, s) => a + (s.w ? s.w * (s.reps || 0) : (s.reps || 0) + (s.secs || 0)), 0)
+
+function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locked, onSet, onCamera, onSwap, onPain }) {
   const goal = parseTarget(ex.reps)
   const sets = setsOf(entry)
+  const [editNote, setEditNote] = useState(false)
+  const [draft, setDraft] = useState(note)
+  // Live "vs last time" as sets get checked off.
+  const nowW = work(sets), prevW = work(prev)
+  const pct = prevW > 0 && nowW > 0 ? Math.round((nowW / prevW) * 100) : null
   const tid = trackerFor(ex)
   const skipped = entry?.skipped
   const nextSi = Array.from({ length: ex.sets || 1 }).findIndex((_, i) => !(sets[i] && (sets[i].reps != null || sets[i].secs != null)))
@@ -299,12 +309,22 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], locked, onSet, onCamera,
         </div>
         <button className="ss-more" onClick={() => setOpen(o => !o)} aria-label="More">⋯</button>
       </div>
+      {note && !editNote && <button className="ss-note" onClick={() => { setDraft(note); setEditNote(true) }}>✎ {note}</button>}
+      {editNote && (
+        <div className="ss-note-ed">
+          <input autoFocus placeholder="Seat 4, cable at 14, grip…" value={draft} onChange={e => setDraft(e.target.value.slice(0, 120))}
+            onKeyDown={e => { if (e.key === 'Enter') { onNote(draft.trim()); setEditNote(false) } }} />
+          <button className="btn small" onClick={() => { haptic(); onNote(draft.trim()); setEditNote(false) }}>Save</button>
+        </div>
+      )}
       {ex.cue && <p className="ss-cue">{ex.cue}</p>}
+      {pct != null && <p className={'ss-vs num' + (pct > 100 ? ' up' : '')}>{pct > 100 ? `+${pct - 100}% vs last time` : `${pct}% of last time`}<i style={{ transform: `scaleX(${Math.min(1, pct / 100)})` }} /></p>}
       {last && <p className="td-small num">Last time: {last.sets} sets · best {last.best.w ? `${last.best.w} kg × ` : ''}{last.best.reps ?? `${last.best.secs}s`}{last.best.rpe ? ` @${last.best.rpe}` : ''}</p>}
       {ex.progression && <p className="td-small">Next step: {ex.progression}</p>}
       {open && (
         <div className="ss-actions">
           <button className="chip" onClick={() => { setOpen(false); onSwap() }}>⇄ Swap exercise</button>
+          <button className="chip" onClick={() => { setOpen(false); setDraft(note); setEditNote(true) }}>✎ {note ? 'Edit note' : 'Add note'}</button>
           <button className="chip ss-pain" onClick={() => { setOpen(false); onPain() }}>⚑ Report pain</button>
         </div>
       )}

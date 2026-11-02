@@ -45,6 +45,9 @@ describe('reminder schedule', () => {
     const doc = { foodLog: { [y]: food, [d]: food }, water: { [y]: 8 } }
     expect(message('streak', doc, d).body).toBe('Today isn’t counted yet. Finish your water or do a short session and it is.')
     expect(message('streak', { ...doc, water: { [y]: 8, [d]: 8 } }, d)).toBeNull()
+    // paused or streak switched off: quiet
+    expect(message('streak', { ...doc, pauses: [{ from: d, to: '2026-10-30' }] }, d)).toBeNull()
+    expect(message('streak', { ...doc, settings: { streak: false } }, d)).toBeNull()
   })
 })
 

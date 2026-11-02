@@ -33,6 +33,13 @@ export function dropPlan(plans, p, key, all) {
   return plans.map(x => (x.id === p.id ? { ...x, skip: [...(x.skip || []), key] } : x))
 }
 
+// Life happened: push one occurrence to another day. Weekly plans skip this day and get a one-off copy.
+export function movePlan(plans, p, key, toKey) {
+  if (p.repeat !== 'weekly') return plans.map(x => (x.id === p.id ? { ...x, date: toKey } : x))
+  const { auto, skip, until, ...base } = p
+  return [...plans.map(x => (x.id === p.id ? { ...x, skip: [...(x.skip || []), key] } : x)), { ...base, id: newId(), date: toKey, repeat: 'once', movedFrom: key }]
+}
+
 export function toggleNote(plans, p, key) {
   return plans.map(x => (x.id !== p.id ? x : { ...x, done: (x.done || []).includes(key) ? x.done.filter(d => d !== key) : [...(x.done || []), key] }))
 }

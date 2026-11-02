@@ -73,7 +73,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
       <div className="stk td-stack">
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
-        <StreakPill state={state} onOpen={() => setStreakOpen(true)} />
+        {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
         <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
         {todayPlans.length > 0 && (
           <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
@@ -149,11 +149,11 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
         {/* Week + today's tasks */}
         <div className="card td-wk">
-          <div className="row"><span className="label">This week · <span className="num">{wk.filter(d => d.score >= 2).length}/7</span> · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</span><button className="rd-all" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>Calendar →</button></div>
+          <div className="row"><span className="label">This week · <span className="num">{wk.filter(d => d.score >= 2).length}/7</span>{state.settings?.streak !== false && <> · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</>}</span><button className="rd-all" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>Calendar →</button></div>
           <div className="td-week">
             {wk.map(d => (
               <div key={d.key} className={'td-day' + (d.today ? ' today' : '')}>
-                <i className={d.score == null ? 'future' : si.frozen.includes(d.key) ? 'frz' : `s${d.score}`} />
+                <i className={d.paused && !(d.score >= 2) ? 'pz' : d.score == null ? 'future' : si.frozen.includes(d.key) ? 'frz' : `s${d.score}`} />
                 <span>{d.label}</span>
               </div>
             ))}
@@ -165,13 +165,13 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
               </span>
             ))}
           </div>
-          <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>
+          {state.settings?.streak !== false && <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>}
         </div>
 
         <InstallCard />
         {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
-      {streakOpen && <StreakSheet state={state} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
+      {streakOpen && <StreakSheet state={state} update={update} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
       {milestone && <Milestone days={milestone} onClose={closeMilestone} />}
     </div>
   )

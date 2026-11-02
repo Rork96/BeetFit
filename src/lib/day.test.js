@@ -119,3 +119,14 @@ describe('best streak and milestones', () => {
     expect(todayStanding(stateWith([]), SUN).need).toBe(2)
   })
 })
+
+describe('streak pause', () => {
+  it('paused days neither count nor break, and best streak skips them too', () => {
+    // 3 good days, 3 paused (no logs, would need 3 freezes), then 2 good days up to SUN
+    const good = [-7, -6, -5, -1, 0].map(i => addDays(SUN, i))
+    const s = stateWith(good, { pauses: [{ from: addDays(SUN, -4), to: addDays(SUN, -2) }] })
+    expect(streakInfo(s, SUN).days).toBe(5)
+    expect(bestStreak(s, SUN)).toBe(5)
+    expect(streakInfo(stateWith(good), SUN).days).toBe(2) // without the pause it breaks
+  })
+})

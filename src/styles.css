@@ -274,3 +274,23 @@ textarea { font-family: inherit; }
 .gem3d-fb { display: none; position: absolute; inset: 25%; border: 3px solid var(--accent); }
 .gem3d-fb.on { display: grid; place-items: center; }
 .gem3d-fb i { width: 34%; height: 34%; background: var(--accent); }
+
+/* Food: week bars */
+.wb { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; border-top: 1px solid var(--line); padding-top: 12px; }
+.wb-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 64px; }
+.wb-day { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wb-day span { font: 600 10px var(--f-num); color: var(--hint); }
+.wb-day.now span { color: var(--accent); }
+.wb-col { position: relative; flex: 1; width: 100%; max-width: 22px; }
+.wb-col i { position: absolute; left: 0; right: 0; bottom: 0; }
+.wb-t { border: 1px dashed var(--line-2); }
+.wb-e { background: var(--accent); transform-origin: bottom; animation: wbUp var(--dur-4) var(--ease-out) backwards; }
+.wb-e.over { background: var(--warn); }
+.wb-day.fut .wb-t { opacity: .4; }
+@keyframes wbUp { from { transform: scaleY(0) } }
+
+/* Food: ballpark entry */
+.qk-open { align-self: center; border: 0; background: none; color: var(--hint); font: 500 13px var(--f-body); text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; }
+.qk { display: flex; flex-direction: column; gap: 10px; }
+.qk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qk-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--hint); }

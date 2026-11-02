@@ -85,6 +85,9 @@ export default function Settings({ state, update, sync, coach, account, openChat
               <button onClick={() => setS({ waterTarget: Math.min(16, (s.waterTarget || 8) + 1) })} aria-label="More">+</button>
             </div>
           </Row>
+          <Row label="Streak" hint="Off hides the streak, milestones and the evening streak nudge. Your logs stay the same.">
+            <Toggle on={s.streak !== false} onChange={v => setS({ streak: v })} />
+          </Row>
           <Row label="Eat to your training days" hint="Training days get a little more food, rest days a little less; the week adds up the same. Uses your training days from Calendar.">
             <Toggle on={s.cycleFood !== false} onChange={v => setS({ cycleFood: v })} />
           </Row>

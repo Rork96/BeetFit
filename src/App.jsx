@@ -25,7 +25,7 @@ import { planEvents } from './lib/plans.js'
 const REM_SENT = 'beetfit_rem_sent'
 
 // Top-level keys merged as a whole during sync: remember when each was last edited on this device.
-const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans']
+const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans', 'pauses', 'exNotes']
 
 // 2px geometric line icons, square-based.
 const Icon = {

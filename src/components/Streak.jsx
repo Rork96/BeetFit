@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react'
 
 const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { createPortal } from 'react-dom'
-import { dayKey, addDays, mondayOf, dayScore, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES } from '../lib/day.js'
+import { dayKey, addDays, mondayOf, dayScore, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES, isPaused, activePause } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import './streak.css'
@@ -15,19 +15,32 @@ export function StreakPill({ state, onOpen }) {
   const today = dayKey()
   const { days } = streakInfo(state, today)
   const s = todayStanding(state, today)
-  const risk = days > 0 && s.need > 0 && new Date().getHours() >= 17
-  const text = days === 0 ? (s.need === 0 ? 'Today counts. Streak started' : 'Start your streak today')
+  const pause = activePause(state, today)
+  const risk = !pause && days > 0 && s.need > 0 && new Date().getHours() >= 17
+  const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const text = pause ? `${days}-day streak · paused to ${fmtD(pause.to)}` : days === 0 ? (s.need === 0 ? 'Today counts. Streak started' : 'Start your streak today')
     : risk ? `${days}-day streak · ${s.need} more task${s.need > 1 ? 's' : ''} tonight`
       : `${days}-day streak${s.need === 0 ? ' · today ✓' : ''}`
   return (
-    <button className={'td-streak' + (days >= 7 ? ' hot' : '') + (risk ? ' risk' : '')} onClick={() => { haptic(); onOpen() }}>
+    <button className={'td-streak' + (days >= 7 ? ' hot' : '') + (risk ? ' risk' : '') + (pause ? ' paused' : '')} onClick={() => { haptic(); onOpen() }}>
       <span className="td-mark" /><span className="num">{text}</span>
     </button>
   )
 }
 
-export function StreakSheet({ state, onClose, onCalendar }) {
+export function StreakSheet({ state, update, onClose, onCalendar }) {
   const today = dayKey()
+  const pause = activePause(state, today)
+  const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const setPause = n => {
+    haptic('medium')
+    update(prev => {
+      const rest = (prev.pauses || []).filter(p => !(today >= p.from && today <= p.to)).filter(p => p.to >= addDays(today, -400))
+      // Ending a pause keeps the days already paused (they stay covered) and stops it yesterday.
+      if (!n) return { pauses: [...rest, ...(pause && pause.from < today ? [{ ...pause, to: addDays(today, -1) }] : [])] }
+      return { pauses: [...rest, { from: pause?.from || today, to: addDays(today, n - 1) }] }
+    })
+  }
   const info = streakInfo(state, today)
   const best = Math.max(bestStreak(state, today), info.days)
   const s = todayStanding(state, today)
@@ -39,7 +52,7 @@ export function StreakSheet({ state, onClose, onCalendar }) {
   const frozen = new Set(info.frozen)
   const weeks = Array.from({ length: 12 }, (_, w) => Array.from({ length: 7 }, (_, d) => {
     const k = addDays(start, w * 7 + d)
-    return { k, score: k > today ? null : dayScore(state, k), frz: frozen.has(k), today: k === today }
+    return { k, score: k > today ? null : dayScore(state, k), frz: frozen.has(k), today: k === today, pz: isPaused(state, k) }
   }))
   useEffect(() => { document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = '' } }, [])
 
@@ -66,7 +79,7 @@ export function StreakSheet({ state, onClose, onCalendar }) {
             {s.todo.length < 3 && ['food', 'water', 'train'].filter(id => !s.todo.some(t => t.id === id)).map(id => <span key={id} className="chip on">✓ {TASK[id]}</span>)}
             {s.todo.map(t => <span key={t.id} className="chip">{TASK[t.id]}</span>)}
           </div>
-          <p className="hint">{s.need === 0 ? 'Today counts. Anything else is a bonus.' : `${s.need} more and today counts. Any ${s.need === 1 ? 'one' : 'two'} of the open tasks.`}</p>
+          <p className="hint">{pause && s.need > 0 ? 'Paused. Today needs nothing from you; anything you log still counts.' : s.need === 0 ? 'Today counts. Anything else is a bonus.' : `${s.need} more and today counts. Any ${s.need === 1 ? 'one' : 'two'} of the open tasks.`}</p>
         </div>
 
         <div className="sk-card">
@@ -74,12 +87,34 @@ export function StreakSheet({ state, onClose, onCalendar }) {
           <p className="sk-frz">{usedOn ? `Used on ${DOW[(new Date(usedOn + 'T12:00').getDay() + 6) % 7]}. A new one comes Monday.` : 'Ready. One missed day this week won’t break your streak.'}</p>
         </div>
 
+        {update && (
+          <div className="sk-card">
+            <span className="label">Sick or travelling?</span>
+            {pause ? (
+              <>
+                <p className="sk-frz">Paused until {fmtD(pause.to)}. These days don’t count and don’t break anything.</p>
+                <div className="chips wrap">
+                  {pause.to < addDays(today, 13) && <button className="chip" onClick={() => setPause(14)}>Extend to 2 weeks</button>}
+                  <button className="chip on" onClick={() => setPause(0)}>I’m back · resume</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="hint" style={{ margin: 0 }}>Pause the streak. Paused days don’t count against you, and evening nudges stop.</p>
+                <div className="chips wrap">
+                  {[3, 7, 14].map(n => <button key={n} className="chip" onClick={() => setPause(n)}>{n} days</button>)}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="sk-card">
           <span className="label">Last 12 weeks</span>
           <div className="sk-grid" aria-hidden="true">
             {weeks.map((w, i) => (
               <div key={i} className="sk-col">
-                {w.map(c => <i key={c.k} className={(c.score == null ? 'fut' : c.frz ? 'frz' : `s${c.score}`) + (c.today ? ' now' : '')} style={{ animationDelay: `${i * 25}ms` }} />)}
+                {w.map(c => <i key={c.k} className={(c.score == null && !c.pz ? 'fut' : c.frz ? 'frz' : c.pz && c.score < 2 ? 'pz' : `s${c.score}`) + (c.today ? ' now' : '')} style={{ animationDelay: `${i * 25}ms` }} />)}
               </div>
             ))}
           </div>
@@ -101,8 +136,10 @@ const SEEN = 'beetfit_milestones'
 export function useMilestone(state) {
   const today = dayKey()
   const days = streakInfo(state, today).days
+  const off = state.settings?.streak === false
   const [show, setShow] = useState(null)
   useEffect(() => {
+    if (off) return
     if (!MILESTONES.includes(days)) return
     let seen = {}
     try { seen = JSON.parse(localStorage.getItem(SEEN)) || {} } catch { /* ignore */ }
@@ -111,7 +148,7 @@ export function useMilestone(state) {
     try { localStorage.setItem(SEEN, JSON.stringify({ ...seen, [days]: today })) } catch { /* ignore */ }
     hapticSuccess()
     setShow(days)
-  }, [days, today])
+  }, [days, today, off])
   return [show, () => setShow(null)]
 }
 

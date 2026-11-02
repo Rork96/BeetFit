@@ -114,6 +114,8 @@ export function message(kind, doc, today) {
   if (kind === 'streak') {
     // Only with a synced doc (we must know what's done), only when there's a streak to keep.
     if (!doc) return null
+    // Streak hidden in settings, or paused (sick / travelling): no nudge.
+    if (doc.settings?.streak === false || (doc.pauses || []).some(p => today >= p.from && today <= p.to)) return null
     const now = tasks(doc, today), before = tasks(doc, addDays(today, -1))
     if (now.n >= 2 || before.n < 2) return null
     const body = now.n === 1 ? `Today isn’t counted yet. ${cap(now.todo.join(' or '))} and it is.`

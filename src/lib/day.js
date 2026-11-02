@@ -106,12 +106,17 @@ export const mondayOf = key => addDays(key, -weekday(key))
 
 // A day counts at 2 of 3 tasks. One missed day per Mon–Sun week is covered by a freeze:
 // the streak holds through it but doesn't grow. A second miss in the same week ends it.
+// Paused days (sick, travelling, life happening) neither count nor break the streak.
+export const isPaused = (state, k) => (state.pauses || []).some(p => k >= p.from && k <= p.to)
+export const activePause = (state, key = dayKey()) => (state.pauses || []).find(p => key >= p.from && key <= p.to) || null
+
 export function streakInfo(state, key = dayKey()) {
   let days = 0, oldest = null
   const frozen = [], used = new Set()
-  let k = dayScore(state, key) >= 2 ? key : addDays(key, -1) // today doesn't break it until it's over
+  let k = dayScore(state, key) >= 2 || isPaused(state, key) ? key : addDays(key, -1) // today doesn't break it until it's over
   for (let i = 0; i < 3650; i++, k = addDays(k, -1)) {
     if (dayScore(state, k) >= 2) { days++; oldest = k; continue }
+    if (isPaused(state, k)) continue
     const wk = mondayOf(k)
     if (used.has(wk)) break
     used.add(wk); frozen.push(k)
@@ -131,6 +136,7 @@ export function bestStreak(state, key = dayKey()) {
   for (let k = first; k <= key; k = addDays(k, 1)) {
     if (dayScore(state, k) >= 2) { run++; best = Math.max(best, run); continue }
     if (k === key) break // today isn't over
+    if (isPaused(state, k)) continue
     const wk = mondayOf(k)
     if (run > 0 && !used.has(wk)) { used.add(wk); continue }
     run = 0
@@ -159,7 +165,7 @@ export function week(state, key = dayKey()) {
   const monday = mondayOf(key)
   return Array.from({ length: 7 }, (_, i) => {
     const k = addDays(monday, i)
-    return { key: k, label: 'MTWTFSS'[i], score: k > key ? null : dayScore(state, k), today: k === key }
+    return { key: k, label: 'MTWTFSS'[i], score: k > key ? null : dayScore(state, k), today: k === key, paused: isPaused(state, k) }
   })
 }
 
