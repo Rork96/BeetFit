@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { LIB, CUEX, EQLABEL, PATLABEL } from '../data/library.js'
+import HowToSheet, { ExerciseAnim, howtoFor } from './HowTo.jsx'
 import { availOf, DEFAULT_INTAKE } from '../lib/program.js'
 import { TRACKER_BY_NAME } from '../camera/pose/exercises.js'
 import { haptic } from '../lib/platform.js'
@@ -13,6 +14,7 @@ export default function Library({ state, onClose }) {
   const [cat, setCat] = useState('All')
   const [onlyFit, setOnlyFit] = useState(true)
   const [open, setOpen] = useState(null)
+  const [how, setHow] = useState(null)
   useBackClose(!!open, () => setOpen(null))
 
   const rows = useMemo(() => LIB
@@ -55,6 +57,7 @@ export default function Library({ state, onClose }) {
           <div className="sheet">
             <span className="label">{open.cat} · {PATLABEL[open.pat]}</span>
             <h2>{open.n}</h2>
+            {howtoFor(open.id) && <button className="ht-lib" onClick={() => { haptic(); setHow(open.id) }} aria-label={`How to do ${open.n}`}><ExerciseAnim H={howtoFor(open.id).H} size="lg" /><span className="btn small">▶ Step by step</span></button>}
             {CUEX[open.n] && <p className="ss-cue">{CUEX[open.n]}</p>}
             <div className="grid2">
               <div className="stat"><div className="v" style={{ fontSize: 14 }}>{open.pri}</div><div className="l">primary</div></div>
@@ -66,6 +69,7 @@ export default function Library({ state, onClose }) {
           </div>
         </>
       )}
+      {how && <HowToSheet id={how} onClose={() => setHow(null)} onOpen={setHow} />}
     </div>
   )
 }

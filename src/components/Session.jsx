@@ -7,6 +7,7 @@ import { haptic, hapticSuccess, hapticError } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { speak } from '../lib/voice.js'
 import Warmup from './Warmup.jsx'
+import HowToSheet, { HowToThumb } from './HowTo.jsx'
 import { setLiveSession, flushState } from '../lib/store.js'
 import { useWakeLock } from '../lib/hooks.js'
 import './session.css'
@@ -53,6 +54,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
   const [rest, setRest] = useState(null) // { left, total, label }
   const [cam, setCam] = useState(startCamAt ?? null) // { ei, si } | null
   const [sheet, setSheet] = useState(null) // { kind: 'swap'|'pain', ei }
+  const [how, setHow] = useState(null) // exercise id whose how-to sheet is open
   const [recap, setRecap] = useState(false)
   const t0 = useRef(startedAt || Date.now())
   useWakeLock(true) // the screen stays on while training; a locked phone used to lose the session
@@ -132,6 +134,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
         <button className="btn small" onClick={() => { haptic(); setRecap(true) }}>Finish</button>
       </header>
       <div className="ss-progress"><i style={{ transform: `scaleX(${allSets ? doneSets / allSets : 0})` }} /></div>
+      {how && <HowToSheet id={how} onClose={() => setHow(null)} onOpen={setHow} />}
 
       <div className="page stk ss-list">
         <Warmup dayName={day.name} status={warm} onDone={id => markWarm(id)} onSkip={() => markWarm('skipped')} />
@@ -143,6 +146,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
             onNote={text => update(prev => ({ exNotes: { ...(prev.exNotes || {}), [ex.name]: text.slice(0, 120) } }))}
             onSet={(si, patch, rested) => { writeSet(ex.name, si, patch); if (rested) setRest({ left: ex.rest || 75, total: ex.rest || 75, label: ex.name }) }}
             onCamera={si => { haptic(); setCam({ ei, si }) }}
+            onHow={setHow}
             onSwap={() => setSheet({ kind: 'swap', ei })}
             onPain={() => setSheet({ kind: 'pain', ei })} />
         ))}
@@ -288,7 +292,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
 // Work done: kg × reps when there's weight, otherwise reps (or seconds held).
 const work = sets => sets.filter(s => s && (s.reps != null || s.secs != null)).reduce((a, s) => a + (s.w ? s.w * (s.reps || 0) : (s.reps || 0) + (s.secs || 0)), 0)
 
-function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locked, onSet, onCamera, onSwap, onPain }) {
+function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locked, onSet, onCamera, onHow, onSwap, onPain }) {
   const goal = parseTarget(ex.reps)
   const sets = setsOf(entry)
   const [editNote, setEditNote] = useState(false)
@@ -303,6 +307,7 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
   return (
     <div className={'card ss-ex' + (locked ? ' locked' : '') + (skipped ? ' skipped' : '') + (nextSi === -1 ? ' complete' : '')}>
       <div className="row" style={{ alignItems: 'flex-start' }}>
+        <HowToThumb id={ex.id || ex.name} onOpen={onHow} />
         <div className="ex-main">
           <div className="ex-name">{ex.name}{tid && <span className="ex-cam">▣ cam</span>}</div>
           <div className="ex-meta num">{ex.sets} × {ex.reps}{ex.weight ? ` · ${ex.weight} kg` : ''}{ex.rest ? ` · rest ${ex.rest}s` : ''}</div>
