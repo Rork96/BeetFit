@@ -14,7 +14,7 @@ import { planEvents } from '../lib/plans.js'
 import { AccountCard } from './Account.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.6.0'
+const VERSION = '0.7.0'
 
 export default function Settings({ state, update, sync, coach, account, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)

@@ -21,6 +21,12 @@ export default defineConfig({
         background_color: '#0c0d11',
         theme_color: '#0c0d11',
         categories: ['health', 'fitness', 'lifestyle'],
+        // Long-press the home-screen icon (Android, desktop) to jump straight in.
+        shortcuts: [
+          { name: 'Log food', short_name: 'Food', url: '/?tab=meals', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Train', short_name: 'Train', url: '/?tab=workout', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Progress', short_name: 'Progress', url: '/?tab=progress', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] }
+        ],
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
