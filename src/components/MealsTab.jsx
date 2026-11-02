@@ -1,20 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'motion/react'
+import { recentFoods, lastMeal, slotByHour, SLOTS } from '../lib/foods.js'
 import { generateDayPlan, swapMeal } from '../data/meals.js'
 import FoodCamera, { PortionCard, portion } from '../camera/FoodCamera.jsx'
 import { searchFood } from '../lib/api.js'
-import { dayKey, eaten, targets } from '../lib/day.js'
+import { dayKey, eaten, targets, addDays } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
-import { haptic } from '../lib/platform.js'
+import { haptic, hapticSuccess } from '../lib/platform.js'
 
-const slotByHour = () => { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack' }
 
 export default function MealsTab({ state, update }) {
   const { mealPlan } = state
   const t = targets(state)
   const today = dayKey()
   const [cam, setCam] = useState(null) // 'barcode' | 'snap'
-  const [toast, setToast] = useState(null)
+  const [toast, setToast] = useState(null) // { text, undo? }
+  const toastT = useRef(null)
+  const say = (text, undo) => { clearTimeout(toastT.current); setToast({ text, undo }); toastT.current = setTimeout(() => setToast(null), undo ? 4000 : 2200) }
+  const slot = slotByHour()
+  const recent = recentFoods(state, today, 8)
+  const again = lastMeal(state, today, slot)
+  const loggedIn = it => (state.foodLog?.[today] || []).some(x => x.name === it.name && x.slot === slot)
   useBackClose(!!cam, () => setCam(null))
 
   const plan = mealPlan?.date === today ? mealPlan.items : null
@@ -25,20 +32,26 @@ export default function MealsTab({ state, update }) {
   const regenerate = () => { haptic(); update({ mealPlan: { date: today, items: generateDayPlan(t.kcal) } }) }
   const swap = i => { haptic(); update({ mealPlan: { date: today, items: swapMeal(plan, i, t.kcal) } }) }
 
-  const addFoods = items => {
-    const slot = slotByHour()
+  const addFoods = (items, { quiet } = {}) => {
+    const t0 = Date.now()
+    const ats = items.map((_, i) => t0 + i)
     update(prev => {
       const fl = prev.foodLog || {}
       const day = fl[today] || []
-      return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot, at: Date.now() + i }))] } }
+      return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot, at: ats[i] }))] } }
     })
     if (cam) history.back()
-    setToast(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${slot}`)
-    setTimeout(() => setToast(null), 2200)
+    if (!quiet) say(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${slot}`,
+      () => update(prev => ({ foodLog: { ...prev.foodLog, [today]: (prev.foodLog?.[today] || []).filter(x => !ats.includes(x.at)) } })))
   }
-  const removeFood = at => { haptic(); update(prev => ({ foodLog: { ...prev.foodLog, [today]: (prev.foodLog?.[today] || []).filter(x => x.at !== at) } })) }
+  const removeFood = x => {
+    haptic()
+    update(prev => ({ foodLog: { ...prev.foodLog, [today]: (prev.foodLog?.[today] || []).filter(y => y.at !== x.at) } }))
+    say(`Removed ${x.name.split(' · ')[0]}`, () => update(prev => ({ foodLog: { ...prev.foodLog, [today]: [...(prev.foodLog?.[today] || []), x].sort((a, b) => a.at - b.at) } })))
+  }
+  const quick = it => { hapticSuccess(); const { count, ...x } = it; addFoods([x]) }
 
-  if (cam) return <FoodCamera initialMode={cam} slotLabel={slotByHour()} onAdd={addFoods} onClose={() => history.back()} />
+  if (cam) return <FoodCamera initialMode={cam} slotLabel={slot} onAdd={addFoods} onClose={() => history.back()} />
 
   return (
     <div className="page">
@@ -48,7 +61,10 @@ export default function MealsTab({ state, update }) {
       </div>
 
       <div className="card">
-        <div className="row"><span className="label">Today</span><span className="num td-small">{totals.kcal} / {t.kcal} kcal</span></div>
+        <div className="row">
+          <span className="label">Today{t.dayType && <span className={'td-dt ' + t.dayType}>{t.dayType === 'train' ? `Training day +${t.delta}` : `Rest day ${t.delta}`}</span>}</span>
+          <span className="num td-small">{totals.kcal} / {t.kcal} kcal</span>
+        </div>
         <div className="progressbar"><div style={{ width: `${Math.min(100, pct)}%`, background: pct > 110 ? 'var(--warn)' : undefined }} /></div>
         <div className="grid4">
           <div className="stat"><div className="v">{Math.max(0, t.kcal - totals.kcal)}</div><div className="l">kcal left</div></div>
@@ -58,7 +74,29 @@ export default function MealsTab({ state, update }) {
         </div>
       </div>
 
-      <FoodSearch slotLabel={slotByHour()} onAdd={(item, g) => addFoods([portion(item, g)])} />
+      {(again || recent.length > 0) && (
+        <div className="card mq">
+          <div className="row"><span className="label">Quick add · {slot}</span>{recent.length > 0 && <span className="td-small">1 tap</span>}</div>
+          {again && !again.items.every(loggedIn) && (
+            <button className="mq-again" onClick={() => { hapticSuccess(); addFoods(again.items) }}>
+              <span><b>Same {slot} as {again.date === addDays(today, -1) ? 'yesterday' : new Date(again.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short' })}</b>
+                <span className="td-small">{again.items.map(x => x.name.split(' · ')[0]).join(', ')}</span></span>
+              <span className="num mq-k">{again.kcal}<small>kcal</small></span>
+            </button>
+          )}
+          {recent.length > 0 && (
+            <div className="mq-chips">
+              {recent.map(it => (
+                <motion.button key={it.name} whileTap={{ scale: 0.94 }} className="mq-chip" onClick={() => quick(it)}>
+                  <b>{it.name.split(' · ')[0]}</b><span className="num">{it.grams} g · {it.kcal}</span>
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <FoodSearch slotLabel={slot} onAdd={(item, g) => addFoods([portion(item, g)])} />
 
       <div className="grid2">
         <button className="btn secondary" onClick={() => { haptic(); setCam('barcode') }}>▥ Barcode</button>
@@ -66,17 +104,28 @@ export default function MealsTab({ state, update }) {
       </div>
 
       {logged.length > 0 && (
-        <div className="card stk">
+        <div className="card ml">
           <span className="label">Logged today</span>
-          {logged.map(x => (
-            <div className="meal" key={x.at}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{x.name}</div>
-                <div className="macros num">{x.grams} g · {x.kcal} kcal · P {x.p} · C {x.c} · F {x.f} · {x.slot}{x.source === 'snap' ? ' · photo' : ''}</div>
+          {SLOTS.filter(sl => logged.some(x => x.slot === sl)).map(sl => {
+            const items = logged.filter(x => x.slot === sl)
+            return (
+              <div key={sl} className="ml-slot">
+                <div className="ml-h"><span>{sl}</span><span className="num">{Math.round(items.reduce((a, x) => a + x.kcal, 0))} kcal</span></div>
+                <AnimatePresence initial={false}>
+                  {items.map(x => (
+                    <motion.div className="meal" key={x.at} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{x.name}{x.est && <span className="ml-est">estimate</span>}</div>
+                        <div className="macros num">{x.grams} g · {x.kcal} kcal · P {x.p} · C {x.c} · F {x.f}{x.source === 'snap' ? ' · photo' : ''}</div>
+                      </div>
+                      <button className="btn small secondary" onClick={() => removeFood(x)} aria-label={`Remove ${x.name}`}>×</button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
-              <button className="btn small secondary" onClick={() => removeFood(x.at)} aria-label={`Remove ${x.name}`}>×</button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -96,7 +145,15 @@ export default function MealsTab({ state, update }) {
         ))}
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
+      <AnimatePresence>
+        {toast && (
+          <motion.div className="toast mt" key={toast.text} initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 36 }}>
+            <span>{toast.text}</span>
+            {toast.undo && <button onClick={() => { haptic(); toast.undo(); setToast(null) }}>Undo</button>}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

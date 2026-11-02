@@ -3,6 +3,7 @@ import { GOALS, ACTIVITY_LEVELS } from '../lib/calories.js'
 import { applyMotionLevel, getMotionLevel } from '../lib/motion.js'
 import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.js'
 import { exportState, clearState } from '../lib/store.js'
+import { downloadCSV } from '../lib/foods.js'
 import { haptic } from '../lib/platform.js'
 import { KG_TO_LB } from '../lib/day.js'
 import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
@@ -84,6 +85,9 @@ export default function Settings({ state, update, sync, coach, account, openChat
               <button onClick={() => setS({ waterTarget: Math.min(16, (s.waterTarget || 8) + 1) })} aria-label="More">+</button>
             </div>
           </Row>
+          <Row label="Eat to your training days" hint="Training days get a little more food, rest days a little less; the week adds up the same. Uses your training days from Calendar.">
+            <Toggle on={s.cycleFood !== false} onChange={v => setS({ cycleFood: v })} />
+          </Row>
           <Row label="Voice coach" hint="Counts the last reps and calls rest">
             <Toggle on={voice} onChange={v => { unlockVoice(); setVoice(v); setVoiceEnabled(v); if (v) speak('Voice coach on') }} />
           </Row>
@@ -107,7 +111,11 @@ export default function Settings({ state, update, sync, coach, account, openChat
         <section className="card">
           <span className="label">Your data</span>
           <p className="hint">{account?.value ? 'Stored on this device and in your BeetFit account.' : sync?.on ? 'Stored on this device and backed up to BeetFit sync.' : 'Everything is stored on this device.'} Camera video never leaves it. Meal photos are sent to Google Gemini only when you tap the shutter.</p>
-          <button className="btn secondary" onClick={() => { haptic(); exportState(state) }}>Export all data (JSON)</button>
+          <div className="grid2">
+            <button className="btn secondary" onClick={() => { haptic(); downloadCSV(state) }}>Export CSV</button>
+            <button className="btn secondary" onClick={() => { haptic(); exportState(state) }}>Export JSON</button>
+          </div>
+          <p className="hint" style={{ margin: 0 }}>Free, always. CSV opens in Sheets or Excel: every meal, set, weigh-in and glass of water.</p>
           <button className={'btn ' + (armReset ? 'danger' : 'secondary')}
             onClick={() => {
               haptic('medium')

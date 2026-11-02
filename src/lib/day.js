@@ -18,10 +18,29 @@ export function currentWeight(state) {
   return log.length ? log[log.length - 1].kg : state.profile.weightKg
 }
 
-export function targets(state) {
+export function targets(state, key = dayKey()) {
   const m = macros({ ...state.profile, weightKg: currentWeight(state) })
   const o = state.coach?.override // set by the client's coach; wins over the formula
-  return { kcal: o?.kcal ?? m.kcal, protein: o?.protein ?? m.protein, coach: !!(o?.kcal || o?.protein), fat: m.fat, carbs: m.carbs, water: state.settings?.waterTarget || 8 }
+  const base = { kcal: o?.kcal ?? m.kcal, protein: o?.protein ?? m.protein, coach: !!(o?.kcal || o?.protein), fat: m.fat, carbs: m.carbs, water: state.settings?.waterTarget || 8, dayType: null, delta: 0 }
+  if (base.coach || state.settings?.cycleFood === false) return base
+  const c = foodCycle(state, key)
+  if (!c) return base
+  // Carbs carry the difference; protein and fat stay put. The week's total matches the plain target.
+  const delta = Math.round(m.kcal * c.k / 10) * 10
+  return { ...base, kcal: base.kcal + delta, carbs: Math.max(0, base.carbs + Math.round(delta / 4)), dayType: c.type, delta }
+}
+
+// Training days from the weekly plan (Calendar → Training days) eat a bit more, rest days a bit less.
+// Boost a ≤ 10%, rest cut r = a·n/(7−n) ≤ 12%, so the weekly average equals the normal target.
+export function foodCycle(state, key = dayKey()) {
+  const week = (state.plans || []).filter(p => p.auto === 'week' && p.kind === 'workout' && p.repeat === 'weekly')
+  const days = new Set(week.map(p => weekday(p.date)))
+  const n = days.size
+  if (!n || n > 6) return null
+  const a = Math.min(0.1, 0.12 * (7 - n) / n)
+  const planned = week.some(p => weekday(p.date) === weekday(key) && !(p.skip || []).includes(key) && key >= p.date)
+  const train = planned || setsLogged(state, key) > 0
+  return train ? { type: 'train', k: a } : { type: 'rest', k: -a * n / (7 - n) }
 }
 
 // Eaten = today's plan meals (if generated for that day) + everything logged by scan, photo or search.
@@ -71,11 +90,11 @@ export function nextDayIndex(state, key = dayKey()) {
 
 // Three daily tasks: log food, hit water, train. A day "counts" for the streak at 2 of 3.
 export function dayTasks(state, key = dayKey()) {
-  const t = targets(state)
+  const t = targets(state, key)
   return [
-    { id: 'food', label: 'Log what you eat', done: (state.foodLog?.[key]?.length || 0) > 0 || state.mealPlan?.date === key },
-    { id: 'water', label: `Drink ${t.water} glasses of water`, done: waterOf(state, key) >= t.water },
-    { id: 'train', label: 'Train', done: setsLogged(state, key) > 0 }
+    { id: 'food', label: 'Log what you eat', short: 'Food', done: (state.foodLog?.[key]?.length || 0) > 0 || state.mealPlan?.date === key },
+    { id: 'water', label: `Drink ${t.water} glasses of water`, short: `${t.water} water`, done: waterOf(state, key) >= t.water },
+    { id: 'train', label: 'Train', short: 'Train', done: setsLogged(state, key) > 0 }
   ]
 }
 

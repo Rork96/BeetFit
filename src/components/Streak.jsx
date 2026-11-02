@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
+
+const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { createPortal } from 'react-dom'
 import { dayKey, addDays, mondayOf, dayScore, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -119,7 +121,9 @@ export function Milestone({ days, onClose }) {
   return createPortal(
     <div className="ms" onClick={() => history.back()} role="status">
       <div className="ms-in">
-        <div className="ms-burst">{Array.from({ length: 8 }).map((_, i) => <i key={i} style={{ '--a': `${i * 45}deg` }} />)}</div>
+        <Suspense fallback={<div className="ms-burst">{Array.from({ length: 8 }).map((_, i) => <i key={i} style={{ '--a': `${i * 45}deg` }} />)}</div>}>
+          <Gem3D size={240} burst loop={false} seconds={4.2} className="ms-gem" />
+        </Suspense>
         <b className="num ms-n">{days}</b>
         <div className="ms-h">day streak</div>
         <p className="hint">{days >= 30 ? 'This is a habit now.' : days >= 7 ? 'A full week. Keep the same rhythm.' : 'Good start. Next stop: ' + nextMilestone(days) + '.'}</p>

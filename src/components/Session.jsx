@@ -7,6 +7,8 @@ import { haptic, hapticSuccess, hapticError } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { speak } from '../lib/voice.js'
 import Warmup from './Warmup.jsx'
+import { setLiveSession, flushState } from '../lib/store.js'
+import { useWakeLock } from '../lib/hooks.js'
 import './session.css'
 
 const RPE = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10]
@@ -33,7 +35,17 @@ export function lastTime(workoutLog, name, before = dayKey()) {
   return null
 }
 
-export default function Session({ state, update, day, dayIdx, startCamAt, onClose }) {
+// Sets from the last earlier session with this exercise, in order (prefills weight per set).
+export function prevSets(workoutLog, name, before = dayKey()) {
+  const dates = Object.keys(workoutLog || {}).filter(d => d < before).sort().reverse()
+  for (const d of dates) {
+    const sets = setsOf(workoutLog[d][name]).filter(s => s && (s.reps != null || s.secs != null))
+    if (sets.length) return sets
+  }
+  return []
+}
+
+export default function Session({ state, update, day, dayIdx, startCamAt, startedAt, onClose }) {
   const today = dayKey()
   const log = state.workoutLog?.[today] || {}
   const intake = state.intake || DEFAULT_INTAKE
@@ -42,7 +54,8 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
   const [cam, setCam] = useState(startCamAt ?? null) // { ei, si } | null
   const [sheet, setSheet] = useState(null) // { kind: 'swap'|'pain', ei }
   const [recap, setRecap] = useState(false)
-  const t0 = useRef(Date.now())
+  const t0 = useRef(startedAt || Date.now())
+  useWakeLock(true) // the screen stays on while training; a locked phone used to lose the session
   const [, tick] = useState(0)
   useEffect(() => { const id = setInterval(() => tick(x => x + 1), 1000); return () => clearInterval(id) }, [])
   useBackClose(!!cam, () => setCam(null))
@@ -125,7 +138,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
 
         {day.exercises.map((ex, ei) => (
           <ExerciseCard key={ex.name + ei} ex={ex} ei={ei} entry={log[ex.name]} locked={warm === 'todo'}
-            last={lastTime(state.workoutLog, ex.name)}
+            last={lastTime(state.workoutLog, ex.name)} prev={prevSets(state.workoutLog, ex.name)}
             onSet={(si, patch, rested) => { writeSet(ex.name, si, patch); if (rested) setRest({ left: ex.rest || 75, total: ex.rest || 75, label: ex.name }) }}
             onCamera={si => { haptic(); setCam({ ei, si }) }}
             onSwap={() => setSheet({ kind: 'swap', ei })}
@@ -159,7 +172,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, onClos
       )}
 
       {recap && <Recap state={state} day={day} log={log} elapsed={elapsed} doneSets={doneSets} allSets={allSets}
-        onDone={() => { hapticSuccess(); onClose() }} onBack={() => { haptic(); setRecap(false) }} />}
+        onDone={() => { hapticSuccess(); setLiveSession(null); flushState(); onClose() }} onBack={() => { haptic(); setRecap(false) }} />}
     </div>
   )
 }
@@ -270,7 +283,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
   )
 }
 
-function ExerciseCard({ ex, ei, entry, last, locked, onSet, onCamera, onSwap, onPain }) {
+function ExerciseCard({ ex, ei, entry, last, prev = [], locked, onSet, onCamera, onSwap, onPain }) {
   const goal = parseTarget(ex.reps)
   const sets = setsOf(entry)
   const tid = trackerFor(ex)
@@ -299,7 +312,7 @@ function ExerciseCard({ ex, ei, entry, last, locked, onSet, onCamera, onSwap, on
         <>
           <div className="ss-sets">
             {Array.from({ length: ex.sets || 1 }).map((_, si) => (
-              <SetRow key={si} si={si} goal={goal} ex={ex} set={sets[si]} active={si === nextSi}
+              <SetRow key={si} si={si} goal={goal} ex={ex} set={sets[si]} prev={prev[si] || prev[prev.length - 1]} active={si === nextSi}
                 onDone={patch => onSet(si, patch, si < (ex.sets || 1) - 1)} />
             ))}
           </div>
@@ -312,9 +325,9 @@ function ExerciseCard({ ex, ei, entry, last, locked, onSet, onCamera, onSwap, on
   )
 }
 
-function SetRow({ si, goal, ex, set, active, onDone }) {
+function SetRow({ si, goal, ex, set, prev, active, onDone }) {
   const done = set && (set.reps != null || set.secs != null)
-  const [w, setW] = useState(set?.w ?? ex.weight ?? 0)
+  const [w, setW] = useState(set?.w ?? prev?.w ?? ex.weight ?? 0)
   const [r, setR] = useState(set?.reps ?? set?.secs ?? goal.value)
   const [rpe, setRpe] = useState(set?.rpe ?? null)
   const hold = goal.kind === 'hold'

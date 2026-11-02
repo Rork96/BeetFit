@@ -6,12 +6,16 @@ import { useBackClose } from '../lib/hooks.js'
 import { haptic } from '../lib/platform.js'
 import Session, { setsOf } from './Session.jsx'
 import Library from './Library.jsx'
+import { liveSession, setLiveSession } from '../lib/store.js'
 
 export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const { workoutLog } = state
   const program = programOf(state)
-  const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? nextDayIndex(state))
-  const [session, setSession] = useState(null) // { cam: {ei, si} | null }
+  // A session still running from before a reload / screen lock reopens where it was.
+  const live = useRef(liveSession()).current
+  const resume = live?.date === dayKey() && !intent?.dayIdx ? live : null
+  const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? resume?.dayIdx ?? nextDayIndex(state))
+  const [session, setSession] = useState(() => (resume && !intent?.start ? { cam: null } : null)) // { cam: {ei, si} | null }
   const [lib, setLib] = useState(false)
   const [toast, setToast] = useState(null)
   const d = dayKey()
@@ -25,7 +29,13 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const doneCount = day.exercises.filter(ex => done(ex) >= ex.sets || todayLog[ex.name]?.skipped).length
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
 
-  const open = (cam = null) => { haptic(); before.current = countSets(todayLog); setSession({ cam }) }
+  const open = (cam = null) => {
+    haptic(); before.current = countSets(todayLog)
+    const cur = liveSession()
+    if (!cur || cur.date !== d || cur.dayIdx !== dayIdx) setLiveSession({ date: d, dayIdx, startedAt: Date.now() })
+    setSession({ cam })
+  }
+  const running = (() => { const l = liveSession(); return l && l.date === d && l.dayIdx === dayIdx ? l : null })()
 
   // Logged-set toast when coming back from a session.
   useEffect(() => {
@@ -45,7 +55,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   }, [intent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (session) {
-    return <Session state={state} update={update} day={day} dayIdx={dayIdx} startCamAt={session.cam} onClose={() => history.back()} />
+    return <Session state={state} update={update} day={day} dayIdx={dayIdx} startCamAt={session.cam} startedAt={liveSession()?.startedAt} onClose={() => history.back()} />
   }
   if (lib) return <Library state={state} onClose={() => history.back()} />
 
@@ -96,7 +106,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
         })}
       </div>
 
-      <button className="btn" onClick={() => open()}>{doneCount ? 'Continue session' : 'Start session'}</button>
+      <button className="btn" onClick={() => open()}>{running || doneCount ? 'Continue session' : 'Start session'}{running && <span className="num wk-live"> · {Math.floor((Date.now() - running.startedAt) / 60000)} min</span>}</button>
 
       <div className="card">
         <span className="label">Camera coach</span>

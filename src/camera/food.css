@@ -82,3 +82,20 @@
 .fc-pick svg { width: 20px; height: 20px; }
 .fc-shoot .fc-manual { flex: 1; }
 .fc-shoot .ct-link { flex: 1; text-align: right; }
+
+/* Stepper: value is a button you can tap to type */
+.fc-step .fc-step-v { width: auto; flex: 1; height: 44px; border: 0; background: none; font: 700 26px var(--f-num); color: #fff; }
+.fc-item-row .fc-step .fc-step-v { font-size: 18px; }
+.fc-step-in { flex: 1; min-width: 0; height: 44px; text-align: center; font: 700 22px var(--f-num); background: rgba(255,255,255,.06);
+  border: 1px solid var(--accent-line); border-radius: var(--r-1); color: #fff; }
+
+/* Honest estimate */
+.fc-est { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fc-est b { font-size: 34px; letter-spacing: -.02em; color: var(--accent); }
+.fc-est > span { font-size: 13px; color: var(--hint); }
+.fc-why { margin: -2px 0 2px; font-size: 12.5px; }
+.fc-fat { display: flex; flex-direction: column; gap: 6px; }
+.fc-seg.wide { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 0; width: 100%; }
+.fc-seg.wide button { padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 12.5px; }
+.fc-seg.wide small { font-size: 10px; opacity: .7; }
+.ct-btn:disabled { opacity: .45; }

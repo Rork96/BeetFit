@@ -9,11 +9,13 @@ import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
 import { ReadCard } from './Read.jsx'
+import SyncBadge from './SyncBadge.jsx'
+import InstallCard from './InstallCard.jsx'
 import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead, openCalendar }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead, openCalendar, sync }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -59,12 +61,14 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
     <div className="page today">
       <div className="row td-top">
         <div>
-          <div className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+          <div className="td-date"><span className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>{sync && <SyncBadge sync={sync} onOpen={openSettings} />}</div>
           <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
         </div>
-        <button className="td-icon" onClick={() => { haptic(); openSettings() }} aria-label="Settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="6" height="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" /></svg>
-        </button>
+        <div className="td-top-r">
+          <button className="td-icon" onClick={() => { haptic(); openSettings() }} aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="6" height="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" /></svg>
+          </button>
+        </div>
       </div>
 
       <div className="stk td-stack">
@@ -97,12 +101,25 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </div>
           <div className="td-kcal-side">
             <div><span className="label">Eaten</span><b className="num">{e.kcal}</b></div>
-            <div><span className="label">{t.coach ? <span className="ch-tag">Coach target</span> : 'Target'}</span><b className="num">{t.kcal}</b></div>
+            <div><span className="label">{t.coach ? <span className="ch-tag">Coach target</span> : t.dayType ? <span className={'td-dt ' + t.dayType}>{t.dayType === 'train' ? 'Training day' : 'Rest day'}</span> : 'Target'}</span><b className="num">{t.kcal}</b></div>
             <Macro label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
             <Macro label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
             <Macro label="Fat" v={e.f} max={t.fat} color="var(--water)" />
           </div>
           <button className="td-link" onClick={() => go('meals')}>Log food →</button>
+        </div>
+
+        {/* Workout */}
+        <div className="card td-work">
+          <div className="row">
+            <span className="label">{trainedToday ? 'Trained today' : "Today's session"}</span>
+            {camCount > 0 && <span className="ex-cam">▣ {camCount} camera-tracked</span>}
+          </div>
+          <h2>{day.name.split('—')[1]?.trim() || day.name}</h2>
+          <p className="hint num">{day.exercises.length} exercises · {day.exercises.map(x => x.name.split(' (')[0]).slice(0, 3).join(', ')}…</p>
+          <button className={'btn' + (trainedToday ? ' secondary' : '')} onClick={() => { haptic(); go('workout', { start: true, dayIdx }) }}>
+            {trainedToday ? 'Open workout' : 'Start session'}
+          </button>
         </div>
 
         {/* Water + Body */}
@@ -128,23 +145,10 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </button>
         </div>
 
-        {/* Workout */}
-        <div className="card td-work">
-          <div className="row">
-            <span className="label">{trainedToday ? 'Trained today' : "Today's session"}</span>
-            {camCount > 0 && <span className="ex-cam">▣ {camCount} camera-tracked</span>}
-          </div>
-          <h2>{day.name.split('—')[1]?.trim() || day.name}</h2>
-          <p className="hint num">{day.exercises.length} exercises · {day.exercises.map(x => x.name.split(' (')[0]).slice(0, 3).join(', ')}…</p>
-          <button className={'btn' + (trainedToday ? ' secondary' : '')} onClick={() => { haptic(); go('workout', { start: true, dayIdx }) }}>
-            {trainedToday ? 'Open workout' : 'Start session'}
-          </button>
-        </div>
-
         {askBeet && <BeetCard state={state} onAsk={askBeet} />}
 
-        {/* Week */}
-        <div className="card">
+        {/* Week + today's tasks */}
+        <div className="card td-wk">
           <div className="row"><span className="label">This week · <span className="num">{wk.filter(d => d.score >= 2).length}/7</span> · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</span><button className="rd-all" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>Calendar →</button></div>
           <div className="td-week">
             {wk.map(d => (
@@ -154,19 +158,17 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
               </div>
             ))}
           </div>
+          <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
+            {tasks.map(tk => (
+              <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')}>
+                <i>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</i>{tk.short || tk.label}
+              </span>
+            ))}
+          </div>
+          <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>
         </div>
 
-        {/* Tasks */}
-        <div className="card">
-          <span className="label">Daily tasks · 2 of 3 keeps the streak · 1 miss a week is free</span>
-          {tasks.map(tk => (
-            <div className="ex-row" key={tk.id}>
-              <span className={'ex-mark' + (tk.done ? ' on' : '')}>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</span>
-              <div className="ex-main"><div className="ex-name" style={{ fontWeight: 500, opacity: tk.done ? 0.6 : 1 }}>{tk.label}</div></div>
-            </div>
-          ))}
-        </div>
-
+        <InstallCard />
         {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
       {streakOpen && <StreakSheet state={state} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}

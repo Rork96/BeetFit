@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { loadState, saveState, loadNativeBackup } from './lib/store.js'
+import { motion, MotionConfig } from 'motion/react'
+import { getMotionLevel } from './lib/motion.js'
+import { loadState, saveState, loadNativeBackup, liveSession, persistStorage } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
 import TodayTab from './components/TodayTab.jsx'
 import ProgressTab from './components/ProgressTab.jsx'
@@ -42,7 +44,8 @@ const TABS = [
 
 export default function App() {
   const [state, setState] = useState(() => loadState())
-  const [tab, setTab] = useState('today')
+  // Reopen Train if a workout was running when the app was killed or reloaded.
+  const [tab, setTab] = useState(() => (liveSession()?.date === dayKey() ? 'workout' : 'today'))
   const [intent, setIntent] = useState(null) // cross-tab action, e.g. { start: true } for Train
   const [settings, setSettings] = useState(false)
   const [chat, setChat] = useState(false)
@@ -53,6 +56,7 @@ export default function App() {
 
   useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state) saveState(state) }, [state])
+  useEffect(() => { if (state?.profile) persistStorage() }, [!!state?.profile]) // eslint-disable-line react-hooks/exhaustive-deps
   useBackClose(!!settings, () => setSettings(false))
   useBackClose(chat, () => setChat(false))
   useBackClose(!!beet, () => setBeet(null))
@@ -123,10 +127,11 @@ export default function App() {
   const back = order.indexOf(tab) < order.indexOf(prevTab.current)
   const go = (id, it = null) => { if (id !== tab) { haptic(); prevTab.current = tab; setTab(id); window.scrollTo(0, 0) } setIntent(it) }
 
+  const ml = getMotionLevel()
   return (
-    <>
+    <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={back ? 'tab-back' : ''}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} />}
         {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} />}
@@ -134,6 +139,7 @@ export default function App() {
       <nav className="tabbar">
         {TABS.map(t => (
           <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => go(t.id)}>
+            {tab === t.id && <motion.span layoutId="tab-ind" className="tab-ind" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
             {Icon[t.id]}
             {t.label}
           </button>
@@ -145,6 +151,6 @@ export default function App() {
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
       {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} />}
-    </>
+    </MotionConfig>
   )
 }

@@ -40,3 +40,7 @@
   transform: rotate(var(--a)) translateY(0); animation: msBurst 900ms var(--ease-out) 120ms both; }
 @keyframes msBurst { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(.4) } 30% { opacity: 1 } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-120px) scale(1) } }
 @media (prefers-reduced-motion: reduce) { .td-streak.risk .td-mark { animation: none; } .ms-burst { display: none; } }
+
+/* 3D gem behind the milestone number */
+.ms-gem { position: relative; margin: -40px 0 -70px; pointer-events: none; }
+.ms-in .ms-n { position: relative; text-shadow: 0 4px 30px rgba(0,0,0,.7); }

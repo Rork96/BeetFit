@@ -31,7 +31,7 @@ export default defineConfig({
         importScripts: ['push-sw.js'], // push + notification click handlers
         // App shell precached; the 13 MB WASM + 5.8 MB model are cached on first use instead.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['mediapipe/**'],
+        globIgnores: ['mediapipe/**', '**/Gem3D-*.js'], // 3D mark (three.js) loads on first use only
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
@@ -40,6 +40,11 @@ export default defineConfig({
             urlPattern: ({ url }) => url.pathname.includes('/mediapipe/') || url.pathname.endsWith('.wasm'),
             handler: 'CacheFirst',
             options: { cacheName: 'bf-models', expiration: { maxEntries: 12 }, cacheableResponse: { statuses: [0, 200] } }
+          },
+          {
+            urlPattern: ({ url }) => /\/assets\/Gem3D-.*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'bf-3d', expiration: { maxEntries: 4 } }
           },
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/food/'),

@@ -174,7 +174,8 @@ function normalizeUsda(f) {
 
 const SNAP_PROMPT = `You are a nutrition assistant. Identify every distinct food or drink visible in this photo.
 For each item estimate the portion in grams (or ml for drinks, treat 1 ml = 1 g) and its total kcal, protein, carbs and fat for that portion.
-Use typical restaurant/home recipes when ingredients are hidden. Set confidence 0–1 for how sure you are about the portion size.
+Use typical restaurant/home recipes when ingredients are hidden. List visible sauces, dressings, cheese and butter as their own items, and do not under-estimate fat: photo estimates tend to run low.
+Do not add cooking oil you cannot see — the app asks the user about it separately. Set confidence 0–1 for how sure you are about the portion size.
 Title: 2–4 words describing the plate, lowercase, e.g. "chicken & rice". If there is no food, return an empty items list.`
 
 const SNAP_SCHEMA = {

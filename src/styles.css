@@ -97,11 +97,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .tabbar button svg { width: 22px; height: 22px; transition: transform var(--dur-2) var(--ease-spring); }
 .tabbar button.active { color: var(--accent); }
 .tabbar button.active svg { transform: translateY(-1px) scale(1.08); }
-.tabbar button::before {
-  content: ''; position: absolute; top: -1px; left: 30%; right: 30%; height: 2px; background: var(--accent);
-  transform: scaleX(0); transition: transform var(--dur-3) var(--ease-out);
-}
-.tabbar button.active::before { transform: scaleX(1); }
+.tabbar .tab-ind { position: absolute; top: -1px; left: 26%; right: 26%; height: 2px; background: var(--accent);
+  box-shadow: 0 0 14px rgba(224,253,144,.55); }
+.tabbar button > svg { position: relative; }
 
 .progressbar { height: 6px; background: rgba(255,255,255,.08); overflow: hidden; }
 .progressbar > div { height: 100%; background: var(--accent); transition: width var(--dur-4) var(--ease-out); }
@@ -233,3 +231,46 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .rm-time { width: auto; padding: 8px 10px; font-size: 15px; }
 .rm-time:disabled { opacity: .4; }
 textarea { font-family: inherit; }
+
+/* Toast with undo (motion drives transform, so centre without translate) */
+.toast.mt { left: 0; right: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 32px); transform: none; animation: none;
+  display: flex; align-items: center; gap: 14px; white-space: normal; }
+.toast.mt button { border: 0; background: none; color: var(--rork-blue-deep); font: 700 14px var(--f-display); padding: 2px 0; }
+
+/* Day-type tag (training / rest day targets) */
+.td-dt { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: var(--r-1); font: 700 10px var(--f-num); letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }
+.td-dt.train { background: var(--accent-soft); color: var(--accent); }
+.td-dt.rest { background: rgba(125,112,246,.16); color: #b9b1ff; }
+.td-kcal-side .td-dt { margin-left: 0; }
+
+/* Meals: quick add */
+.mq { display: flex; flex-direction: column; gap: 10px; }
+.mq-again { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; width: 100%;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--text); padding: 11px 12px; border-radius: var(--r-2); }
+.mq-again > span:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mq-again .td-small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mq-k { font-size: 18px; font-weight: 700; color: var(--accent); white-space: nowrap; } .mq-k small { font-size: 11px; margin-left: 2px; color: var(--hint); }
+.mq-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+.mq-chips::-webkit-scrollbar { display: none; }
+.mq-chip { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-width: 168px; padding: 9px 12px;
+  background: var(--card-2); border: 1px solid var(--line-2); border-radius: var(--r-2); color: var(--text); text-align: left; }
+.mq-chip b { font-size: 13.5px; font-weight: 600; max-width: 144px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mq-chip span { font-size: 11.5px; color: var(--hint); }
+
+/* Meals: logged list by slot */
+.ml { display: flex; flex-direction: column; gap: 10px; }
+.ml-slot { display: flex; flex-direction: column; gap: 8px; }
+.ml-slot .meal { overflow: hidden; }
+.ml-h { display: flex; justify-content: space-between; font: 700 10.5px var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--hint);
+  border-top: 1px solid var(--line); padding-top: 8px; }
+.ml-slot:first-of-type .ml-h { border-top: 0; padding-top: 0; }
+.ml-est { margin-left: 6px; font: 700 9.5px var(--f-num); text-transform: uppercase; letter-spacing: .06em; color: var(--warn); }
+
+.wk-live { font-weight: 500; opacity: .75; }
+
+/* 3D fallback: square-in-square mark when WebGL is unavailable */
+.gem3d { position: relative; }
+.gem3d canvas { display: block; width: 100% !important; height: 100% !important; }
+.gem3d-fb { display: none; position: absolute; inset: 25%; border: 3px solid var(--accent); }
+.gem3d-fb.on { display: grid; place-items: center; }
+.gem3d-fb i { width: 34%; height: 34%; background: var(--accent); }

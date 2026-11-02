@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
 import { applyMotionLevel } from './lib/motion.js'
+import './lib/install.js' // catches beforeinstallprompt early
 import { bindNativeBack, isNative } from './lib/platform.js'
 
 applyMotionLevel()

@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { macros, bmr, tdee } from '../lib/calories.js'
+
+const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activityFrom, exPool, stepsTarget } from '../lib/program.js'
 import { EQLABEL } from '../data/library.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -232,6 +234,7 @@ function Welcome({ onStart, onRestore, account }) {
       <div className="ob-logo"><span /><b>BeetFit</b></div>
       <div className="ob-hero stk">
         <div className="ob-glow" />
+        <Suspense fallback={<div className="ob-gem-ph" />}><Gem3D size={170} className="ob-gem" /></Suspense>
         <h1>Your week,<br />built around<br />you.</h1>
         <p>Answer a few questions. BeetFit builds a program that fits your kit, your days and your body — and the camera counts your reps.</p>
       </div>

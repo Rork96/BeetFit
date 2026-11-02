@@ -3,6 +3,7 @@ import { useCamera } from './useCamera.js'
 import { getBarcodeDetector, validGtin } from './barcode.js'
 import { lookupBarcode, snapMeal } from '../lib/api.js'
 import { haptic, hapticError, hapticSuccess } from '../lib/platform.js'
+import { FAT_OPTIONS, fatItem, kcalRange } from '../lib/foods.js'
 import './camera.css'
 import './food.css'
 
@@ -219,6 +220,7 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
   const [res, setRes] = useState(null)
   const [err, setErr] = useState(null)
   const [shot, setShot] = useState(null)
+  const [fat, setFat] = useState(null) // id from FAT_OPTIONS; asked every time because photos can't see oil
 
   async function take() {
     haptic('heavy')
@@ -236,6 +238,7 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
     const r = await snapMeal(blob).catch(() => ({ error: 'network' }))
     if (r.items?.length) {
       setRes({ title: r.title, items: r.items.map((it, i) => ({ ...it, id: i, base: it.grams })) })
+      setFat(null)
       setStage('result'); hapticSuccess()
     } else {
       setErr(explain(r))
@@ -279,34 +282,55 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
           <button className="ct-btn" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
         </div>
       )}
-      {stage === 'result' && res && (
-        <div className="ct-sheet fc-result">
-          <div className="ct-h sm">Looks like {res.title || 'a meal'} — check the amounts</div>
-          <div className="fc-items stk">
-            {res.items.map(raw => {
-              const it = scaled(raw)
-              const sure = raw.confidence >= 0.7
-              return (
-                <div className="fc-item" key={raw.id}>
-                  <div className="fc-item-top">
-                    <span className="fc-name">{it.name}</span>
-                    <span className={'fc-conf ' + (sure ? 'ok' : 'warn')}>{sure ? 'high confidence' : 'check amount'}</span>
+      {stage === 'result' && res && (() => {
+        const items = res.items.map(scaled)
+        const oil = fatItem(FAT_OPTIONS.find(o => o.id === fat)?.g || 0)
+        const total = items.reduce((a, x) => a + x.kcal, 0) + (oil?.kcal || 0)
+        const conf = res.items.reduce((a, x) => a + (x.confidence ?? 0.6), 0) / res.items.length
+        const [lo, hi] = kcalRange(total, conf)
+        return (
+          <div className="ct-sheet fc-result">
+            <div className="ct-h sm">Looks like {res.title || 'a meal'}</div>
+            <div className="fc-est">
+              <b className="num">≈ {total}</b><span>kcal estimate · likely <span className="num">{lo}–{hi}</span></span>
+            </div>
+            <p className="ct-p dim fc-why">Photos miss hidden fat, so apps tend to count low. Check the grams and tell us about oil.</p>
+            <div className="fc-items stk">
+              {res.items.map(raw => {
+                const it = scaled(raw)
+                const sure = raw.confidence >= 0.7
+                return (
+                  <div className="fc-item" key={raw.id}>
+                    <div className="fc-item-top">
+                      <span className="fc-name">{it.name}</span>
+                      <span className={'fc-conf ' + (sure ? 'ok' : 'warn')}>{sure ? 'looks right' : 'check amount'}</span>
+                    </div>
+                    <div className="fc-item-row">
+                      <Stepper value={raw.grams} unit="g" step={10}
+                        onChange={g => setRes(r => ({ ...r, items: r.items.map(x => (x.id === raw.id ? { ...x, grams: g } : x)) }))} />
+                      <span className="num fc-kcal">{it.kcal} kcal</span>
+                    </div>
                   </div>
-                  <div className="fc-item-row">
-                    <Stepper value={raw.grams} unit="g" step={10}
-                      onChange={g => setRes(r => ({ ...r, items: r.items.map(x => (x.id === raw.id ? { ...x, grams: g } : x)) }))} />
-                    <span className="num fc-kcal">{it.kcal} kcal</span>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+            <div className="fc-fat">
+              <span className="ct-p">Cooked in oil or butter?</span>
+              <div className="fc-seg wide">
+                {FAT_OPTIONS.map(o => (
+                  <button key={o.id} className={fat === o.id ? 'on' : ''} onClick={() => { haptic(); setFat(o.id) }}>
+                    {o.label}{o.g > 0 && <small className="num">+{Math.round(o.g * 8.84)}</small>}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="ct-btn" disabled={!fat} onClick={() => onAdd([...items.map(({ id, base, confidence, ...x }) => ({ ...x, source: 'snap', est: true })), ...(oil ? [oil] : [])])}>
+              {fat ? <>Log to {slotLabel} · <span className="num">{total}</span> kcal</> : 'Pick an oil option to log'}
+            </button>
+            <button className="ct-link" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
           </div>
-          <button className="ct-btn" onClick={() => onAdd(res.items.map(scaled).map(({ id, base, confidence, ...x }) => ({ ...x, source: 'snap' })))}>
-            Log all to {slotLabel} · <span className="num">{res.items.map(scaled).reduce((a, x) => a + x.kcal, 0)}</span> kcal
-          </button>
-          <button className="ct-link" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
-        </div>
-      )}
+        )
+      })()}
     </>
   )
 }
@@ -348,10 +372,16 @@ export async function resizeImage(file, maxSide = 1024, quality = 0.82) {
 }
 
 function Stepper({ value, onChange, step = 10, unit }) {
+  const [edit, setEdit] = useState(false)
+  const [v, setV] = useState('')
+  const commit = () => { const n = Math.round(+v); if (n > 0 && n < 5000) onChange(n); setEdit(false) }
   return (
     <div className="fc-step">
       <button onClick={() => { haptic(); onChange(Math.max(step, value - step)) }} aria-label="Less">−</button>
-      <span className="num">{value}<small>{unit}</small></span>
+      {edit
+        ? <input className="num fc-step-in" autoFocus inputMode="numeric" value={v} onChange={e => setV(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') commit() }} aria-label={`Amount in ${unit}`} />
+        : <button className="fc-step-v num" onClick={() => { haptic(); setV(String(value)); setEdit(true) }} aria-label={`${value} ${unit}, tap to type`}>{value}<small>{unit}</small></button>}
       <button onClick={() => { haptic(); onChange(value + step) }} aria-label="More">+</button>
     </div>
   )

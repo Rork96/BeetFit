@@ -52,3 +52,31 @@ export function useCountUp(value, ms = 586) {
   }, [value, ms])
   return shown
 }
+
+// Keeps the screen awake while `on` (Screen Wake Lock: Chrome, Safari 18.4+). Re-acquired when the app
+// comes back, because the browser drops the lock whenever the page is hidden.
+export function useWakeLock(on) {
+  useEffect(() => {
+    if (!on || !('wakeLock' in navigator)) return
+    let lock = null, alive = true
+    const get = async () => {
+      if (!alive || document.visibilityState !== 'visible') return
+      try { lock = await navigator.wakeLock.request('screen') } catch { /* low battery / denied */ }
+    }
+    get()
+    const vis = () => { if (document.visibilityState === 'visible') get() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { alive = false; document.removeEventListener('visibilitychange', vis); lock?.release?.().catch(() => {}) }
+  }, [on])
+}
+
+// Live connectivity flag.
+export function useOnline() {
+  const [online, set] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false))
+  useEffect(() => {
+    const on = () => set(true), off = () => set(false)
+    window.addEventListener('online', on); window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
+  return online
+}
