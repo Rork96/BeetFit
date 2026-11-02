@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { speak } from '../lib/voice.js'
+import { ExerciseAnim } from './HowTo.jsx'
+import { WARM_ANIM } from '../data/warmup.js'
 
 // Pick a routine, then a guided player: timed moves count down and auto-advance, rep moves wait for "Done".
 export const ROUTINES = {
@@ -35,6 +37,7 @@ export default function Warmup({ dayName, status, onDone, onSkip }) {
   const [i, setI] = useState(-1) // -1 = picker
   const [left, setLeft] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [prev, setPrev] = useState(null) // move being previewed in the picker
   const r = ROUTINES[pick]
   const move = r.moves[i]
   const timed = move && typeof move[1] === 'number'
@@ -77,8 +80,16 @@ export default function Warmup({ dayName, status, onDone, onSkip }) {
           ))}
         </div>
         <ol className="wu-list stk" key={pick}>
-          {r.moves.map(([n, d]) => <li key={n}><span>{n}</span><span className="num td-small">{typeof d === 'number' ? `${d} s` : d}</span></li>)}
+          {r.moves.map(([n, d]) => (
+            <li key={n} className={prev === n ? 'on' : ''}>
+              <button className="wu-row" onClick={() => { haptic(); setPrev(p => (p === n ? null : n)) }} aria-expanded={prev === n}>
+                <span>{n}</span><span className="num td-small">{typeof d === 'number' ? `${d} s` : d} <i aria-hidden="true">{prev === n ? '−' : '▸'}</i></span>
+              </button>
+              {prev === n && WARM_ANIM[n] && <><ExerciseAnim H={WARM_ANIM[n]} size="md" key={n} /><p className="hint wu-cue">{CUES[n]}</p></>}
+            </li>
+          ))}
         </ol>
+        <p className="td-small">Tap a move to see how it looks.</p>
         <button className="btn" onClick={() => go(0)}>Start warm-up</button>
         <button className="ct-link" style={{ color: 'var(--hint)' }} onClick={onSkip}>Skip warm-up</button>
       </div>
@@ -92,6 +103,7 @@ export default function Warmup({ dayName, status, onDone, onSkip }) {
         <span className="label">{r.name} · {i + 1}/{r.moves.length}</span>
         <div className="wu-dots">{r.moves.map((_, k) => <i key={k} className={k < i ? 'd' : k === i ? 'c' : ''} />)}</div>
       </div>
+      {WARM_ANIM[move[0]] && <ExerciseAnim H={WARM_ANIM[move[0]]} size="md" key={'a' + pick + i} />}
       <div className="wu-now" key={i}>
         {timed ? (
           <div className="wu-ring">

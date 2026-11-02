@@ -84,6 +84,15 @@ async function searchOffDirect(q) {
   }).filter(Boolean)
 }
 
+// Wake the Worker and fetch a device token before the photo is taken, so the first scan doesn't pay for them.
+let warmed = false
+export function warmApi() {
+  if (warmed) return
+  warmed = true
+  deviceToken().catch(() => {})
+  fetch(API_URL + '/api/health').catch(() => {})
+}
+
 // JPEG blob → { title, items: [{ name, grams, kcal, p, c, f, confidence }] }
 export async function snapMeal(blob) {
   try {

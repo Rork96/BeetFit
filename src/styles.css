@@ -74,7 +74,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .btn:active { transform: scale(.97); }
 .btn.secondary { background: rgba(255, 255, 255, .08); color: var(--text); }
-.btn.small { width: auto; min-height: 36px; padding: 8px 12px; font-size: 12px; border-radius: var(--r-1); }
+.btn.small { width: auto; min-height: 40px; padding: 8px 12px; font-size: 12px; border-radius: var(--r-1); }
 .btn.danger { background: var(--danger); color: #fff; }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-2); }
 .btn:disabled { opacity: .45; }
@@ -129,7 +129,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   letter-spacing: .08em; color: var(--accent); margin-left: 6px; }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
-.chip { flex: none; min-height: 36px; padding: 8px 14px; border-radius: var(--r-1); border: 1px solid var(--line-2);
+.chip { flex: none; min-height: 40px; padding: 8px 14px; border-radius: var(--r-1); border: 1px solid var(--line-2);
   background: transparent; color: var(--text); font: 400 13px var(--f-display); white-space: nowrap;
   transition: background var(--dur-2), color var(--dur-2), border-color var(--dur-2); }
 .chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -160,7 +160,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
 .set-l { font-size: 15px; font-weight: 500; }
 .seg { display: inline-flex; flex: none; border: 1px solid var(--line-2); border-radius: var(--r-1); overflow: hidden; }
-.seg button { min-height: 36px; min-width: 44px; padding: 6px 10px; border: none; background: transparent; color: var(--hint);
+.seg button { min-height: 40px; min-width: 44px; padding: 6px 10px; border: none; background: transparent; color: var(--hint);
   font: 400 12px var(--f-display); transition: background var(--dur-2), color var(--dur-2); }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
 .tgl { position: relative; flex: none; width: 52px; height: 30px; border: 1.5px solid var(--line-2); background: transparent; padding: 0; transition: background var(--dur-2), border-color var(--dur-2); }
@@ -241,7 +241,7 @@ textarea { font-family: inherit; }
 /* Toast with undo (motion drives transform, so centre without translate) */
 .toast.mt { left: 0; right: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 32px); transform: none; animation: none;
   display: flex; align-items: center; gap: 14px; white-space: normal; }
-.toast.mt button { border: 0; background: none; color: var(--rork-blue-deep); font: 700 14px var(--f-display); padding: 2px 0; }
+.toast.mt button { border: 0; background: none; color: var(--rork-blue-deep); font: 700 14px var(--f-display); padding: 11px 0; }
 
 /* Day-type tag (training / rest day targets) */
 .td-dt { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: var(--r-1); font: 700 10px var(--f-num); letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }

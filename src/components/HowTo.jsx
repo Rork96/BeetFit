@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { LIB, PATLABEL } from '../data/library.js'
 import { HOWTO } from '../data/howto.js'
-import { poseBetween, legs, bounds, ease } from '../lib/pose2d.js'
-import { solveFront, FRONT_BOX } from '../lib/front2d.js'
+import { poseBetween, legs, bounds, ease, LEN } from '../lib/pose2d.js'
+import { solveFront, solveFront2, FRONT_BOX } from '../lib/front2d.js'
 import { haptic } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import './howto.css'
 
-const solve = (spec, a, b, t) => (spec.view === 'front' ? solveFront(spec, a, b, t) : poseBetween(spec, a, b, t))
+const solve = (spec, a, b, t) => (spec.view === 'front' ? solveFront(spec, a, b, t) : spec.view === 'front2' ? solveFront2(spec, a, b, t) : poseBetween(spec, a, b, t))
+const isFront = spec => spec.view === 'front' || spec.view === 'front2'
 
 const BYID = Object.fromEntries(LIB.map(l => [l.id, l]))
 export const howtoFor = idOrName => {
@@ -22,6 +23,7 @@ const readSeen = () => { try { return JSON.parse(localStorage.getItem(seenKey) |
 export const isSeen = id => !!readSeen()[id]
 export const markSeen = id => { try { const s = readSeen(); s[id] = 1; localStorage.setItem(seenKey, JSON.stringify(s)) } catch { /* private mode */ } }
 
+const LEN_T = LEN.torso
 const ln = (a, b) => ({ x1: a[0], y1: -a[1], x2: b[0], y2: -b[1] })
 
 // One drawn figure for joints `j`. y is flipped here (the maths is y-up).
@@ -40,7 +42,7 @@ export function Figure({ j, spec, box }) {
       {seg('shin', j.ankle, j.knee)}
       {seg('thigh', j.knee, j.hip)}
       {seg('foot', j.ankle, j.toe, 3)}
-      {seg('torso', j.hip, j.shoulder)}
+      {j.arch?.[0] ? <path d={`M${j.hip[0]} ${-j.hip[1]} Q${(j.hip[0] + j.shoulder[0]) / 2 - (j.shoulder[1] - j.hip[1]) / (LEN_T) * j.arch[0] * 2} ${-(j.hip[1] + j.shoulder[1]) / 2 - (j.shoulder[0] - j.hip[0]) / (LEN_T) * j.arch[0] * 2} ${j.shoulder[0]} ${-j.shoulder[1]}`} className={'ht-seg' + (hl.has('torso') ? ' hl' : '')} strokeWidth={5.2} /> : seg('torso', j.hip, j.shoulder)}
       {seg('ua', j.shoulder, j.elbow)}
       {seg('fa', j.elbow, j.wrist)}
       <circle cx={j.head[0]} cy={-j.head[1]} r={6.2} className="ht-head" />
@@ -48,15 +50,17 @@ export function Figure({ j, spec, box }) {
   )
 }
 
-export function FrontFigure({ j }) {
+export function FrontFigure({ j, wall, hl = 'arms' }) {
   const L = (a, b, c = 'ht-seg', w = 3.6) => <line {...ln(a, b)} className={c} strokeWidth={w} />
   return (
     <>
-      <line x1={-34} x2={34} y1={0} y2={0} className="ht-ground" />
+      <line x1={-44} x2={44} y1={0} y2={0} className="ht-ground" />
+      {wall && <rect x={-46} y={-114} width={92} height={114} className="ht-eq bench" />}
       {L(j.hipL, j.kneeL)}{L(j.kneeL, j.ankleL)}{L(j.hipR, j.kneeR)}{L(j.kneeR, j.ankleR)}
       {L(j.hipC, j.neck, 'ht-seg', 5.2)}
       {L(j.shL, j.shR, 'ht-seg', 4)}{L(j.hipL, j.hipR, 'ht-seg', 4)}
-      {L(j.shL, j.elL, 'ht-seg hl')}{L(j.elL, j.wrL, 'ht-seg hl')}{L(j.shR, j.elR, 'ht-seg hl')}{L(j.elR, j.wrR, 'ht-seg hl')}
+      {(() => { const c = hl === 'arms' ? 'ht-seg hl' : 'ht-seg'; return <>{L(j.shL, j.elL, c)}{L(j.elL, j.wrL, c)}{L(j.shR, j.elR, c)}{L(j.elR, j.wrR, c)}</> })()}
+      {hl === 'hips' && L(j.hipL, j.hipR, 'ht-seg hl', 5)}
       <circle cx={j.wrL[0]} cy={-j.wrL[1]} r={4.4} className="ht-eq fill" /><circle cx={j.wrR[0]} cy={-j.wrR[1]} r={4.4} className="ht-eq fill" />
       <circle cx={j.head[0]} cy={-j.head[1]} r={6.2} className="ht-head" />
     </>
@@ -82,7 +86,7 @@ function Equip({ e, j, spec, box }) {
     const top = spec.stepTop ?? 33
     return <rect x={P[0] - 10} y={-top} width={20} height={top} rx={2} className="ht-eq bench" />
   }
-  if (kind === 'wall') return <line x1={P[0] - 8} x2={P[0] - 8} y1={-70} y2={4} className="ht-eq thick" />
+  if (kind === 'wall') return <line x1={P[0] + (spec.wallX ?? -8)} x2={P[0] + (spec.wallX ?? -8)} y1={-70} y2={4} className="ht-eq thick" />
   if (kind === 'plate') return <line x1={P[0] + 3 - 12} x2={P[0] + 3 + 12} y1={-P[1] - 3 + 12} y2={-P[1] - 3 - 12} className="ht-eq thick" />
   if (kind === 'band' && spec.band) { const a = j.ankle; return <line x1={a[0]} y1={-a[1]} x2={j.wrist[0]} y2={-j.wrist[1]} className="ht-eq line" /> }
   if (kind === 'cable' && spec.cable) {
@@ -105,7 +109,7 @@ function Equip({ e, j, spec, box }) {
 export function ExerciseAnim({ H, size = 'lg', pin = null, onFrame, play = true }) {
   const reduce = useReducedMotion()
   const spec = H
-  const box = useMemo(() => (spec.view === 'front' ? FRONT_BOX : bounds(spec)), [spec])
+  const box = useMemo(() => (isFront(spec) ? (spec.view === 'front2' ? { x0: -46, x1: 46, y0: 0, y1: 114 } : FRONT_BOX) : bounds(spec)), [spec])
   const seq = useMemo(() => legs(spec), [spec])
   const [j, setJ] = useState(() => solve(spec, 0, 0, 0))
   const last = useRef(-1)
@@ -148,7 +152,7 @@ export function ExerciseAnim({ H, size = 'lg', pin = null, onFrame, play = true 
   return (
     <div ref={host} className={'ht-anim ' + size}>
       <svg viewBox={vb} role="img" aria-label="Exercise animation" preserveAspectRatio="xMidYMid meet">
-        {spec.view === 'front' ? <FrontFigure j={j} /> : <Figure j={j} spec={spec} box={box} />}
+        {isFront(spec) ? <FrontFigure j={j} wall={spec.wallF} hl={spec.hlF} /> : <Figure j={j} spec={spec} box={box} />}
       </svg>
     </div>
   )

@@ -27,7 +27,7 @@
 .ss-tick { margin-left: auto; color: var(--accent); font-weight: 700; }
 .ss-entry { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ss-mini { display: flex; align-items: center; gap: 4px; }
-.ss-mini button { width: 32px; height: 32px; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font-size: 15px;
+.ss-mini button { width: 40px; height: 40px; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font-size: 15px;
   transition: transform var(--dur-1) var(--ease-spring); }
 .ss-mini button:active { transform: scale(.9); }
 .ss-mini span { min-width: 52px; text-align: center; font-size: 16px; font-weight: 700; }
@@ -88,7 +88,11 @@
 
 /* Warm-up */
 .wu-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: wu; }
-.wu-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; counter-increment: wu; }
+.wu-list li { display: flex; flex-direction: column; gap: 8px; padding: 0; border-bottom: 1px solid var(--line); font-size: 14px; counter-increment: wu; }
+.wu-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; }
+.wu-row i { font-style: normal; margin-left: 6px; color: var(--accent); }
+.wu-list li.on { padding-bottom: 10px; }
+.wu-cue { font-size: 13px; }
 .wu-list li span:first-child::before { content: counter(wu) '  '; color: var(--accent); font-family: var(--f-num); }
 .wu-list li:last-child { border-bottom: none; }
 .wu-play { border-color: var(--accent-line); }

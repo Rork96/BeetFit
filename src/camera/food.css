@@ -1,6 +1,6 @@
 .fc .ct-video { filter: saturate(.85); }
 .fc-seg { display: inline-flex; margin-top: 8px; border: 1px solid var(--line-2); border-radius: var(--r-1); overflow: hidden; }
-.fc-seg button { min-height: 32px; padding: 6px 14px; border: none; background: transparent; color: rgba(255,255,255,.7);
+.fc-seg button { min-height: 40px; padding: 6px 14px; border: none; background: transparent; color: rgba(255,255,255,.7);
   font: 400 12px var(--f-display); text-transform: uppercase; letter-spacing: .06em; transition: background var(--dur-2), color var(--dur-2); }
 .fc-seg button.on { background: var(--accent); color: var(--on-accent); }
 .ct-icon.on { background: var(--accent); color: var(--on-accent); }
@@ -99,3 +99,11 @@
 .fc-seg.wide button { padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 12.5px; }
 .fc-seg.wide small { font-size: 10px; opacity: .7; }
 .ct-btn:disabled { opacity: .45; }
+
+.fc-sauces { display: flex; flex-direction: column; gap: 6px; }
+.fc-sc { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+.fc-sc::-webkit-scrollbar { display: none; }
+.fc-sc button { flex: none; min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--text); font: 400 13px var(--f-display); white-space: nowrap; }
+.fc-sc small { color: var(--hint); font-size: 11px; }
+.fc-sc button:active { background: var(--accent-soft); }
+.fc-x { width: 40px; height: 40px; margin: -8px -8px -8px 0; display: grid; place-items: center; border: 0; background: none; color: var(--hint); font-size: 22px; line-height: 1; }

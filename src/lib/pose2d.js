@@ -12,6 +12,8 @@
 //   hand: { to:[x,y] } | { rel:[dx,dy] }   (per frame or one for all)  wrist target, elbow solved by IK
 //   l2:   { to:[x,y], side }        second leg (the one behind), ankle target, knee solved by IK
 //   arm2: [upperArm, forearm]       second arm, angles
+//   hand2: { to:[x,y], side }       second arm by IK (wrist target), per frame or one for all
+// Pose slots 6 and 7 are optional: spine bend (cm the back bulges up, negative = sags) and head direction (default: along the torso).
 //   loop: 'pingpong' (default) | 'wrap'
 // }
 
@@ -26,7 +28,7 @@ const lerp2 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
 export const ease = t => t * t * (3 - 2 * t)
 
 export function fk(pose) {
-  const [shin, thigh, torso, ua, fa, foot = 90] = pose
+  const [shin, thigh, torso, ua, fa, foot = 90, arch = 0, headDir] = pose
   const ankle = [0, 0]
   const toe = add(ankle, dir(foot), LEN.foot)
   const knee = add(ankle, dir(shin), LEN.shin)
@@ -34,8 +36,8 @@ export function fk(pose) {
   const shoulder = add(hip, dir(torso), LEN.torso)
   const elbow = add(shoulder, dir(ua), LEN.ua)
   const wrist = add(elbow, dir(fa), LEN.fa)
-  const head = add(shoulder, dir(torso), LEN.neck)
-  return { ankle, toe, knee, hip, shoulder, elbow, wrist, head }
+  const head = add(shoulder, dir(headDir ?? torso), LEN.neck)
+  return { ankle, toe, knee, hip, shoulder, elbow, wrist, head, arch: [arch, 0] }
 }
 
 // Two-bone IK: the middle joint for a chain from `a` to `target`. side +1/-1 picks which way it bends.
@@ -80,6 +82,11 @@ function place(spec, vals, i, ex) {
     j.knee2 = ik2(j.hip, ex.l2.to, LEN.thigh, LEN.shin, ex.l2.side ?? 1)
     j.toe2 = [ex.l2.to[0] + LEN.foot * (ex.l2.up ? 0.55 : 1), ex.l2.to[1] + (ex.l2.up ? -4 : 0)]
   }
+  if (ex.hand2) {
+    const target2 = ex.hand2.to ? ex.hand2.to : [j.shoulder[0] + ex.hand2.rel[0], j.shoulder[1] + ex.hand2.rel[1]]
+    j.elbow2 = ik2(j.shoulder, target2, LEN.ua, LEN.fa, ex.hand2.side ?? 1)
+    j.wrist2 = target2
+  }
   if (ex.arm2) {
     j.elbow2 = add(j.shoulder, dir(ex.arm2[0]), LEN.ua)
     j.wrist2 = add(j.elbow2, dir(ex.arm2[1]), LEN.fa)
@@ -103,6 +110,7 @@ export function poseBetween(spec, i, k, t) {
   const ex = {
     hand: mixObj(objOf(spec.hand, i), objOf(spec.hand, k), t),
     l2: mixObj(objOf(spec.l2, i), objOf(spec.l2, k), t),
+    hand2: mixObj(objOf(spec.hand2, i), objOf(spec.hand2, k), t),
     arm2: spec.arm2 ? (Array.isArray(spec.arm2[0]) ? lerp2(spec.arm2[i] || spec.arm2[0], spec.arm2[k] || spec.arm2[0], t) : spec.arm2) : null
   }
   const pa = place(spec, vals, i, ex)

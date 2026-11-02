@@ -65,3 +65,34 @@ describe('how-to data', () => {
     }
   })
 })
+
+import { WARM_ANIM } from '../data/warmup.js'
+import { ROUTINES } from '../components/Warmup.jsx'
+import { solveFront2 } from './front2d.js'
+
+describe('warm-up animations', () => {
+  const names = [...new Set(Object.values(ROUTINES).flatMap(r => r.moves.map(m => m[0])))]
+  it('every warm-up move has an animation', () => {
+    for (const n of names) expect(WARM_ANIM[n], n).toBeTruthy()
+  })
+  it('every frame solves to finite joints and fits in a person-sized box', () => {
+    for (const [n, H] of Object.entries(WARM_ANIM)) {
+      if (H.view === 'front2') { for (let i = 0; i < H.f.length; i++) for (const t of [0, 0.5, 1]) for (const p of Object.values(solveFront2(H, i, i, t))) expect(p.every(Number.isFinite), n).toBe(true); continue }
+      for (const [a, b] of legs(H)) for (const t of [0, 0.5, 1]) for (const [k, p] of Object.entries(poseBetween(H, a, b, t))) expect(p.every(Number.isFinite), `${n} ${k}`).toBe(true)
+      const bb = bounds(H)
+      expect(bb.x1 - bb.x0, n).toBeLessThan(170)
+      expect(bb.y1 - bb.y0, n).toBeLessThan(170)
+    }
+  })
+  it('hands stay on the floor when a move is a floor move', () => {
+    for (const n of ['Scap push-ups', 'Cat-cow']) {
+      const H = WARM_ANIM[n]
+      for (let i = 0; i < H.f.length; i++) expect(Math.abs(poseBetween(H, i, i, 0).wrist[1]), n).toBeLessThan(0.01)
+    }
+  })
+  it('arm circles go all the way round', () => {
+    const H = WARM_ANIM['Arm circles']
+    const ws = H.f.map((_, i) => poseBetween(H, i, i, 0).wrist)
+    expect(Math.max(...ws.map(w => w[1])) - Math.min(...ws.map(w => w[1]))).toBeGreaterThan(60)
+  })
+})

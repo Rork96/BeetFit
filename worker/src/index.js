@@ -21,6 +21,8 @@ import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verif
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
 import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
+import { fixSauce } from '../../src/data/sauces.js'
+
 const OFF = 'https://world.openfoodfacts.org'
 const UA = 'BeetFit/0.3 (https://beetfit.wealthifai.xyz)' // OFF asks for AppName/Version (contact)
 const SNAP_DAILY_LIMIT = 30      // per device
@@ -197,7 +199,8 @@ function normalizeUsda(f) {
 
 const SNAP_PROMPT = `You are a nutrition assistant. Identify every distinct food or drink visible in this photo.
 For each item estimate the portion in grams (or ml for drinks, treat 1 ml = 1 g) and its total kcal, protein, carbs and fat for that portion.
-Use typical restaurant/home recipes when ingredients are hidden. List visible sauces, dressings, cheese and butter as their own items, and do not under-estimate fat: photo estimates tend to run low.
+Use typical restaurant/home recipes when ingredients are hidden, and do not under-estimate fat: photo estimates tend to run low.
+Sauces: list every visible sauce, dressing, mayo, ketchup, cheese or butter as its own item, named plainly ("Ranch dressing", "Ketchup"), with grams (a tablespoon is about 15 g; a drizzle 10–15 g; a generous pour 30 g). Salads, wraps, burgers, bowls, fries and pasta are usually dressed even when it is hard to see: then add one "Dressing / sauce (likely)" item of about 15 g with confidence 0.3.
 Do not add cooking oil you cannot see — the app asks the user about it separately. Set confidence 0–1 for how sure you are about the portion size.
 Title: 2–4 words describing the plate, lowercase, e.g. "chicken & rice". If there is no food, return an empty items list.`
 
@@ -272,28 +275,38 @@ async function geminiPing(env) {
 }
 
 async function snap(buf, mimeType, env) {
+  const t0 = Date.now()
   const model = env.GEMINI_MODEL || 'gemini-2.5-flash'
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const data64 = toBase64(buf)
+  // Latency: 2.5 Flash "thinks" by default (several seconds). For reading a plate it adds little, so switch it
+  // off, ask for a medium-resolution image (fewer tokens) and cap the answer. If the model rejects the
+  // option, retry once without it.
+  const call = lean => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({
-      contents: [{ parts: [{ inlineData: { mimeType, data: toBase64(buf) } }, { text: SNAP_PROMPT }] }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: SNAP_SCHEMA, temperature: 0.2 }
+      contents: [{ parts: [{ inlineData: { mimeType, data: data64 } }, { text: SNAP_PROMPT }] }],
+      generationConfig: {
+        responseMimeType: 'application/json', responseSchema: SNAP_SCHEMA, temperature: 0.2,
+        ...(lean ? { maxOutputTokens: 900, mediaResolution: 'MEDIA_RESOLUTION_MEDIUM', ...(/2\.5-flash/.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } : {})
+      }
     })
   })
+  let res = await call(true)
+  if (res.status === 400) res = await call(false)
   if (res.status === 429) throw new Error('gemini_rate_limited')
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 160)}`)
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}'
   const out = JSON.parse(text)
-  const items = (out.items || []).slice(0, 8).map(i => ({
+  const items = (out.items || []).slice(0, 8).map(i => fixSauce({
     name: String(i.name).slice(0, 60),
     grams: Math.max(1, Math.round(i.grams)),
     kcal: Math.max(0, Math.round(i.kcal)),
     p: r1(i.p), c: r1(i.c), f: r1(i.f),
     confidence: Math.max(0, Math.min(1, +i.confidence || 0))
   }))
-  return { title: String(out.title || '').slice(0, 40), items, model }
+  return { title: String(out.title || '').slice(0, 40), items, model, ms: Date.now() - t0 }
 }
 
 // ---------- device tokens ----------

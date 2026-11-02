@@ -15,7 +15,7 @@ import { AccountCard } from './Account.jsx'
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.9.1'
+const VERSION = '0.10.0'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
@@ -58,7 +58,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
               <input type="number" inputMode="decimal" value={shownTarget}
                 onChange={e => { const v = +e.target.value; if (v) setP({ targetKg: lb ? Math.round((v / KG_TO_LB) * 2) / 2 : v }) }} />
             </label>
-            <label>Activity
+            <label style={{ gridColumn: '1 / -1' }}>Activity
               <select value={p.activity} onChange={e => setP({ activity: e.target.value })}>
                 {ACTIVITY_LEVELS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
               </select>

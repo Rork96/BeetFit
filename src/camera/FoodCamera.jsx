@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useCamera } from './useCamera.js'
 import { getBarcodeDetector, validGtin } from './barcode.js'
-import { lookupBarcode, snapMeal } from '../lib/api.js'
+import { lookupBarcode, snapMeal, warmApi } from '../lib/api.js'
+import { SAUCES, sauceItem } from '../data/sauces.js'
 import { haptic, hapticError, hapticSuccess } from '../lib/platform.js'
 import { FAT_OPTIONS, fatItem, kcalRange } from '../lib/foods.js'
 import './camera.css'
@@ -221,6 +222,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
   const [err, setErr] = useState(null)
   const [shot, setShot] = useState(null)
   const [fat, setFat] = useState(null) // id from FAT_OPTIONS; asked every time because photos can't see oil
+  useEffect(() => { warmApi() }, [])
 
   async function take() {
     haptic('heavy')
@@ -246,6 +248,13 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
     }
   }
   useEffect(() => () => shot && URL.revokeObjectURL(shot), [shot])
+
+  const addSauce = sc => {
+    haptic()
+    const it = sauceItem(sc)
+    setRes(r => ({ ...r, items: [...r.items, { ...it, id: Math.max(-1, ...r.items.map(x => x.id)) + 1, base: it.grams, confidence: 1, extra: true }] }))
+  }
+  const dropItem = id => setRes(r => ({ ...r, items: r.items.filter(x => x.id !== id) }))
 
   const scaled = it => {
     const k = it.grams / it.base
@@ -296,7 +305,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
             <div className="fc-est">
               <b className="num">≈ {total}</b><span>kcal estimate · likely <span className="num">{lo}–{hi}</span></span>
             </div>
-            <p className="ct-p dim fc-why">Photos miss hidden fat, so apps tend to count low. Check the grams and tell us about oil.</p>
+            <p className="ct-p dim fc-why">Photos miss hidden fat and sauces, so apps tend to count low. Check the grams, add what we missed, and tell us about oil.</p>
             <div className="fc-items stk">
               {res.items.map(raw => {
                 const it = scaled(raw)
@@ -305,7 +314,9 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
                   <div className="fc-item" key={raw.id}>
                     <div className="fc-item-top">
                       <span className="fc-name">{it.name}</span>
-                      <span className={'fc-conf ' + (sure ? 'ok' : 'warn')}>{sure ? 'looks right' : 'check amount'}</span>
+                      {raw.extra
+                        ? <button className="fc-x" onClick={() => dropItem(raw.id)} aria-label={`Remove ${it.name}`}>×</button>
+                        : <span className={'fc-conf ' + (sure ? 'ok' : 'warn')}>{sure ? 'looks right' : 'check amount'}</span>}
                     </div>
                     <div className="fc-item-row">
                       <Stepper value={raw.grams} unit="g" step={10}
@@ -315,6 +326,14 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
                   </div>
                 )
               })}
+            </div>
+            <div className="fc-sauces">
+              <span className="ct-p">Sauce, dressing or cheese we missed?</span>
+              <div className="fc-sc">
+                {SAUCES.filter(sc => !res.items.some(x => x.name === sc.label)).slice(0, 12).map(sc => (
+                  <button key={sc.id} onClick={() => addSauce(sc)}>+ {sc.label}<small className="num">{sauceItem(sc).kcal}</small></button>
+                ))}
+              </div>
             </div>
             <div className="fc-fat">
               <span className="ct-p">Cooked in oil or butter?</span>
