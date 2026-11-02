@@ -55,7 +55,7 @@ export async function askBeet(history, state) {
 }
 
 export const BEET_ERR = {
-  daily_limit: 'That’s today’s 40 questions. Beet is back tomorrow.',
+  daily_limit: 'That’s today’s questions. Beet is back tomorrow.',
   chat_not_configured: 'Beet isn’t set up on the server yet (GEMINI_API_KEY).',
   unauthorized: 'Server key missing (DEVICE_SECRET).',
   offline: 'No connection. Try again when you’re online.',

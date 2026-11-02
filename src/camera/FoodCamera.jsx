@@ -9,7 +9,7 @@ import './food.css'
 
 // One camera screen, two modes: barcode scan (Open Food Facts) and meal photo (Gemini via the Worker).
 // onAdd(items) receives [{ name, grams, kcal, p, c, f, source, code? }].
-export default function FoodCamera({ initialMode = 'barcode', slotLabel = 'today', onAdd, onClose }) {
+export default function FoodCamera({ initialMode = 'barcode', slotLabel = 'today', onAdd, onClose, onUpgrade }) {
   const cam = useCamera({ facing: 'environment', width: 1280, height: 720 })
   const [mode, setMode] = useState(initialMode)
   const [preset, setPreset] = useState(null) // barcode typed by hand while the camera is unavailable
@@ -43,7 +43,7 @@ export default function FoodCamera({ initialMode = 'barcode', slotLabel = 'today
           {mode === 'barcode' && <ManualCode onCode={setPreset} />}
         </div>
       ) : mode === 'snap' ? (
-        <SnapFlow cam={cam} slotLabel={slotLabel} onAdd={onAdd} />
+        <SnapFlow cam={cam} slotLabel={slotLabel} onAdd={onAdd} onUpgrade={onUpgrade} />
       ) : (
         <BarcodeFlow cam={cam} slotLabel={slotLabel} onAdd={onAdd} presetCode={preset} key={preset || 'scan'} />
       )}
@@ -215,7 +215,7 @@ function CustomFood({ code, slotLabel, onAdd, onRescan }) {
 
 /* ---------------- Snap ---------------- */
 
-function SnapFlow({ cam, slotLabel, onAdd }) {
+function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
   const [stage, setStage] = useState('idle') // idle | busy | result | error
   const [res, setRes] = useState(null)
   const [err, setErr] = useState(null)
@@ -279,7 +279,9 @@ function SnapFlow({ cam, slotLabel, onAdd }) {
           <div className="ct-h sm">{err.title}</div>
           <p className="ct-p dim">{err.text}</p>
           {err.code && <p className="ct-p dim num" style={{ fontSize: 11.5 }}>{err.code}</p>}
-          <button className="ct-btn" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>
+          {err.upgrade && onUpgrade
+            ? <button className="ct-btn" onClick={() => onUpgrade('snap')}>See PRO · 30 a day</button>
+            : <button className="ct-btn" onClick={() => { setStage('idle'); setShot(null) }}>Retake</button>}
         </div>
       )}
       {stage === 'result' && res && (() => {
@@ -341,6 +343,7 @@ function explain(r) {
   if (r.items && !r.items.length) return { title: "Couldn't find food in that photo", text: 'Try again with the plate centred and good light.', code: '' }
   if (r.status === 401 || r.error === 'not_configured') return { title: 'Server setup incomplete', text: 'DEVICE_SECRET is missing on the server. Scan a barcode meanwhile.', code }
   if (r.error === 'snap_not_configured') return { title: 'Photo recognition is off', text: 'GEMINI_API_KEY is missing on the server. Scan a barcode meanwhile.', code }
+  if (r.error === 'daily_limit' && r.pro === false) return { title: `That was today's ${r.limit || 3} free photo estimates`, text: 'Barcode, search and quick add are free and unlimited. Photos reset at midnight.', code: '', upgrade: true }
   if (r.error === 'daily_limit') return { title: "You've hit today's photo limit", text: 'It resets at midnight. Barcode and search still work.', code: '' }
   if (r.error === 'offline' || r.status === 0) return { title: "Can't reach the server", text: 'Check your connection and try again.', code }
   return { title: 'Recognition failed', text: 'The AI service returned an error. Try again in a minute.', code }

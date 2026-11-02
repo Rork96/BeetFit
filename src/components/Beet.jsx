@@ -24,7 +24,7 @@ export function BeetMark({ busy }) {
   return <span className={'bt-mark' + (busy ? ' busy' : '')}><i /><i /><i /></span>
 }
 
-export default function BeetChat({ state, first, onClose }) {
+export default function BeetChat({ state, first, onClose, onUpgrade }) {
   const [msgs, setMsgs] = useState(loadChat)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -42,6 +42,7 @@ export default function BeetChat({ state, first, onClose }) {
     const r = await askBeet(history, state)
     setBusy(false)
     if (r.status === 200 && r.text) setMsgs(m => [...m, { role: 'model', text: r.text, at: Date.now() }])
+    else if (r.error === 'daily_limit' && r.pro === false) setMsgs(m => [...m, { role: 'model', text: `That was today’s ${r.limit || 5} free questions. Beet is back tomorrow, or keep going with PRO.`, error: true, upgrade: true, at: Date.now() }])
     else setMsgs(m => [...m, { role: 'model', text: BEET_ERR[r.error] || `Something went wrong (${r.error || r.status}).`, error: true, at: Date.now() }])
   }
   useEffect(() => { if (first && !sentFirst.current) { sentFirst.current = true; send(first) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,6 +69,7 @@ export default function BeetChat({ state, first, onClose }) {
           {msgs.map((m, i) => (
             <div key={i} className={'bt-msg ' + (m.role === 'user' ? 'me' : 'beet') + (m.error ? ' err' : '')}>
               {m.text.split('\n').map((l, j) => (l.trim() ? <p key={j}>{l}</p> : null))}
+              {m.upgrade && onUpgrade && i === msgs.length - 1 && <button className="btn small bt-up" onClick={() => { haptic(); onUpgrade() }}>See PRO</button>}
             </div>
           ))}
           {busy && <div className="bt-msg beet typing"><BeetMark busy /></div>}

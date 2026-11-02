@@ -14,6 +14,8 @@ import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
 import { useAccount } from './lib/useAccount.js'
+import { usePro } from './lib/usePro.js'
+import ProSheet from './components/Pro.jsx'
 import { CoachChat } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
 import Guides from './components/Read.jsx'
@@ -71,6 +73,7 @@ export default function App() {
   })
   const sync = useSync(state, setState)
   const account = useAccount(sync, setState)
+  const pro = usePro(!!state?.profile)
   const coachHook = useCoach(sync.on)
   // Joining a coach turns sync on: the coach reads the synced copy.
   const coach = { ...coachHook, join: async code => { const r = await coachHook.join(code); if (r.status === 200) sync.setOn(true); return r } }
@@ -101,6 +104,10 @@ export default function App() {
     if (q.get('chat') === 'coach') setChat(true)
     if (q.get('coach') === '1') setSettings('coach')
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('cal') || '')) setCal({ day: q.get('cal') })
+    if (q.get('pro') === '1') pro.open()
+    const b = q.get('billing') // back from Stripe
+    if (b === 'success') pro.open('success')
+    else if (b === 'portal' || b === 'cancel') pro.refresh()
   }
   const openRef = useRef(openLink)
   openRef.current = openLink
@@ -133,8 +140,8 @@ export default function App() {
       <div key={tab} className={back ? 'tab-back' : ''}>
         {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
-        {tab === 'meals' && <MealsTab state={view} update={update} />}
-        {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} />}
+        {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
+        {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} pro={pro} />}
       </div>
       <nav className="tabbar">
         {TABS.map(t => (
@@ -145,12 +152,13 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
-      {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} />}
+      {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
+      {pro.sheet && <ProSheet pro={pro} account={account} reason={pro.sheet.reason} onClose={pro.close} />}
     </MotionConfig>
   )
 }

@@ -3,13 +3,14 @@ import BodyFigure from './BodyFigure.jsx'
 import { bmi, bmiCategory, macros, bmr, tdee } from '../lib/calories.js'
 import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
+import { strengthTrends } from '../lib/strength.js'
 import './progress.css'
 
 const RANGES = [['2W', 14], ['1M', 30], ['3M', 90], ['6M', 180]]
 const MEAS = [['waist', 'Waist'], ['chest', 'Chest'], ['hips', 'Hips'], ['arm', 'Arm']]
 const MOODS = ['awful', 'low', 'ok', 'good', 'great']
 
-export default function ProgressTab({ state, update, openCalendar }) {
+export default function ProgressTab({ state, update, openCalendar, pro }) {
   const { profile } = state
   const units = state.settings?.units || 'kg'
   const lb = units === 'lb'
@@ -59,6 +60,7 @@ export default function ProgressTab({ state, update, openCalendar }) {
   return (
     <div className="page">
       <div className="hero"><span className="glow" /><h1>Progress</h1></div>
+      <Strength state={state} today={today} lb={lb} pro={pro} />
 
       <div className="card pg-hero">
         <BodyFigure sex={profile.sex} heightCm={profile.heightCm} startKg={start} currentKg={now} targetKg={profile.targetKg} goal={profile.goal} height={280} />
@@ -188,6 +190,42 @@ function WeightChart({ series, target, toU }) {
       <text x={w - px} y={h - 1} textAnchor="end" className="pg-ax">today</text>
     </svg>
   )
+}
+
+// Estimated 1-rep max (or best reps) per lift over 12 weeks. Free: the most-trained lift. PRO: all of them.
+function Strength({ state, today, lb, pro }) {
+  const trends = useMemo(() => strengthTrends(state.workoutLog, today), [state.workoutLog, today])
+  if (!trends.length) return null
+  const open = !pro || pro.pro
+  const shown = trends.slice(0, 5)
+  const fmt = (v, unit) => (unit === 'kg' ? `${Math.round(lb ? v * KG_TO_LB : v)} ${lb ? 'lb' : 'kg'}` : `${v} ${unit}`)
+  return (
+    <div className="card stg">
+      <div className="row"><span className="label">Strength · 12 weeks</span>{!open && <span className="st-pro">PRO</span>}</div>
+      {shown.map((t, i) => {
+        const locked = !open && i > 0
+        return (
+          <div key={t.name} className={'st-row' + (locked ? ' locked' : '')} aria-hidden={locked}>
+            <div className="st-l">
+              <b>{t.name}</b>
+              <span className="td-small num">{t.unit === 'kg' ? 'est. 1-rep max ' : 'best '}{fmt(t.last, t.unit)} · {t.sessions} sessions</span>
+            </div>
+            <Spark points={t.points.map(p => p.v)} />
+            <span className={'st-ch num' + (t.change > 0 ? ' up' : t.change < 0 ? ' down' : '')}>{t.change > 0 ? '+' : ''}{t.change}%</span>
+          </div>
+        )
+      })}
+      {!open && shown.length > 1 && <button className="btn small secondary st-unlock" onClick={() => { haptic(); pro.open('strength') }}>See every lift with PRO</button>}
+      {open && <p className="td-small" style={{ margin: 0 }}>Weighted lifts: estimated 1-rep max from your best set (Epley). Bodyweight: best reps.</p>}
+    </div>
+  )
+}
+
+function Spark({ points }) {
+  if (points.length < 2) return <span className="st-spark" />
+  const w = 80, h = 26, min = Math.min(...points), max = Math.max(...points), span = max - min || 1
+  const d = points.map((v, i) => `${((i / (points.length - 1)) * w).toFixed(1)},${(h - ((v - min) / span) * (h - 4) - 2).toFixed(1)}`).join(' ')
+  return <svg className="st-spark" viewBox={`0 0 ${w} ${h}`} aria-hidden="true"><polyline points={d} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" className="pg-line" /></svg>
 }
 
 function MiniTrend({ points }) {

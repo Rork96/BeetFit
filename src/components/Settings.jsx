@@ -12,11 +12,12 @@ import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
 import { planEvents } from '../lib/plans.js'
 import { AccountCard } from './Account.jsx'
+import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.7.0'
+const VERSION = '0.8.0'
 
-export default function Settings({ state, update, sync, coach, account, openChat, startCoach, onClose }) {
+export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
   useBackClose(coachHome, () => setCoachHome(false))
   const s = state.settings || {}
@@ -41,6 +42,7 @@ export default function Settings({ state, update, sync, coach, account, openChat
       </header>
       <div className="page stk" style={{ paddingTop: 4 }}>
         {account && <AccountCard account={account} />}
+        {pro && <ProCard pro={pro} onOpen={() => pro.open()} />}
 
         <section className="card">
           <span className="label">Profile</span>

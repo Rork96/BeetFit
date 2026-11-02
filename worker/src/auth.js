@@ -144,7 +144,8 @@ export async function signIn(db, userId, deviceId, who) {
       db.prepare('UPDATE push_subs SET user_id = ? WHERE user_id = ?').bind(target, userId),
       db.prepare('UPDATE links SET client_id = ? WHERE client_id = ? AND NOT EXISTS (SELECT 1 FROM links WHERE client_id = ?)').bind(target, userId, target),
       db.prepare('UPDATE coaches SET user_id = ? WHERE user_id = ? AND NOT EXISTS (SELECT 1 FROM coaches WHERE user_id = ?)').bind(target, userId, target),
-      db.prepare('DELETE FROM pairs WHERE user_id = ?').bind(userId)
+      db.prepare('DELETE FROM pairs WHERE user_id = ?').bind(userId),
+      db.prepare('UPDATE subs SET user_id = ? WHERE user_id = ?').bind(target, userId) // a store purchase made before signing in
     ])
   }
   return { status: 'switched', userId: target }

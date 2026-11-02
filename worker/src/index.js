@@ -9,6 +9,7 @@
 //   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
 //   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
 //   POST /api/chat                 Beet, the in-app assistant (Gemini)
+//   /api/billing/*                 PRO: config, status, Stripe checkout + portal; Stripe and RevenueCat webhooks
 //   everything else                → static assets (SPA fallback to index.html)
 //
 // /api/food/* and /api/snap need `Authorization: Bearer <device token>`. Tokens are HMAC-signed with
@@ -18,6 +19,7 @@
 import { sendPush, vapidPublic } from './webpush.js'
 import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
+import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
 const OFF = 'https://world.openfoodfacts.org'
 const UA = 'BeetFit/0.3 (https://beetfit.wealthifai.xyz)' // OFF asks for AppName/Version (contact)
@@ -43,7 +45,7 @@ export default {
     const ip = req.headers.get('cf-connecting-ip') || 'local'
     try {
       if (url.pathname === '/api/health') {
-        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, push: !!env.VAPID_JWK, auth: authConfig(env), gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
+        const out = { ok: true, device: !!env.DEVICE_SECRET, sync: !!env.DB, push: !!env.VAPID_JWK, auth: authConfig(env), billing: { web: !!(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_MONTH && env.STRIPE_PRICE_YEAR), webhook: !!env.STRIPE_WEBHOOK_SECRET, store: !!env.REVENUECAT_WEBHOOK_AUTH }, gemini: !!env.GEMINI_API_KEY, usda: !!env.USDA_API_KEY, kv: !!env.RATE, model: env.GEMINI_MODEL || 'gemini-2.5-flash' }
         // ?check=gemini makes one tiny real call so a bad key or retired model shows up here. Cached 5 min.
         if (url.searchParams.get('check') === 'gemini' && env.GEMINI_API_KEY) {
           return withCache(new Request(url.origin + '/api/health?check=gemini'), ctx, 300, async () => json({ ...out, geminiCheck: await geminiPing(env) }), cors)
@@ -58,6 +60,21 @@ export default {
       }
 
       if (url.pathname === '/api/auth/config') return json(authConfig(env), 200, { ...cors, 'cache-control': 'no-store' })
+
+      // Billing: public price list, and the two webhooks (signed by Stripe / shared secret from RevenueCat).
+      if (url.pathname === '/api/billing/config') return json(await billingConfig(env), 200, { ...cors, 'cache-control': 'no-store' })
+      if (url.pathname === '/api/billing/stripe-webhook' && req.method === 'POST') {
+        const raw = await req.text()
+        if (!env.DB || !(await verifyStripe(env.STRIPE_WEBHOOK_SECRET, raw, req.headers.get('stripe-signature')))) return json({ error: 'bad_signature' }, 400)
+        const r = await stripeEvent(env, env.DB, JSON.parse(raw))
+        if (r.notify) notify(ctx, env, r.notify.userId, r.notify.payload)
+        return json({ received: true })
+      }
+      if (url.pathname === '/api/billing/revenuecat' && req.method === 'POST') {
+        const h = req.headers.get('authorization') || '', want = env.REVENUECAT_WEBHOOK_AUTH
+        if (!env.DB || !want || (h !== want && h !== `Bearer ${want}`)) return json({ error: 'unauthorized' }, 401)
+        return json(await revenuecatEvent(env.DB, await req.json().catch(() => null)))
+      }
 
       if (url.pathname === '/api/push/key') {
         if (!env.VAPID_JWK) return json({ error: 'push_not_configured' }, 503, cors)
@@ -78,8 +95,9 @@ export default {
 
       if (url.pathname === '/api/snap' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'snap_not_configured' }, 503, cors)
-        if (!(await underLimit(env, `snapip:${ip}`, SNAP_IP_DAILY_LIMIT)) || !(await underLimit(env, `snap:${device.id}`, SNAP_DAILY_LIMIT))) {
-          return json({ error: 'daily_limit' }, 429, cors)
+        const tier = await tierOf(env, device)
+        if (!(await underLimit(env, `snapip:${ip}`, SNAP_IP_DAILY_LIMIT)) || !(await underLimit(env, `snap:${device.id}`, tier.snaps))) {
+          return json({ error: 'daily_limit', pro: tier.pro, limit: tier.snaps }, 429, cors)
         }
         const buf = await req.arrayBuffer()
         if (!buf.byteLength || buf.byteLength > 4 * 1024 * 1024) return json({ error: 'bad_image' }, 400, cors)
@@ -88,12 +106,17 @@ export default {
       }
       if (url.pathname === '/api/chat' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'chat_not_configured' }, 503, cors)
-        if (!(await underLimit(env, `chatip:${ip}`, CHAT_IP_DAILY_LIMIT)) || !(await underLimit(env, `chat:${device.id}`, CHAT_DAILY_LIMIT))) {
-          return json({ error: 'daily_limit' }, 429, cors)
+        const tier = await tierOf(env, device)
+        if (!(await underLimit(env, `chatip:${ip}`, CHAT_IP_DAILY_LIMIT)) || !(await underLimit(env, `chat:${device.id}`, tier.chats))) {
+          return json({ error: 'daily_limit', pro: tier.pro, limit: tier.chats }, 429, cors)
         }
         const body = await req.json().catch(() => null)
         if (!body || !Array.isArray(body.messages) || !body.messages.length) return json({ error: 'bad_request' }, 400, cors)
         return json(await chat(body, env), 200, cors)
+      }
+      if (url.pathname.startsWith('/api/billing/')) {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        return await billingRoutes(req, url, env, device, cors)
       }
       if (url.pathname.startsWith('/api/push')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
@@ -400,6 +423,7 @@ async function authRoutes(req, url, env, device, ip, cors) {
   const db = env.DB
   await ensurePushSchema(db)
   await ensureAuthSchema(db)
+  await ensureBillingSchema(db)
   const userId = await userOf(db, device.id)
   const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
   const out = (v, status = 200) => json(v, status, { ...cors, 'cache-control': 'no-store' })
@@ -434,8 +458,48 @@ async function authRoutes(req, url, env, device, ip, cors) {
   }
   if (url.pathname === '/api/auth/delete' && req.method === 'POST') {
     if (body.confirm !== 'DELETE') return out({ error: 'confirm' }, 400)
+    await cancelBilling(env, db, userId) // no charges after the account is gone
     await deleteUser(db, userId)
     return out({ ok: true })
+  }
+  return out({ error: 'not_found' }, 404)
+}
+
+// ---------- billing ----------
+
+// Daily AI limits for this device: free or PRO. Billing off (no keys) → the old generous limits for everyone.
+async function tierOf(env, device) {
+  if (!billingOn(env) || !env.DB) return { pro: true, snaps: SNAP_DAILY_LIMIT, chats: CHAT_DAILY_LIMIT }
+  await ensureSchema(env.DB)
+  const ent = await entitlement(env.DB, await userOf(env.DB, device.id))
+  return ent.pro ? { pro: true, ...PRO } : { pro: false, ...FREE }
+}
+
+async function billingRoutes(req, url, env, device, cors) {
+  const db = env.DB
+  await ensureSchema(db)
+  await ensureAuthSchema(db)
+  const userId = await userOf(db, device.id)
+  const out = (v, status = 200) => json(v, status, { ...cors, 'cache-control': 'no-store' })
+  const origin = env.APP_ORIGIN || url.origin
+
+  if (url.pathname === '/api/billing/status' && req.method === 'GET') {
+    // "state", not "status": the client's api() wrapper puts the HTTP code in `status`.
+    const { customer, status, ...ent } = await entitlement(db, userId)
+    return out({ ...ent, state: status, on: billingOn(env), manage: !!customer, appUserId: userId })
+  }
+  if (!env.STRIPE_SECRET_KEY) return out({ error: 'billing_not_configured' }, 503)
+  // PRO belongs to an account so it survives a new phone; anonymous installs sign in first.
+  const account = await accountOf(db, userId)
+  if (url.pathname === '/api/billing/checkout' && req.method === 'POST') {
+    if (!account) return out({ error: 'sign_in_first' }, 403)
+    const body = await req.json().catch(() => ({}))
+    const r = await checkout(env, db, userId, { plan: body.plan, origin, email: account.email })
+    return r.error ? out(r, 400) : out(r)
+  }
+  if (url.pathname === '/api/billing/portal' && req.method === 'POST') {
+    const r = await portal(env, db, userId, origin)
+    return r.error ? out(r, 400) : out(r)
   }
   return out({ error: 'not_found' }, 404)
 }

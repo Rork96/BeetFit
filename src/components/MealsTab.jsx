@@ -10,7 +10,7 @@ import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 
 
-export default function MealsTab({ state, update }) {
+export default function MealsTab({ state, update, onUpgrade }) {
   const { mealPlan } = state
   const t = targets(state)
   const today = dayKey()
@@ -51,7 +51,7 @@ export default function MealsTab({ state, update }) {
   }
   const quick = it => { hapticSuccess(); const { count, ...x } = it; addFoods([x]) }
 
-  if (cam) return <FoodCamera initialMode={cam} slotLabel={slot} onAdd={addFoods} onClose={() => history.back()} />
+  if (cam) return <FoodCamera initialMode={cam} slotLabel={slot} onAdd={addFoods} onClose={() => history.back()} onUpgrade={onUpgrade && (r => { history.back(); setTimeout(() => onUpgrade(r), 80) })} />
 
   return (
     <div className="page">

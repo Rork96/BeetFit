@@ -35,3 +35,4 @@
 .bt-input textarea { flex: 1; min-height: 44px; max-height: 120px; resize: none; font-size: 15px; }
 .bt-input .btn { width: auto; padding-inline: 18px; }
 .bt-card .chip { white-space: normal; text-align: left; max-width: 100%; line-height: 1.3; }
+.bt-msg .bt-up { margin-top: 8px; align-self: flex-start; }
