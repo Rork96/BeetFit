@@ -137,7 +137,7 @@ export default function App() {
   const ml = getMotionLevel()
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
-      <div key={tab} className={back ? 'tab-back' : ''}>
+      <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
         {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}

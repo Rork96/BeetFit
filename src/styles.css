@@ -16,6 +16,11 @@ button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: tra
 
 .page { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; animation: cutIn var(--dur-3) var(--ease-out) backwards; }
 .page.back { animation-name: cutBack; }
+/* iOS standalone draws the app under the status bar / Dynamic Island: tab pages start below it,
+   and a scrim keeps scrolled content from showing through the clock. */
+.tabv { padding-top: env(safe-area-inset-top); }
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 100; pointer-events: none;
+  background: rgba(12,13,17,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 h1 { font: 700 28px/1.1 var(--f-display); letter-spacing: -.015em; }
 h2 { font: 700 19px/1.2 var(--f-display); }
 h3 { font: 700 16px/1.25 var(--f-display); }
@@ -123,6 +128,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ex-cam { display: inline-flex; align-items: center; gap: 4px; font: 200 10.5px var(--f-display); text-transform: uppercase;
   letter-spacing: .08em; color: var(--accent); margin-left: 6px; }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
 .chip { flex: none; min-height: 36px; padding: 8px 14px; border-radius: var(--r-1); border: 1px solid var(--line-2);
   background: transparent; color: var(--text); font: 400 13px var(--f-display); white-space: nowrap;
   transition: background var(--dur-2), color var(--dur-2), border-color var(--dur-2); }

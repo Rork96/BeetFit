@@ -48,7 +48,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
           <span className="label">Profile</span>
           <label>Name<input value={s.name || ''} placeholder="What should we call you?" onChange={e => setS({ name: e.target.value.slice(0, 24) })} /></label>
           <label>Goal</label>
-          <div className="chips">
+          <div className="chips wrap">
             {GOALS.map(g => (
               <button key={g.id} className={'chip' + (p.goal === g.id ? ' on' : '')} onClick={() => { haptic(); update(prev => ({ profile: { ...prev.profile, goal: g.id }, program: mkProg(g.id, prev.intake || DEFAULT_INTAKE) })) }}>{g.label}</button>
             ))}
