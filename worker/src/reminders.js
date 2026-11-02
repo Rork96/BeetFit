@@ -128,7 +128,7 @@ export function message(kind, doc, today) {
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
 // The app's daily tasks: food logged, water target, trained. 2 of 3 counts the day.
 function tasks(doc, key) {
-  const food = (doc.foodLog?.[key]?.length || 0) > 0 || doc.mealPlan?.date === key
+  const food = (doc.foodLog?.[key]?.length || 0) > 0
   const water = (doc.water?.[key] || 0) >= (doc.settings?.waterTarget || 8)
   const train = setsOn(doc.workoutLog?.[key]) > 0
   const todo = [!food && 'log a meal', !water && 'finish your water', !train && 'do a short session'].filter(Boolean)

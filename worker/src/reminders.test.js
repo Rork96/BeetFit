@@ -27,6 +27,7 @@ describe('reminder schedule', () => {
   it('stays quiet when the thing is done', () => {
     const d = '2026-10-24'
     expect(message('meals', { foodLog: { [d]: [{}] } }, d)).toBeNull()
+    expect(message('meals', { mealPlan: { date: d, slot: 'lunch', items: [{ name: 'Idea' }] } }, d)).not.toBeNull() // a suggestion is not food eaten
     expect(message('meals', { settings: { name: 'Max P' } }, d).body).toMatch(/^Max, nothing logged/)
     expect(message('workout', { workoutLog: { [d]: { Squat: { sets: [{}] } } } }, d)).toBeNull()
     const week = { program: [{}, {}], workoutLog: { '2026-10-22': { A: { sets: [{}] } }, '2026-10-20': { B: { sets: [{}] } } } }

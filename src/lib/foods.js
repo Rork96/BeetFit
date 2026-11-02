@@ -78,3 +78,32 @@ export function downloadCSV(state) {
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
+
+// Days that have something logged, newest first (today excluded), grouped by slot, for the History screen.
+export function historyDays(state, today, n = 30, span = 120) {
+  const out = []
+  for (let i = 1; i <= span && out.length < n; i++) {
+    const key = addDays(today, -i)
+    const items = state.foodLog?.[key] || []
+    if (!items.length) continue
+    const sum = f => Math.round(items.reduce((a, x) => a + (x[f] || 0), 0))
+    out.push({
+      key, items, kcal: sum('kcal'), p: sum('p'), c: sum('c'), f: sum('f'),
+      slots: SLOTS.filter(sl => items.some(x => x.slot === sl)).map(sl => {
+        const its = items.filter(x => x.slot === sl)
+        return { slot: sl, items: its, kcal: Math.round(its.reduce((a, x) => a + (x.kcal || 0), 0)) }
+      })
+    })
+  }
+  return out
+}
+
+// What can be logged again: the same fields the app stores, without the old timestamp.
+export const reloggable = x => strip(x)
+
+// Names of everything logged in the last `days` days (so suggestions do not repeat what you just ate).
+export function recentNames(state, today, days = 3) {
+  const names = new Set()
+  for (let i = 0; i <= days; i++) for (const x of state.foodLog?.[addDays(today, -i)] || []) names.add(x.name)
+  return [...names]
+}

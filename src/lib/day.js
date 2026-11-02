@@ -43,12 +43,11 @@ export function foodCycle(state, key = dayKey()) {
   return train ? { type: 'train', k: a } : { type: 'rest', k: -a * n / (7 - n) }
 }
 
-// Eaten = today's plan meals (if generated for that day) + everything logged by scan, photo or search.
+// Eaten = everything logged (search, scan, photo, quick add, a suggestion you tapped "Log it" on).
 export function eaten(state, key = dayKey()) {
-  const plan = state.mealPlan?.date === key ? state.mealPlan.items : []
+  // Only what was logged. Suggested meals (state.mealPlan) are ideas, not food eaten.
   const logged = state.foodLog?.[key] || []
-  const t = { kcal: 0, p: 0, c: 0, f: 0, items: plan.length + logged.length }
-  for (const m of plan) { t.kcal += m.kcal; t.p += m.p; t.c += m.c; t.f += m.f_ ?? 0 }
+  const t = { kcal: 0, p: 0, c: 0, f: 0, items: logged.length }
   for (const m of logged) { t.kcal += m.kcal; t.p += m.p; t.c += m.c; t.f += m.f }
   return { ...t, kcal: Math.round(t.kcal), p: Math.round(t.p), c: Math.round(t.c), f: Math.round(t.f) }
 }
@@ -92,7 +91,7 @@ export function nextDayIndex(state, key = dayKey()) {
 export function dayTasks(state, key = dayKey()) {
   const t = targets(state, key)
   return [
-    { id: 'food', label: 'Log what you eat', short: 'Food', done: (state.foodLog?.[key]?.length || 0) > 0 || state.mealPlan?.date === key },
+    { id: 'food', label: 'Log what you eat', short: 'Food', done: (state.foodLog?.[key]?.length || 0) > 0 },
     { id: 'water', label: `Drink ${t.water} glasses of water`, short: `${t.water} water`, done: waterOf(state, key) >= t.water },
     { id: 'train', label: 'Train', short: 'Train', done: setsLogged(state, key) > 0 }
   ]
@@ -169,7 +168,7 @@ export function week(state, key = dayKey()) {
   })
 }
 
-const foodLogged = (state, k) => (state.foodLog?.[k]?.length || 0) > 0 || state.mealPlan?.date === k
+const foodLogged = (state, k) => (state.foodLog?.[k]?.length || 0) > 0
 
 // Weekly review, shown Sunday (this week so far) and Monday (last week). Training, logging, protein, weight trend.
 // No calorie verdicts here on purpose: a "you ate under target" line rewards restriction.

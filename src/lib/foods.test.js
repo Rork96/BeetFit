@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { recentFoods, lastMeal, kcalRange, toCSV, fatItem } from './foods.js'
+import { historyDays, recentNames, recentFoods, lastMeal, kcalRange, toCSV, fatItem } from './foods.js'
 import { targets, foodCycle, addDays, weekday } from './day.js'
 
 const T = '2026-11-02' // Monday
@@ -67,5 +67,22 @@ describe('CSV export', () => {
     expect(lines).toContain(`${T},set,Squat,5,reps,,,,,1,60,,`)
     expect(lines.some(l => l.includes('__warmup'))).toBe(false)
     expect(lines).toContain(`${T},weight,body weight,80,kg,,,,,,,,`)
+  })
+})
+
+describe('food history', () => {
+  const state = { foodLog: { [addDays(T, -1)]: [yog, rice], [addDays(T, -3)]: [oats], [T]: [yog] } }
+  it('lists earlier days newest first, never today, skipping empty days', () => {
+    const h = historyDays(state, T)
+    expect(h.map(d => d.key)).toEqual([addDays(T, -1), addDays(T, -3)])
+    expect(h[0]).toMatchObject({ kcal: 410, p: 22 })
+    expect(h[0].slots.map(s => s.slot)).toEqual(['breakfast', 'lunch'])
+  })
+  it('limits to n days', () => {
+    expect(historyDays(state, T, 1)).toHaveLength(1)
+  })
+  it('recentNames covers today and the last few days', () => {
+    expect(recentNames(state, T, 3).sort()).toEqual(['Greek yogurt', 'Oats', 'Rice'])
+    expect(recentNames(state, T, 1).sort()).toEqual(['Greek yogurt', 'Rice'])
   })
 })

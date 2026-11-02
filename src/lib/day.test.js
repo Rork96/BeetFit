@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
+import { eaten, dayTasks, streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
 
 const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, targetKg: 75, goal: 'lose', activity: 'moderate' }
 const program = [{ name: 'A', exercises: [] }, { name: 'B', exercises: [] }, { name: 'C', exercises: [] }]
@@ -128,5 +128,23 @@ describe('streak pause', () => {
     expect(streakInfo(s, SUN).days).toBe(5)
     expect(bestStreak(s, SUN)).toBe(5)
     expect(streakInfo(stateWith(good), SUN).days).toBe(2) // without the pause it breaks
+  })
+})
+
+describe('suggested meals are not eaten food', () => {
+  const k = '2026-11-02'
+  const plan = { date: k, slot: 'lunch', items: [{ name: 'Idea', slot: 'lunch', kcal: 600, p: 40, c: 60, f_: 20 }] }
+  it('eaten() ignores mealPlan', () => {
+    expect(eaten({ mealPlan: plan, foodLog: {} }, k)).toMatchObject({ kcal: 0, p: 0, items: 0 })
+  })
+  it('the food task and streak do not count a suggestion', () => {
+    const st = { profile, mealPlan: plan, foodLog: {} }
+    expect(dayTasks(st, k).find(t => t.id === 'food').done).toBe(false)
+    const logged = { ...st, foodLog: { [k]: [{ name: 'Rice', kcal: 260, p: 5, c: 56, f: 1 }] } }
+    expect(dayTasks(logged, k).find(t => t.id === 'food').done).toBe(true)
+  })
+  it('eaten() counts logged food only', () => {
+    const st = { mealPlan: plan, foodLog: { [k]: [{ name: 'Rice', kcal: 260, p: 5, c: 56, f: 1 }] } }
+    expect(eaten(st, k)).toMatchObject({ kcal: 260, items: 1 })
   })
 })

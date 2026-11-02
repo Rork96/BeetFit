@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
-import { recentFoods, lastMeal, slotByHour, SLOTS } from '../lib/foods.js'
-import { generateDayPlan, swapMeal } from '../data/meals.js'
+import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
+import { suggestMeals, suggestBudget } from '../data/meals.js'
+import FoodHistory from './FoodHistory.jsx'
 import FoodCamera, { PortionCard, portion } from '../camera/FoodCamera.jsx'
 import { searchFood } from '../lib/api.js'
 import { dayKey, eaten, targets, addDays, mondayOf } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 
+
+let atSeq = 0
 
 export default function MealsTab({ state, update, onUpgrade }) {
   const { mealPlan } = state
@@ -22,26 +25,46 @@ export default function MealsTab({ state, update, onUpgrade }) {
   const recent = recentFoods(state, today, 8)
   const again = lastMeal(state, today, slot)
   const loggedIn = it => (state.foodLog?.[today] || []).some(x => x.name === it.name && x.slot === slot)
+  const [hist, setHist] = useState(false)
+  const [sugSlot, setSugSlot] = useState(slot)
   useBackClose(!!cam, () => setCam(null))
+  useBackClose(hist, () => setHist(false))
 
-  const plan = mealPlan?.date === today ? mealPlan.items : null
+  // Suggestions are ideas, never counted as eaten until you tap "Log it".
+  const ideas = mealPlan?.date === today && mealPlan.slot ? mealPlan : null
   const logged = state.foodLog?.[today] || []
   const totals = eaten(state, today)
   const pct = Math.round((totals.kcal / t.kcal) * 100)
 
-  const regenerate = () => { haptic(); update({ mealPlan: { date: today, items: generateDayPlan(t.kcal) } }) }
-  const swap = i => { haptic(); update({ mealPlan: { date: today, items: swapMeal(plan, i, t.kcal) } }) }
+  const budget = sl => suggestBudget(sl, t.kcal, totals.kcal)
+  const suggest = (sl = sugSlot) => {
+    haptic(); setSugSlot(sl)
+    update({ mealPlan: { date: today, slot: sl, items: suggestMeals(sl, budget(sl), { exclude: [...recentNames(state, today), ...(ideas?.slot === sl ? ideas.items.map(x => x.name) : [])] }) } })
+  }
+  const swapIdea = i => {
+    haptic()
+    const [one] = suggestMeals(ideas.slot, budget(ideas.slot), { n: 1, exclude: [...recentNames(state, today), ...ideas.items.map(x => x.name)] })
+    if (!one) return
+    update({ mealPlan: { ...ideas, items: ideas.items.map((x, k) => (k === i ? one : x)) } })
+  }
+  const logIdea = m => {
+    hapticSuccess()
+    addFoods([{ name: m.name, grams: 0, kcal: m.kcal, p: m.p, c: m.c, f: m.f_, source: 'plan' }], { slot: m.slot })
+    update(prev => (prev.mealPlan?.items ? { mealPlan: { ...prev.mealPlan, items: prev.mealPlan.items.filter(x => x.name !== m.name) } } : {}))
+  }
 
-  const addFoods = (items, { quiet } = {}) => {
-    const t0 = Date.now()
+  const addFoods = (items, { quiet, slot: forSlot } = {}) => {
+    const sl = forSlot || slot
+    const t0 = Math.max(Date.now(), atSeq + 1) // unique even when two logs land in the same millisecond
+    atSeq = t0 + items.length
     const ats = items.map((_, i) => t0 + i)
     update(prev => {
       const fl = prev.foodLog || {}
       const day = fl[today] || []
-      return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot, at: ats[i] }))] } }
+      return { foodLog: { ...fl, [today]: [...day, ...items.map((x, i) => ({ ...x, slot: sl, at: ats[i] }))] } }
     })
     if (cam) history.back()
-    if (!quiet) say(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${slot}`,
+    if (!quiet) say(`${items.length === 1 ? items[0].name.split(' · ')[0] : items.length + ' items'} added to ${sl}`,
       () => update(prev => ({ foodLog: { ...prev.foodLog, [today]: (prev.foodLog?.[today] || []).filter(x => !ats.includes(x.at)) } })))
   }
   const removeFood = x => {
@@ -51,13 +74,15 @@ export default function MealsTab({ state, update, onUpgrade }) {
   }
   const quick = it => { hapticSuccess(); const { count, ...x } = it; addFoods([x]) }
 
+  if (hist) return <FoodHistory state={state} today={today} onClose={() => history.back()} onAdd={(items, o) => { addFoods(items, o); }} />
+
   if (cam) return <FoodCamera initialMode={cam} slotLabel={slot} onAdd={addFoods} onClose={() => history.back()} onUpgrade={onUpgrade && (r => { history.back(); setTimeout(() => onUpgrade(r), 80) })} />
 
   return (
     <div className="page">
       <div className="row">
         <div className="hero"><span className="glow" /><h1>Food</h1></div>
-        {plan && <button className="btn small secondary" onClick={regenerate}>↻ New plan</button>}
+        <button className="btn small secondary" onClick={() => { haptic(); setHist(true) }}>History</button>
       </div>
 
       <div className="card">
@@ -75,6 +100,11 @@ export default function MealsTab({ state, update, onUpgrade }) {
         <WeekBars state={state} today={today} />
       </div>
 
+      <Ideas slot={ideas?.slot || sugSlot} items={ideas?.items} budget={budget(ideas?.slot || sugSlot)} left={Math.max(0, t.kcal - totals.kcal)}
+        onSlot={sl => (ideas ? suggest(sl) : setSugSlot(sl))} onSuggest={() => suggest()} onSwap={swapIdea} onLog={logIdea} />
+
+      <Yesterday state={state} today={today} onOpen={() => { haptic(); setHist(true) }} />
+
       {(again || recent.length > 0) && (
         <div className="card mq">
           <div className="row"><span className="label">Quick add · {slot}</span>{recent.length > 0 && <span className="td-small">1 tap</span>}</div>
@@ -89,7 +119,7 @@ export default function MealsTab({ state, update, onUpgrade }) {
             <div className="mq-chips">
               {recent.map(it => (
                 <motion.button key={it.name} whileTap={{ scale: 0.94 }} className="mq-chip" onClick={() => quick(it)}>
-                  <b>{it.name.split(' · ')[0]}</b><span className="num">{it.grams} g · {it.kcal}</span>
+                  <b>{it.name.split(' · ')[0]}</b><span className="num">{it.source === 'plan' ? '1 serving' : `${it.grams} g`} · {it.kcal}</span>
                 </motion.button>
               ))}
             </div>
@@ -120,7 +150,7 @@ export default function MealsTab({ state, update, onUpgrade }) {
                       exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
                       <div>
                         <div style={{ fontWeight: 600 }}>{x.name}{x.est && <span className="ml-est">estimate</span>}</div>
-                        <div className="macros num">{x.source === 'quick' ? `${x.kcal} kcal${x.p ? ` · P ${x.p}` : ''} · ballpark` : `${x.grams} g · ${x.kcal} kcal · P ${x.p} · C ${x.c} · F ${x.f}${x.source === 'snap' ? ' · photo' : ''}`}</div>
+                        <div className="macros num">{x.source === 'quick' ? `${x.kcal} kcal${x.p ? ` · P ${x.p}` : ''} · ballpark` : `${x.source === 'plan' ? '1 serving' : `${x.grams} g`} · ${x.kcal} kcal · P ${x.p} · C ${x.c} · F ${x.f}${x.source === 'snap' ? ' · photo' : ''}`}</div>
                       </div>
                       <button className="btn small secondary" onClick={() => removeFood(x)} aria-label={`Remove ${x.name}`}>×</button>
                     </motion.div>
@@ -131,22 +161,6 @@ export default function MealsTab({ state, update, onUpgrade }) {
           })}
         </div>
       )}
-
-      {!plan && <button className="btn secondary" onClick={regenerate}>Suggest a meal plan for today</button>}
-      <div className="stk" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {plan && plan.map((m, i) => (
-          <div className="card" key={m.name + i}>
-            <span className="slot-tag">{m.slot}</span>
-            <div className="meal">
-              <div>
-                <h3>{m.name}</h3>
-                <div className="macros num">{m.kcal} kcal · P {m.p}g · F {m.f_}g · C {m.c}g{m.factor !== 1 && ` · ×${m.factor}`}</div>
-              </div>
-              <button className="btn small secondary" onClick={() => swap(i)}>Swap</button>
-            </div>
-          </div>
-        ))}
-      </div>
 
       <AnimatePresence>
         {toast && (
@@ -300,4 +314,59 @@ function CenterDialog({ onClose, children }) {
 function readViewport() {
   const v = typeof window !== 'undefined' ? window.visualViewport : null
   return v ? { top: v.offsetTop, height: v.height } : { top: 0, height: typeof window !== 'undefined' ? window.innerHeight : 800 }
+}
+
+// One idea at a time for the meal you are about to eat, sized to what is left today. Nothing counts until you log it.
+function Ideas({ slot, items, budget, left, onSlot, onSuggest, onSwap, onLog }) {
+  return (
+    <div className="card id">
+      <div className="row"><span className="label">What to eat</span><span className="num td-small">{left} kcal left</span></div>
+      <div className="chips">{SLOTS.map(sl => <button key={sl} className={'chip' + (slot === sl ? ' on' : '')} onClick={() => onSlot(sl)}>{sl}</button>)}</div>
+      {budget === 0 ? (
+        <p className="hint">Today’s calories are covered, nothing more is needed. If you’re still hungry, reach for protein and vegetables first.</p>
+      ) : !items ? (
+        <>
+          <p className="hint">Three ideas for {slot}, around {budget} kcal. They only count once you tap Log it.</p>
+          <button className="btn secondary" onClick={onSuggest}>Suggest a {slot}</button>
+        </>
+      ) : items.length === 0 ? (
+        <button className="btn secondary" onClick={onSuggest}>↻ Show ideas for {slot}</button>
+      ) : (
+        <>
+          <AnimatePresence initial={false}>
+            {items.map((m, i) => (
+              <motion.div className="id-item" key={m.name} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
+                <div className="id-t">
+                  <b>{m.name}</b>
+                  <span className="macros num">{m.kcal} kcal · P {m.p}g · C {m.c}g · F {m.f_}g{m.factor !== 1 ? ` · ×${m.factor}` : ''}</span>
+                </div>
+                <div className="id-b">
+                  <button className="btn small" onClick={() => onLog(m)}>Log it</button>
+                  <button className="btn small secondary" onClick={() => onSwap(i)} aria-label={`Swap ${m.name}`}>⇄</button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <button className="ac-link" onClick={onSuggest}>↻ Other ideas</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+// A one-line way back to what you ate yesterday.
+function Yesterday({ state, today, onOpen }) {
+  const y = addDays(today, -1)
+  const items = state.foodLog?.[y] || []
+  const days = items.length ? null : historyDays(state, today, 1)
+  const d = items.length ? { key: y, items } : days[0]
+  if (!d) return null
+  const kcal = Math.round(d.items.reduce((a, x) => a + (x.kcal || 0), 0))
+  const label = d.key === y ? 'Yesterday' : new Date(d.key + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return (
+    <button className="card yd" onClick={onOpen}>
+      <span><span className="label">{label}</span><b className="num">{kcal} kcal</b><span className="td-small"> · {d.items.length} item{d.items.length === 1 ? '' : 's'}</span></span>
+      <span aria-hidden="true">›</span>
+    </button>
+  )
 }
