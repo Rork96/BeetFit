@@ -6,7 +6,7 @@ import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
 import { plansOn, planTitle, planDone } from '../lib/plans.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
-import { CoachNote } from './Coach.jsx'
+import { CoachNote, CoachEntry } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
@@ -15,7 +15,7 @@ import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat, askBeet, openRead, openCalendar, sync }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -73,6 +73,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
       <div className="stk td-stack">
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
+        {coach && <CoachEntry coach={coach} openChat={openChat} openClients={openClients} />}
         {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
         <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
         {todayPlans.length > 0 && (

@@ -9,7 +9,7 @@
 
 .ch-av { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--accent-line); background: var(--accent-soft); }
 .ch-av span { font: 700 17px var(--f-display); color: var(--accent); }
-.ch-client { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; color: var(--text);
+.ch-client { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; color: var(--text);
   animation: riseIn var(--dur-3) var(--ease-out) backwards; transition: border-color var(--dur-2), transform var(--dur-1) var(--ease-spring); }
 .ch-client:active { transform: scale(.98); border-color: var(--accent-line); }
 .ch-client-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -74,3 +74,13 @@
 .ch-ovr p { margin: 0; font-size: 14px; }
 .ch-ovr-line { font-size: 13px; color: var(--accent); margin: 0; }
 .td-kcal .ch-tag { font: 200 10px var(--f-display); text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
+
+/* Today: coaching entry (both roles) */
+.ce { display: flex; flex-direction: column; gap: 0; padding: 0; }
+.ce-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+.ce-row + .ce-row { border-top: 1px solid var(--line); }
+.ce-t { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ce-t b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ce-t .hint { font-size: 12.5px; }
+.ce-row .btn.small { flex: none; width: auto; min-height: 40px; }
+.ce-sheet { display: flex; flex-direction: column; gap: 12px; }

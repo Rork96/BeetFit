@@ -174,14 +174,14 @@ const ME_KEY = 'beetfit_coach_me'
 const readMe = () => { try { return JSON.parse(localStorage.getItem(ME_KEY)) } catch { return null } }
 
 // Settings card: become a coach, share the invite code, open the client list.
-export function CoachModeCard({ onOpen }) {
+export function CoachModeCard({ onOpen, onSaved }) {
   const [me, setMe] = useState(readMe) // { name, code }
   const [name, setName] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [armNew, setArmNew] = useState(false)
-  const save = v => { setMe(v); try { localStorage.setItem(ME_KEY, JSON.stringify(v)) } catch { /* ignore */ } }
+  const save = v => { setMe(v); try { localStorage.setItem(ME_KEY, JSON.stringify(v)) } catch { /* ignore */ }; onSaved?.(v) }
 
   useEffect(() => { coachClients().then(r => { if (r.status === 200 && r.coach) save(r.coach) }) }, [])
 
@@ -224,17 +224,75 @@ export function CoachModeCard({ onOpen }) {
           <div className="sy-code ch-code">
             <span className="label">Your invite code</span>
             <b className="num">{me.code}</b>
-            <span className="hint">Clients enter it on the first screen or in Settings → Your coach.</span>
+            <span className="hint">Clients enter it on Today → Coaching, or on the first screen.</span>
           </div>
           <div className="grid2">
             <button className="btn secondary" onClick={share}>{copied ? '✓ Copied' : 'Share invite'}</button>
             <button className={'btn ' + (armNew ? 'danger' : 'secondary')} onClick={newCode}>{armNew ? 'Old code stops working' : 'New code'}</button>
           </div>
-          <button className="btn" onClick={() => { haptic(); onOpen() }}>Open my clients</button>
+          {onOpen && <button className="btn" onClick={() => { haptic(); onOpen() }}>Open my clients</button>}
         </>
       )}
       {err && <p className="sy-err">{err}</p>}
     </section>
+  )
+}
+
+// Today-tab entry, for both roles, so nobody has to dig through Settings.
+// Client row: connect a coach code, or open messages. Coach row: start coach mode, or open clients.
+export function CoachEntry({ coach, openChat, openClients }) {
+  const [me, setMe] = useState(readMe)
+  const [sheet, setSheet] = useState(null) // 'client' | 'coach' | null
+  const [flagged, setFlagged] = useState(0)
+  useBackClose(!!sheet, () => setSheet(null))
+  // The server knows if this account coaches, even on a new phone: ask once, keep the local copy in step.
+  useEffect(() => {
+    coachClients().then(r => {
+      if (r.status !== 200) return
+      if (r.coach) { setMe(r.coach); try { localStorage.setItem(ME_KEY, JSON.stringify(r.coach)) } catch { /* ignore */ } }
+      setFlagged((r.clients || []).filter(c => c.summary?.pain || c.unread).length)
+    })
+  }, [])
+
+  const linked = coach?.link?.coach
+  const unread = coach?.unread?.length || 0
+  return (
+    <>
+      <section className="card ce">
+        <div className="ce-row">
+          <div className="ce-t">
+            <span className="label">{linked ? 'Your coach' : 'Coaching'}</span>
+            <b>{linked ? linked.name : 'Training with a coach?'}</b>
+            <span className="hint">{linked ? 'Messages, check-ins and targets' : 'Enter the code they sent you'}</span>
+          </div>
+          {linked
+            ? <button className="btn small secondary" onClick={() => { haptic(); openChat() }}>Messages{unread ? ` · ${unread}` : ''}</button>
+            : <button className="btn small secondary" onClick={() => { haptic(); setSheet('client') }}>Connect</button>}
+        </div>
+        <div className="ce-row">
+          <div className="ce-t">
+            <span className="label">Coach others</span>
+            {me
+              ? <><b>Your clients{flagged ? ` · ${flagged} need you` : ''}</b><span className="hint num">Invite code {me.code}</span></>
+              : <><b>Be a coach</b><span className="hint">Invite clients, see their logs, set targets</span></>}
+          </div>
+          {me
+            ? <button className="btn small secondary" onClick={() => { haptic(); openClients() }}>Open</button>
+            : <button className="btn small secondary" onClick={() => { haptic(); setSheet('coach') }}>Start</button>}
+        </div>
+      </section>
+      {sheet && (
+        <>
+          <div className="sheet-back" onClick={() => history.back()} />
+          <div className="sheet ce-sheet">
+            {sheet === 'client'
+              ? <YourCoachCard coach={coach} syncOn onChat={() => { setSheet(null); openChat() }} />
+              : <CoachModeCard onSaved={setMe} />}
+            <button className="btn secondary" onClick={() => history.back()}>Done</button>
+          </div>
+        </>
+      )}
+    </>
   )
 }
 

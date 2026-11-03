@@ -16,7 +16,7 @@ import { useCoach } from './lib/useCoach.js'
 import { useAccount } from './lib/useAccount.js'
 import { usePro } from './lib/usePro.js'
 import ProSheet from './components/Pro.jsx'
-import { CoachChat } from './components/Coach.jsx'
+import { CoachChat, CoachHome } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
 import Guides from './components/Read.jsx'
 import Calendar from './components/Calendar.jsx'
@@ -50,6 +50,8 @@ export default function App() {
   const [tab, setTab] = useState(() => (liveSession()?.date === dayKey() ? 'workout' : 'today'))
   const [intent, setIntent] = useState(null) // cross-tab action, e.g. { start: true } for Train
   const [settings, setSettings] = useState(false)
+  const [clients, setClients] = useState(false)
+  useBackClose(clients, () => setClients(false))
   const [chat, setChat] = useState(false)
   const [beet, setBeet] = useState(null) // null | { first: question or null }
   const [guides, setGuides] = useState(null) // null | { first: guide id or null }
@@ -138,7 +140,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
         {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} pro={pro} />}
@@ -154,6 +156,7 @@ export default function App() {
       </nav>
       {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
+      {clients && <CoachHome onClose={() => history.back()} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
