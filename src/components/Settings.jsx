@@ -15,7 +15,7 @@ import { AccountCard } from './Account.jsx'
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.13.0'
+const VERSION = '0.13.1'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
