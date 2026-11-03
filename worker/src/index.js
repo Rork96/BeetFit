@@ -499,7 +499,14 @@ async function billingRoutes(req, url, env, device, cors) {
   if (url.pathname === '/api/billing/status' && req.method === 'GET') {
     // "state", not "status": the client's api() wrapper puts the HTTP code in `status`.
     const { customer, status, ...ent } = await entitlement(db, userId)
-    return out({ ...ent, state: status, on: billingOn(env), manage: !!customer, appUserId: userId })
+    const on = billingOn(env)
+    const lim = ent.pro ? PRO : FREE
+    const usage = on ? {
+      snaps: { used: Math.min(await usedToday(env, `snap:${device.id}`), lim.snaps), limit: lim.snaps },
+      chats: { used: Math.min(await usedToday(env, `chat:${device.id}`), lim.chats), limit: lim.chats },
+      clients: { limit: lim.clients }
+    } : null
+    return out({ ...ent, state: status, on, usage, manage: !!customer, appUserId: userId })
   }
   if (!env.STRIPE_SECRET_KEY) return out({ error: 'billing_not_configured' }, 503)
   // PRO belongs to an account so it survives a new phone; anonymous installs sign in first.
@@ -553,6 +560,7 @@ async function coachRoutes(req, url, env, device, ip, cors, ctx) {
     const c = await db.prepare('SELECT user_id, name FROM coaches WHERE code = ?').bind(code).first()
     if (!c) return err('bad_code', 404)
     if (c.user_id === me) return err('own_code')
+    if (await coachFull(env, db, c.user_id, me)) return err('coach_full', 409)
     return ok({ name: c.name })
   }
   if (path === '/api/coach/join' && req.method === 'POST') {
@@ -561,6 +569,7 @@ async function coachRoutes(req, url, env, device, ip, cors, ctx) {
     const c = await db.prepare('SELECT user_id, name FROM coaches WHERE code = ?').bind(code).first()
     if (!c) return err('bad_code', 404)
     if (c.user_id === me) return err('own_code')
+    if (await coachFull(env, db, c.user_id, me)) return err('coach_full', 409)
     const id = crypto.randomUUID(), now = Date.now()
     await db.prepare('INSERT INTO links (id, coach_id, client_id, since) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(client_id) DO UPDATE SET id = ?1, coach_id = ?2, since = ?4')
       .bind(id, c.user_id, me, now).run()
@@ -624,7 +633,7 @@ async function coachRoutes(req, url, env, device, ip, cors, ctx) {
         (SELECT COUNT(*) FROM messages m WHERE m.link_id = l.id AND m.by = 'client' AND m.seen = 0) AS unread
        FROM links l LEFT JOIN docs d ON d.user_id = l.client_id WHERE l.coach_id = ? ORDER BY l.since DESC LIMIT 200`
     ).bind(me).all()
-    return ok({ coach, clients: results.map(r => ({ id: r.id, since: r.since, updated: r.updated || 0, unread: r.unread, summary: parse(r.summary) })) })
+    return ok({ coach, cap: await coachCap(env, db, me, results.length), clients: results.map(r => ({ id: r.id, since: r.since, updated: r.updated || 0, unread: r.unread, summary: parse(r.summary) })) })
   }
   const m = path.match(/^\/api\/coach\/client\/([0-9a-f-]{36})(?:\/(msg|override|remove|seen))?$/)
   if (m) {
@@ -769,7 +778,30 @@ export async function runReminders(env, now = Date.now()) {
   return { due: results.length, sent, quiet }
 }
 
+// Free coaches can have FREE.clients linked clients; PRO coaches more. Billing off → no cap.
+// Existing links are never cut: the cap only blocks new joins.
+async function coachCap(env, db, coachId, count) {
+  if (!billingOn(env)) return { on: false, used: count, limit: null, pro: true }
+  const ent = await entitlement(db, coachId)
+  const limit = (ent.pro ? PRO : FREE).clients
+  return { on: true, used: count, limit, pro: ent.pro }
+}
+async function coachFull(env, db, coachId, clientId) {
+  if (!billingOn(env)) return false
+  const already = await db.prepare('SELECT 1 AS x FROM links WHERE coach_id = ? AND client_id = ?').bind(coachId, clientId).first()
+  if (already) return false
+  const n = (await db.prepare('SELECT COUNT(*) AS n FROM links WHERE coach_id = ?').bind(coachId).first())?.n || 0
+  const cap = await coachCap(env, db, coachId, n)
+  return cap.used >= cap.limit
+}
+
 // ---------- helpers ----------
+
+// Today's count for a limit key without spending a use (for the usage meters).
+async function usedToday(env, key) {
+  if (!env.RATE) return 0
+  return +(await env.RATE.get(`${key}:${new Date().toISOString().slice(0, 10)}`)) || 0
+}
 
 async function underLimit(env, key, max) {
   if (!env.RATE) return true // KV not bound → no per-user cap (Gemini's own quota still applies)

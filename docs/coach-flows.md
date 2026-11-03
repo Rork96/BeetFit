@@ -35,3 +35,12 @@ The server decides the role: on open, the card asks for the coach account and fi
 ## Not in this change
 - Push for "client needs you" (reminders already cover coach messages).
 - Coach seeing a client's photo meals or pain text beyond the summary (depends on what the client shares).
+
+
+## Limits (0.12.0)
+- Free: 3 photo estimates / 5 Beet questions per device per day, 3 linked clients per coach. PRO: 30 / 60 / 200.
+- Meters come from `/api/billing/status` → `usage` (read-only, spends nothing): camera idle screen, Beet chat, Clients screen.
+- Coach cap blocks only NEW joins (`coach_full`, 409 on peek and join). Existing clients are never cut off. A client already linked to that coach can re-join.
+- Billing off (no Stripe/RevenueCat keys) → no caps, no meters.
+- Onboarding: "I coach people" chip → after the plan is built, Today opens coach setup once.
+- The 3-client free cap is a pricing choice, not tested against users. Change `FREE.clients` in worker/src/billing.js.

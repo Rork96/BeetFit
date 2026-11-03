@@ -121,7 +121,7 @@ export default function App() {
   }, [])
 
   if (!state?.profile) {
-    return <Onboarding account={account} onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode }) => {
+    return <Onboarding account={account} onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode, asCoach }) => {
       setState({
         _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
         profile, intake, program, settings,
@@ -129,6 +129,7 @@ export default function App() {
         mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
       })
       if (coachCode) coach.join(coachCode)
+      if (asCoach) { try { localStorage.setItem('beetfit_coach_intent', '1') } catch { /* ignore */ } }
     }} />
   }
 
@@ -156,7 +157,7 @@ export default function App() {
       </nav>
       {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
-      {clients && <CoachHome onClose={() => history.back()} />}
+      {clients && <CoachHome onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}

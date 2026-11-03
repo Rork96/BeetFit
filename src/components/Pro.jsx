@@ -12,6 +12,7 @@ const REASON = {
   snap: 'That was today’s last free photo estimate.',
   chat: 'That was today’s last free question for Beet.',
   strength: 'Strength trends for every lift are part of PRO.',
+  clients: 'Free coaching covers 3 clients. PRO lifts that to 200.',
   success: null
 }
 
@@ -26,7 +27,8 @@ function rows(free) {
     ['Streak, calendar, reminders, sync, CSV export', true, true],
     ['Meal photo estimates', `${free?.snaps ?? 3} a day`, '30 a day'],
     ['Ask Beet', `${free?.chats ?? 5} a day`, '60 a day'],
-    ['Strength trends', 'top lift', 'every lift']
+    ['Strength trends', 'top lift', 'every lift'],
+    ['Coach clients', `${free?.clients ?? 3}`, '200']
   ]
 }
 

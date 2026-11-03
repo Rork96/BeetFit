@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { haptic } from '../lib/platform.js'
+import { fetchStatus, useUsage, usageLeft } from '../lib/billing.js'
 import { askBeet, loadChat, saveChat, suggestions, BEET_ERR } from '../lib/beet.js'
 import './beet.css'
 
@@ -30,6 +31,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
   const [busy, setBusy] = useState(false)
   const end = useRef(null)
   const sentFirst = useRef(false)
+  const left = usageLeft(useUsage(), 'chats')
 
   useEffect(() => { saveChat(msgs); end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs, busy])
 
@@ -41,6 +43,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
     setMsgs(history); setBusy(true)
     const r = await askBeet(history, state)
     setBusy(false)
+    if (onUpgrade) fetchStatus()
     if (r.status === 200 && r.text) setMsgs(m => [...m, { role: 'model', text: r.text, at: Date.now() }])
     else if (r.error === 'daily_limit' && r.pro === false) setMsgs(m => [...m, { role: 'model', text: `That was today’s ${r.limit || 5} free questions. Beet is back tomorrow, or keep going with PRO.`, error: true, upgrade: true, at: Date.now() }])
     else setMsgs(m => [...m, { role: 'model', text: BEET_ERR[r.error] || `Something went wrong (${r.error || r.status}).`, error: true, at: Date.now() }])
@@ -76,6 +79,11 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
           <i ref={end} />
         </div>
       </div>
+      {onUpgrade && left != null && (
+        <button className={'bt-meter' + (left <= 1 ? ' low' : '')} onClick={() => { haptic(); onUpgrade() }}>
+          <span className="num">{left}</span> free {left === 1 ? 'question' : 'questions'} left today · <u>PRO has 60</u>
+        </button>
+      )}
       <div className="bt-input">
         <textarea rows={1} value={text} maxLength={1500} placeholder="Ask about training or food"
           onChange={e => setText(e.target.value)}

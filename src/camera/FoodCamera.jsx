@@ -4,6 +4,7 @@ import { getBarcodeDetector, validGtin } from './barcode.js'
 import { lookupBarcode, snapMeal, warmApi } from '../lib/api.js'
 import { SAUCES, sauceItem } from '../data/sauces.js'
 import { haptic, hapticError, hapticSuccess } from '../lib/platform.js'
+import { fetchStatus, useUsage, usageLeft } from '../lib/billing.js'
 import { FAT_OPTIONS, fatItem, kcalRange } from '../lib/foods.js'
 import './camera.css'
 import './food.css'
@@ -222,7 +223,8 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
   const [err, setErr] = useState(null)
   const [shot, setShot] = useState(null)
   const [fat, setFat] = useState(null) // id from FAT_OPTIONS; asked every time because photos can't see oil
-  useEffect(() => { warmApi() }, [])
+  useEffect(() => { warmApi(); if (onUpgrade) fetchStatus() }, [onUpgrade])
+  const left = usageLeft(useUsage(), 'snaps')
 
   async function take() {
     haptic('heavy')
@@ -238,6 +240,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
     setShot(URL.createObjectURL(blob))
     setStage('busy')
     const r = await snapMeal(blob).catch(() => ({ error: 'network' }))
+    if (onUpgrade) fetchStatus()
     if (r.items?.length) {
       setRes({ title: r.title, items: r.items.map((it, i) => ({ ...it, id: i, base: it.grams })) })
       setFat(null)
@@ -269,6 +272,11 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
           <div className="fc-frame plate"><b /><b /><b /><b /></div>
           <div className="ct-sheet center">
             <p className="ct-p center">{cam.status === 'live' ? 'Get the whole plate in frame' : 'Camera is off — upload a photo of your meal instead'}</p>
+            {onUpgrade && left != null && (
+              <button className={'fc-meter' + (left === 0 ? ' out' : '')} onClick={() => { haptic(); onUpgrade('snap') }}>
+                <span className="num">{left}</span> free photo {left === 1 ? 'estimate' : 'estimates'} left today
+              </button>
+            )}
             <div className="fc-shoot">
               <PickPhoto onFile={fromFile} label="Upload" />
               <button className="fc-shutter" onClick={take} disabled={cam.status !== 'live'} aria-label="Take photo"><i /></button>

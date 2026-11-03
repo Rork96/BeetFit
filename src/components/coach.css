@@ -9,9 +9,9 @@
 
 .ch-av { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--accent-line); background: var(--accent-soft); }
 .ch-av span { font: 700 17px var(--f-display); color: var(--accent); }
-.ch-client { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; color: var(--text);
+.card.ch-client { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; color: var(--text);
   animation: riseIn var(--dur-3) var(--ease-out) backwards; transition: border-color var(--dur-2), transform var(--dur-1) var(--ease-spring); }
-.ch-client:active { transform: scale(.98); border-color: var(--accent-line); }
+.card.ch-client:active { transform: scale(.98); border-color: var(--accent-line); }
 .ch-client-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ch-client-t b { display: flex; align-items: center; gap: 8px; font-size: 15px; }
 .ch-client-t .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
@@ -84,3 +84,9 @@
 .ce-t .hint { font-size: 12.5px; }
 .ce-row .btn.small { flex: none; width: auto; min-height: 40px; }
 .ce-sheet { display: flex; flex-direction: column; gap: 12px; }
+
+.ch-cap { border: 0; outline: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 14px; border-radius: 14px; background: var(--card, rgba(255,255,255,.06)); text-align: left; font-size: 13px; color: var(--muted, #8b8b93); }
+.ch-cap .num { font-weight: 700; color: var(--text, inherit); }
+.ch-cap span:nth-child(2) { flex: 1; }
+.ch-cap u { color: var(--accent, #ff6b4a); text-underline-offset: 2px; white-space: nowrap; }
+.ch-cap.full { background: rgba(255,107,74,.14); color: var(--text, inherit); }

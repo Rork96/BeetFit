@@ -1,5 +1,6 @@
 // PRO on the client: price list, my status, Stripe checkout / portal (web). Store purchases (RevenueCat)
 // arrive with the native release; the server already understands them.
+import { useEffect, useState } from 'react'
 import { api, API_URL } from './api.js'
 import { isNative } from './platform.js'
 
@@ -14,9 +15,22 @@ export function billingConfig(force = false) {
   return cfgP
 }
 
+// Daily usage meters ("2 of 3 photo estimates left"). Only valid for the day they were read.
+const today = () => new Date().toISOString().slice(0, 10)
+let usage = (() => { const u = cachedStatus()?.usage; return u && u.day === today() ? u : null })()
+const subs = new Set()
+const setUsage = u => { usage = u ? { ...u, day: today() } : null; subs.forEach(f => f()) }
+export const usageOf = () => (usage && usage.day === today() ? usage : null)
+export function useUsage() {
+  const [, tick] = useState(0)
+  useEffect(() => { const f = () => tick(n => n + 1); subs.add(f); return () => subs.delete(f) }, [])
+  return usageOf()
+}
+export const usageLeft = (u, key) => (u?.[key] ? Math.max(0, u[key].limit - u[key].used) : null)
+
 export async function fetchStatus() {
   const r = await api('/api/billing/status')
-  if (r.status === 200) { const { status, ...s } = r; cache(s); return s }
+  if (r.status === 200) { const { status, ...s } = r; setUsage(s.usage); cache({ ...s, usage: usageOf() }); return s }
   return cachedStatus()
 }
 

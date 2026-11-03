@@ -6,8 +6,8 @@
 // Without any of them billing is off and nobody is limited (dev / self-host).
 
 export const TRIAL_DAYS = 14
-export const FREE = { snaps: 3, chats: 5 }    // per device per day
-export const PRO = { snaps: 30, chats: 60 }
+export const FREE = { snaps: 3, chats: 5, clients: 3 }    // snaps/chats per device per day; clients = linked clients a coach can have
+export const PRO = { snaps: 30, chats: 60, clients: 200 }
 
 export const billingOn = env => !!((env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_MONTH && env.STRIPE_PRICE_YEAR) || env.REVENUECAT_WEBHOOK_AUTH)
 

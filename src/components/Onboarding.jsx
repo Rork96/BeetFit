@@ -28,6 +28,7 @@ const CLAIM_ERR = {
 const COACH_ERR = {
   bad_code: "That code isn't recognised. Check it with your coach.",
   own_code: 'That is your own coach code.',
+  coach_full: 'This coach has reached their free client limit. Ask them to upgrade, or start on your own.',
   too_many_tries: 'Too many tries today. Try again tomorrow.',
   sync_not_configured: 'Coaching is not set up on the server yet.',
   unauthorized: 'Server key missing. Try again later.',
@@ -42,6 +43,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const [p, setP] = useState({ sex: 'male', age: 28, heightCm: 178, weightKg: 82, targetKg: 76, goal: 'lose' })
   const [it, setIt] = useState({ ...DEFAULT_INTAKE })
   const [coach, setCoach] = useState(null) // { code, name } picked on the welcome screen
+  const [asCoach, setAsCoach] = useState(false) // "I coach people": Today opens coach setup after the plan is built
   const setI = (k, v) => { haptic(); setIt(s => ({ ...s, [k]: v })) }
   const setPf = (k, v) => setP(s => ({ ...s, [k]: v }))
 
@@ -62,7 +64,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const finish = () => {
     hapticSuccess()
     window.scrollTo(0, 0)
-    onDone({ profile, intake: it, program, settings: { name: name.trim(), units, waterTarget: 8, stepsTarget: stepsTarget(it) }, coachCode: coach?.code })
+    onDone({ profile, intake: it, program, settings: { name: name.trim(), units, waterTarget: 8, stepsTarget: stepsTarget(it) }, coachCode: coach?.code, asCoach })
   }
 
   const progress = (step / (STEPS.length - 2)) * 100
@@ -77,7 +79,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
         </header>
       )}
       <div className={'ob-step ' + (dir > 0 ? 'fwd' : 'back')} key={id}>
-        {id === 'welcome' && <Welcome onStart={c => { setCoach(c || null); go(1) }} onRestore={onRestore} account={account} />}
+        {id === 'welcome' && <Welcome onStart={(c, ac) => { setCoach(c || null); setAsCoach(!!ac); go(1) }} onRestore={onRestore} account={account} />}
 
         {id === 'goal' && (
           <Step title="What's your goal?" sub="Your program, calories and pace are built around it.">
@@ -243,11 +245,17 @@ function Welcome({ onStart, onRestore, account }) {
         <li>Your data stays on this device unless you sign in or turn on sync. Export or erase it any time.</li>
         <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
       </ul>
-      <button className="btn" onClick={() => onStart(null)}>Get started</button>
+      <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Get started</button>
       <div className="ob-alt">
         <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => { pick('sync'); setLinkCode(false); setNote('') }}>Sign in</button>
         <button className={'chip' + (open === 'coach' ? ' on' : '')} onClick={() => pick('coach')}>I have a coach code</button>
+        <button className={'chip' + (open === 'trainer' ? ' on' : '')} onClick={() => pick('trainer')}>I coach people</button>
       </div>
+      {open === 'trainer' && (
+        <div className="ob-claim stk" key="trainer">
+          <p className="hint">Build your own plan first (2 minutes). Then Today opens coach setup and gives you an invite code. Clients enter it; you see their logs and set their targets. Free for up to 3 clients.</p>
+        </div>
+      )}
       {open === 'sync' && !linkCode && (
         <div className="ob-claim stk" key="signin">
           <SignIn autoFocus onDone={r => {

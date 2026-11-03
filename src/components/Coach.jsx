@@ -14,6 +14,7 @@ const ERR = {
   offline: 'No connection.',
   bad_code: "That code isn't recognised. Check it with your coach.",
   own_code: 'That is your own coach code.',
+  coach_full: 'This coach has reached their free client limit. Ask them to upgrade, or start on your own.',
   too_many_tries: 'Too many tries today. Try again tomorrow.',
   sync_not_configured: 'Coaching is not set up on the server yet.',
   unauthorized: 'Server key missing (DEVICE_SECRET).',
@@ -245,6 +246,10 @@ export function CoachEntry({ coach, openChat, openClients }) {
   const [sheet, setSheet] = useState(null) // 'client' | 'coach' | null
   const [flagged, setFlagged] = useState(0)
   useBackClose(!!sheet, () => setSheet(null))
+  // Chose "I coach people" on the first screen: open coach setup once, the first time Today shows.
+  useEffect(() => {
+    try { if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSheet('coach') } } catch { /* ignore */ }
+  }, [])
   // The server knows if this account coaches, even on a new phone: ask once, keep the local copy in step.
   useEffect(() => {
     coachClients().then(r => {
@@ -296,7 +301,7 @@ export function CoachEntry({ coach, openChat, openClients }) {
   )
 }
 
-export function CoachHome({ onClose }) {
+export function CoachHome({ onClose, onUpgrade }) {
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
   const [open, setOpen] = useState(null)
@@ -311,6 +316,8 @@ export function CoachHome({ onClose }) {
 
   const clients = data?.clients || []
   const flagged = clients.filter(c => c.summary?.pain || c.unread).length
+  const cap = data?.cap
+  const full = cap?.on && !cap.pro && cap.used >= cap.limit
   return (
     <div className="screen ch-screen">
       <header className="screen-top">
@@ -325,6 +332,13 @@ export function CoachHome({ onClose }) {
             <div><b className="num">{clients.length ? Math.round(clients.reduce((n, c) => n + (c.summary?.adh || 0), 0) / clients.length) : 0}%</b><span>avg adherence</span></div>
             <div className={flagged ? 'hot' : ''}><b className="num">{flagged}</b><span>need you</span></div>
           </div>
+        )}
+        {cap?.on && !cap.pro && (
+          <button className={'ch-cap' + (full ? ' full' : '')} onClick={() => { haptic(); onUpgrade?.('clients') }} disabled={!onUpgrade}>
+            <span className="num">{cap.used}/{cap.limit}</span>
+            <span>{full ? 'Free client limit reached. New clients can’t join until you upgrade.' : 'free clients'}</span>
+            {onUpgrade && <u>PRO · {200}</u>}
+          </button>
         )}
         {err && <p className="sy-err">{err}</p>}
         {!data && !err && <div className="card ch-skel" />}

@@ -114,6 +114,43 @@ describe('billing', () => {
     expect((await ask()).text).toBe('ok')
   })
 
+  it('status reports usage meters that move as the limits are spent', async () => {
+    const tok = await signedIn('meter@example.com')
+    let st = await call(tok, '/api/billing/status')
+    expect(st.usage).toMatchObject({ snaps: { used: 0, limit: 3 }, chats: { used: 0, limit: 5 }, clients: { limit: 3 } })
+    await call(tok, '/api/chat', 'POST', { messages: [{ role: 'user', text: 'hi' }] })
+    await call(tok, '/api/chat', 'POST', { messages: [{ role: 'user', text: 'hi' }] })
+    st = await call(tok, '/api/billing/status')
+    expect(st.usage.chats).toEqual({ used: 2, limit: 5 })
+    expect((await call(tok, '/api/billing/status')).usage.chats.used).toBe(2) // reading the meter spends nothing
+    await hook({ type: 'customer.subscription.updated', data: { object: sub('sub_M', st.appUserId, { status: 'active', trial_end: null }) } })
+    expect((await call(tok, '/api/billing/status')).usage).toMatchObject({ chats: { used: 2, limit: 60 }, clients: { limit: 200 } })
+  })
+
+  it('free coaches take 3 clients; the 4th is told the coach is full; PRO lifts it', async () => {
+    const coachTok = await signedIn('coach-cap@example.com')
+    const { code } = await call(coachTok, '/api/coach/setup', 'POST', { name: 'Cap Coach' })
+    for (let i = 0; i < 3; i++) expect((await call(await issueToken(SECRET), '/api/coach/join', 'POST', { code })).status).toBe(200)
+    const late = await issueToken(SECRET)
+    expect(await call(late, '/api/coach/peek', 'POST', { code })).toMatchObject({ status: 409, error: 'coach_full' })
+    expect(await call(late, '/api/coach/join', 'POST', { code })).toMatchObject({ status: 409, error: 'coach_full' })
+    const list = await call(coachTok, '/api/coach/clients')
+    expect(list.clients).toHaveLength(3)
+    expect(list.cap).toEqual({ on: true, used: 3, limit: 3, pro: false })
+    const { appUserId: uid } = await call(coachTok, '/api/billing/status')
+    await hook({ type: 'customer.subscription.updated', data: { object: sub('sub_CC', uid, { status: 'active', trial_end: null }) } })
+    expect((await call(late, '/api/coach/join', 'POST', { code })).status).toBe(200)
+    expect((await call(coachTok, '/api/coach/clients')).cap).toMatchObject({ used: 4, limit: 200, pro: true })
+  })
+
+  it('a linked client re-joining a full coach is not blocked', async () => {
+    const coachTok = await signedIn('coach-rejoin@example.com')
+    const { code } = await call(coachTok, '/api/coach/setup', 'POST', { name: 'Full Coach' })
+    const first = await issueToken(SECRET)
+    for (const t of [first, await issueToken(SECRET), await issueToken(SECRET)]) await call(t, '/api/coach/join', 'POST', { code })
+    expect((await call(first, '/api/coach/join', 'POST', { code })).status).toBe(200)
+  })
+
   it('RevenueCat webhook needs the shared secret and grants PRO', async () => {
     const tok = await issueToken(SECRET)
     const { appUserId: uid } = await call(tok, '/api/billing/status')
