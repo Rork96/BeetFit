@@ -1,51 +1,90 @@
-# FitTrack — Telegram Mini App (MVP)
+# BeetFit
 
-React + Vite fitness Mini App: onboarding questionnaire, BMI avatar, calorie/macro targets, meal plan with swap, workout programs, camera rep tracker (MediaPipe Pose).
+Fitness PWA: a personal plan, food logging, an on-device camera that counts reps, Beet (an AI assistant that knows your plan and log), and a coach mode. Runs on the web at https://beetfit.wealthifai.xyz and on iOS/Android through Capacitor. **Deploy steps: [DEPLOY.md](DEPLOY.md). Coach and paywall flows: [docs/coach-flows.md](docs/coach-flows.md).**
+
+Stack: React 18 + Vite, vite-plugin-pwa, motion, Capacitor 8, one Cloudflare Worker (static assets + API) with D1 (sync, accounts, coach, billing) and KV (rate limits), MediaPipe on the device, Gemini for photos and Beet, Stripe for web payments.
+
+## What the app does
+
+| Area | Where | What |
+|---|---|---|
+| Onboarding | `Onboarding.jsx` | Goal, body, days, kit → calories, macros, training plan, pace. Welcome offers sign-in, a coach code, or "I coach people". The free-trial paywall shows once after the plan. |
+| Today | `TodayTab.jsx` | One "Next up" card (`nextUp()` in `lib/day.js`: workout on a training day → first meal → weekly weigh-in → water → done), calories ring, week and streak, Beet card. |
+| Train | `WorkoutTab.jsx`, `Session.jsx`, `Warmup.jsx` | Plan, session with camera rep counting, warm-up with animated moves, exercise how-to animations (`lib/pose2d.js`). |
+| Food | `MealsTab.jsx`, `FoodHistory.jsx` | Search, barcode, meal photo, quick add; meal ideas (not counted as eaten until logged); 30-day history and re-log. |
+| Beet | `Beet.jsx` | Chat tab. Sees plan, targets, today's log, recent weights, check-ins, pain reports. Not a doctor. |
+| Progress | `ProgressTab.jsx`, `Calendar.jsx` | Weight, strength trends, calendar plans. |
+| Coach mode | `Coach.jsx` | Client joins with a 6-character code; coach sees logs and check-ins, messages, sets targets. Free for 3 clients, PRO 200. |
+| PRO | `Pro.jsx`, `lib/billing.js` | 14-day no-card trial, monthly or yearly. Free: 3 photo estimates and 5 Beet questions a day, 3 coach clients. PRO: 30 / 60 / 200. |
+| Sync and accounts | `Account.jsx`, `lib/sync.js` | Email code, Google, Apple; cross-device sync; pairing codes. |
+| Reminders | `lib/push.js`, `worker/src/reminders.js` | Web Push, 15-minute cron: meals, workout, water, weigh-in, streak, coach messages. |
 
 ## Structure
 
 ```
 src/
-  App.jsx                  tabs + state persistence
-  lib/calories.js          BMR (Mifflin-St Jeor), TDEE, target kcal, macros, BMI
-  lib/store.js             localStorage + Telegram CloudStorage (chunked)
-  data/meals.js            52-meal DB, day plan generator, swap logic
-  data/workouts.js         3 programs (lose/maintain/gain) + tracker configs
-  components/
-    Onboarding.jsx         questionnaire
-    ProfileTab.jsx         avatar, weight log, chart, daily targets
-    Avatar.jsx             SVG body morphing by BMI (current vs target ghost)
-    MealsTab.jsx           day plan, per-meal swap, totals
-    WorkoutTab.jsx         program by goal, exercise log
-    PoseTracker.jsx        MediaPipe PoseLandmarker rep counter (squat/curl/press)
+  App.jsx                 5 tabs (Today · Train · Food · Beet · Progress), Settings, overlays; back button closes overlays
+  components/             one file per screen or card (+ its .css)
+  camera/                 RepTracker, FoodCamera, pose engine + exercises, barcode
+  data/                   plan library, how-to, warm-up, guides, meal ideas, sauces
+  lib/                    day.js (every daily number), store.js, api.js (device token), billing.js (+ usage meters),
+                          coach.js, useCoach/usePro/useSync/useAccount hooks, pose2d.js, program.js, platform.js
+  styles/tokens.css       design tokens + motion grid
+worker/src/
+  index.js                API + static assets
+  auth.js billing.js reminders.js webpush.js   accounts, Stripe/RevenueCat, reminder schedule, Web Push
+scripts/                  fetch-mediapipe.mjs (prebuild), native-permissions.mjs, vapid.mjs
+docs/coach-flows.md       coach/client flows, limits, navigation and paywall decisions
+wrangler.toml             Worker config, custom domain, cron
+capacitor.config.json     native shell config
 ```
 
-## Run locally
+## API
 
-```
-npm install
-npm run dev
-```
+All under `worker/src/index.js`. Everything except `/api/health`, `/api/device` and webhooks needs `Authorization: Bearer <device token>`.
 
-Camera requires HTTPS or localhost.
+| Route | Purpose |
+|---|---|
+| `POST /api/device` | Issue an HMAC-signed per-install token (no account needed) |
+| `GET /api/health` | Which features are configured (`auth.email`, `billing.web`, `billing.webhook`, gemini, usda, kv) |
+| `GET /api/food/barcode/:code`, `/api/food/search?q=` | Open Food Facts (+ USDA when keyed), cached |
+| `POST /api/snap` | JPEG → Gemini → items with macros; sauces corrected from a reference table |
+| `POST /api/chat` | Beet (Gemini) |
+| `/api/sync`, `/api/pair` | Cross-device sync, 6-digit pairing |
+| `/api/auth/*` | Email code, Google, Apple, sign out, delete account |
+| `/api/coach/*` | Peek/join/leave, messages, client list with free-tier cap, target overrides |
+| `/api/push/*` | Web Push subscriptions; cron sends reminders |
+| `/api/billing/*` | Config, status (+ daily `usage` meters), Stripe checkout and portal, Stripe and RevenueCat webhooks |
 
-## Deploy as Telegram Mini App
+Billing is off until Stripe (or RevenueCat) is configured: with no keys nobody is limited and no meters show.
 
-1. `npm run build` → deploy `dist/` to any static HTTPS host (Vercel/Netlify/GitHub Pages/Cloudflare Pages).
-2. In @BotFather: `/newbot` (if no bot yet) → `/newapp` → attach the bot → set the Web App URL to your deployed URL.
-3. Optional: `/setmenubutton` to open the app from the bot's menu button.
+## Camera
 
-Requirements: HTTPS mandatory. Camera (getUserMedia) works in Telegram's in-app WebView on iOS/Android; user must grant camera permission.
+| Feature | Runs where | Service | Cost |
+|---|---|---|---|
+| Rep counting + form check | on device | MediaPipe Pose Landmarker 1.1.1 (lite), self-hosted | free, no key |
+| Barcode scan | on device | native `BarcodeDetector`, else the ZXing WASM ponyfill | free |
+| Barcode → nutrition | Worker (cached 7 days) | Open Food Facts | free, no key |
+| Food search | Worker | Open Food Facts + USDA FoodData Central | free (USDA key optional) |
+| Meal photo → items | Worker | Gemini (`gemini-2.5-flash`) | needs a key; free tier is rate-limited |
 
-## Pose tracker
+- `src/camera/RepTracker.jsx`: frame check → 3-2-1 with a cue → auto count → done + RPE → form report → rest → up next → recap. Manual counting works at every stage.
+- `src/camera/pose/engine.js`: pure rep/hold engine (EMA smoothing, hysteresis, minimum phase and rep times) plus the form report. Unit-tested.
+- `src/camera/pose/exercises.js`: 9 trackable exercises: squat, push-up, lunge, bridge, RDL, curl, press, plank, wall sit.
+- Dev demo without a person in frame: `npm run dev`, then open `/?posemock`.
+- Meal photos go to Google Gemini only when the shutter is tapped. Camera video never leaves the phone.
 
-- Model: `pose_landmarker_lite` loaded from Google CDN at runtime, inference on-device (GPU delegate).
-- Rep logic: joint-angle state machine. Squat: hip-knee-ankle < 100° → > 160°. Curl: shoulder-elbow-wrist < 60° → > 150°. Press: same triplet, 100°/160°.
-- Add exercises: extend `TRACKERS` in `src/data/workouts.js` (landmark indices + thresholds), set `trackerId` on the exercise.
+## Design tokens
 
-## Known MVP limits
+`src/styles/tokens.css` puts the Paulrork brand layer on top of the BeetFit dark shell: lime `#E0FD90`, electric blue `#303BFF`, violet `#7D70F6`, tight corners and square-in-square marks.
+- Display font: **Unbounded** (OFL, self-hosted), the free stand-in for Ruberoid.
+- Numerals: Space Grotesk (OFL), with tabular figures.
+- Motion runs on a 128 BPM grid (`s16 = 117 ms`). Settings → Animation offers Auto/Full/Lite/Off, and Auto follows `prefers-reduced-motion`.
 
-- Meal DB is static (52 items); portions scale ×0.6–1.6 to hit slot targets (25/35/30/10% split).
-- Avatar is a parametric silhouette, not a body scan.
-- Rep counter needs full body/limb in frame, decent light; counts one pose (best-visible side).
-- No backend: all data on-device + Telegram CloudStorage.
+## Scripts
+
+`npm run dev` · `npm test` (164 tests: app logic, pose engine, worker routes with an in-memory D1) · `npm run build` · `npm run deploy` · `npm run api:dev` · `npm run native:build` · `npm run ios` · `npm run android` · `npm run vapid`
+
+## Status
+
+Not verified on real hardware: iPhone behaviour, two-device coach ↔ client linking, live Stripe/Resend, Gemini photo latency (the `/api/snap` response carries `ms` for measuring it). Store release and RevenueCat wiring are deferred. Exercise and warm-up content has not been reviewed by a trainer.

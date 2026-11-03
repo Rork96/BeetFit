@@ -1,0 +1,51 @@
+# One Worker = the BeetFit web app (static files in ./dist) + its API (/api/*).
+# Deploy: npm run deploy   (builds, then `wrangler deploy`)
+name = "beetfit"
+main = "worker/src/index.js"
+compatibility_date = "2026-10-01"
+
+# Serve the app at https://beetfit.wealthifai.xyz — Cloudflare creates the DNS record and certificate.
+routes = [{ pattern = "beetfit.wealthifai.xyz", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[vars]
+# Origins allowed to call /api from elsewhere: the iOS (capacitor://localhost) and Android (https://localhost) shells.
+# The website itself is same-origin and needs no CORS.
+ALLOWED_ORIGINS = "capacitor://localhost,https://localhost,http://localhost:5173"
+GEMINI_MODEL = "gemini-2.5-flash"
+# Sign-in (see DEPLOY.md → Accounts). Leave empty to hide a method.
+MAIL_FROM = "BeetFit <login@wealthifai.xyz>"
+GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials
+APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
+# PRO (see DEPLOY.md → Payments). Price IDs from Stripe → Product catalog. Empty = payments off, no limits.
+STRIPE_PRICE_MONTH = ""
+STRIPE_PRICE_YEAR = ""
+
+# Daily caps (photos per device / per IP, new device tokens per IP).
+# No id: wrangler creates the namespace on the first deploy and remembers it.
+[[kv_namespaces]]
+binding = "RATE"
+
+# Cross-device sync. No id: wrangler creates the database on the first deploy.
+[[d1_databases]]
+binding = "DB"
+database_name = "beetfit"
+
+# Daily reminders: every 15 minutes, send the ones that came due (in each user's own time zone).
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Secrets — set once, never commit:
+#   npx wrangler secret put DEVICE_SECRET    (any long random string: `openssl rand -hex 32`)
+#   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)
+#   npx wrangler secret put USDA_API_KEY     (optional, https://fdc.nal.usda.gov/api-key-signup)
+#   npm run --silent vapid | npx wrangler secret put VAPID_JWK   (push notifications; key never shown)
+#   npx wrangler secret put RESEND_API_KEY   (email sign-in codes, https://resend.com)
+#   npx wrangler secret put STRIPE_SECRET_KEY        (PRO on the web: Stripe → Developers → API keys)
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET    (whsec_… from the webhook endpoint)
+#   npx wrangler secret put REVENUECAT_WEBHOOK_AUTH  (store purchases; same value as RevenueCat's webhook auth header)

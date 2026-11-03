@@ -1,52 +1,181 @@
-import React, { useEffect, useState } from 'react'
-import { loadState, saveState, loadCloudState } from './lib/store.js'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, MotionConfig } from 'motion/react'
+import { getMotionLevel } from './lib/motion.js'
+import { loadState, saveState, loadNativeBackup, liveSession, persistStorage } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
-import ProfileTab from './components/ProfileTab.jsx'
+import TodayTab from './components/TodayTab.jsx'
+import ProgressTab from './components/ProgressTab.jsx'
 import MealsTab from './components/MealsTab.jsx'
 import WorkoutTab from './components/WorkoutTab.jsx'
+import Settings from './components/Settings.jsx'
+import { haptic } from './lib/platform.js'
+import { useBackClose } from './lib/hooks.js'
+import { dayKey } from './lib/day.js'
+import { useSync } from './lib/useSync.js'
+import { useCoach } from './lib/useCoach.js'
+import { useAccount } from './lib/useAccount.js'
+import { usePro } from './lib/usePro.js'
+import { canBuyHere } from './lib/billing.js'
+import ProSheet from './components/Pro.jsx'
+import { CoachChat, CoachHome } from './components/Coach.jsx'
+import BeetChat from './components/Beet.jsx'
+import Guides from './components/Read.jsx'
+import Calendar from './components/Calendar.jsx'
+import { remindersOf, updatePush, pushOn } from './lib/push.js'
+import { stable } from './lib/sync.js'
+import { planEvents } from './lib/plans.js'
+
+const REM_SENT = 'beetfit_rem_sent'
+
+// Top-level keys merged as a whole during sync: remember when each was last edited on this device.
+const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans', 'pauses', 'exNotes']
+
+// 2px geometric line icons, square-based.
+const Icon = {
+  today: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><rect x="9" y="9" width="6" height="6" /></svg>,
+  workout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="9" width="4" height="6" /><rect x="18" y="9" width="4" height="6" /><path d="M6 12h12" /><rect x="6" y="6" width="3" height="12" /><rect x="15" y="6" width="3" height="12" /></svg>,
+  meals: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><path d="M3 12h18M12 12v9" /></svg>,
+  beet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4h18v12H11l-5 4v-4H3z" /><path d="M8 10h8" /></svg>,
+  progress: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18" /><rect x="5" y="12" width="3" height="6" /><rect x="10.5" y="8" width="3" height="10" /><rect x="16" y="4" width="3" height="14" /></svg>
+}
 
 const TABS = [
-  { id: 'profile', label: 'Profile', ic: '👤' },
-  { id: 'meals', label: 'Meals', ic: '🍽' },
-  { id: 'workout', label: 'Workout', ic: '💪' }
+  { id: 'today', label: 'Today' },
+  { id: 'workout', label: 'Train' },
+  { id: 'meals', label: 'Food' },
+  { id: 'beet', label: 'Beet' },
+  { id: 'progress', label: 'Progress' }
 ]
 
 export default function App() {
   const [state, setState] = useState(() => loadState())
-  const [tab, setTab] = useState('profile')
+  // Reopen Train if a workout was running when the app was killed or reloaded.
+  const [tab, setTab] = useState(() => (liveSession()?.date === dayKey() ? 'workout' : 'today'))
+  const [intent, setIntent] = useState(null) // cross-tab action, e.g. { start: true } for Train
+  const [settings, setSettings] = useState(false)
+  const [clients, setClients] = useState(false)
+  useBackClose(clients, () => setClients(false))
+  const [chat, setChat] = useState(false)
+  const [guides, setGuides] = useState(null) // null | { first: guide id or null }
+  const [cal, setCal] = useState(null) // null | { day, plan }
+  const prevTab = useRef(tab)
 
-  // try Telegram CloudStorage if nothing local
+  useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (state) saveState(state) }, [state])
+  useEffect(() => { if (state?.profile) persistStorage() }, [!!state?.profile]) // eslint-disable-line react-hooks/exhaustive-deps
+  useBackClose(!!settings, () => setSettings(false))
+  useBackClose(chat, () => setChat(false))
+  useBackClose(!!guides, () => setGuides(null))
+  useBackClose(!!cal, () => setCal(null))
+
+  // Accepts a patch object or a function of the previous state (camera logs arrive in bursts).
+  const update = patch => setState(s => {
+    const p = typeof patch === 'function' ? patch(s) : patch
+    const hit = STAMPED.filter(k => k in p)
+    return { ...s, ...p, ...(hit.length ? { _t: { ...(s._t || {}), ...Object.fromEntries(hit.map(k => [k, Date.now()])) } } : {}) }
+  })
+  const sync = useSync(state, setState)
+  const account = useAccount(sync, setState)
+  const pro = usePro(!!state?.profile)
+  // Right after the plan is built: coaches go to coach setup; everyone else gets the free-trial offer once.
+  const hasPlan = !!state?.profile
   useEffect(() => {
-    if (!state) loadCloudState().then(s => { if (s) setState(s) })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!hasPlan) return
+    try {
+      if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSettings('setup'); return }
+      if (localStorage.getItem('beetfit_paywall') && pro.config) {
+        localStorage.removeItem('beetfit_paywall')
+        if (canBuyHere(pro.config) && !pro.status?.pro) setTimeout(() => pro.open('welcome'), 500)
+      }
+    } catch { /* ignore */ }
+  }, [hasPlan, pro.config]) // eslint-disable-line react-hooks/exhaustive-deps
+  const coachHook = useCoach(sync.on)
+  // Joining a coach turns sync on: the coach reads the synced copy.
+  const coach = { ...coachHook, join: async code => { const r = await coachHook.join(code); if (r.status === 200) sync.setOn(true); return r } }
+  // Components read targets through state.coach.override; it never goes into the synced document.
+  const link = coachHook.link
+  const view = useMemo(() => (state && link?.coach ? { ...state, coach: { name: link.coach.name, override: link.override } } : state), [state, link])
+
+  // Reminder times live in settings and calendar plans in state.plans (both sync). Reschedule this
+  // phone when either changes, and on open (calendar reminders only cover the next two weeks).
+  const remKey = state?.profile ? stable({ prefs: remindersOf(state), events: planEvents(state) }) : ''
+  useEffect(() => {
+    if (!remKey || !pushOn()) return
+    let last = null
+    try { last = localStorage.getItem(REM_SENT) } catch { /* ignore */ }
+    if (last === remKey) return
+    const t = setTimeout(() => {
+      const { prefs, events } = JSON.parse(remKey)
+      updatePush(prefs, events).then(r => { if (r?.ok) try { localStorage.setItem(REM_SENT, remKey) } catch { /* ignore */ } })
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [remKey])
+
+  // Deep links from notifications: /?tab=meals, /?chat=coach, /?coach=1, /?cal=2026-10-28
+  const openLink = href => {
+    const q = new URL(href, location.origin).searchParams
+    const t = q.get('tab')
+    if (t && TABS.some(x => x.id === t)) { prevTab.current = tab; setTab(t) }
+    if (q.get('chat') === 'coach') setChat(true)
+    if (q.get('coach') === '1') setSettings('coach')
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('cal') || '')) setCal({ day: q.get('cal') })
+    if (q.get('pro') === '1') pro.open()
+    const b = q.get('billing') // back from Stripe
+    if (b === 'success') pro.open('success')
+    else if (b === 'portal' || b === 'cancel') pro.refresh()
+  }
+  const openRef = useRef(openLink)
+  openRef.current = openLink
+  useEffect(() => {
+    if (location.search) { const href = location.href; history.replaceState(null, '', '/'); openRef.current(href) }
+    const onMsg = e => { if (e.data?.type === 'bf-open') openRef.current(e.data.url) }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
   }, [])
 
-  useEffect(() => { if (state) saveState(state) }, [state])
-
-  const update = patch => setState(s => ({ ...s, ...patch }))
-
   if (!state?.profile) {
-    return <Onboarding onDone={profile => setState({
-      profile,
-      weightLog: [{ date: new Date().toISOString().slice(0, 10), kg: profile.weightKg }],
-      mealPlan: null,
-      workoutLog: {}
-    })} />
+    return <Onboarding account={account} onRestore={data => { setState(data); sync.setOn(true); window.scrollTo(0, 0) }} onDone={({ profile, intake, program, settings, coachCode, asCoach }) => {
+      setState({
+        _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
+        profile, intake, program, settings,
+        weightLog: [{ date: dayKey(), kg: profile.weightKg }],
+        mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
+      })
+      if (coachCode) coach.join(coachCode)
+      try { localStorage.setItem(asCoach ? 'beetfit_coach_intent' : 'beetfit_paywall', '1') } catch { /* ignore */ }
+    }} />
   }
 
+  const order = TABS.map(t => t.id)
+  const back = order.indexOf(tab) < order.indexOf(prevTab.current)
+  const go = (id, it = null) => { if (id !== tab) { haptic(); prevTab.current = tab; setTab(id); window.scrollTo(0, 0) } setIntent(it) }
+
+  const ml = getMotionLevel()
   return (
-    <>
-      {tab === 'profile' && <ProfileTab state={state} update={update} />}
-      {tab === 'meals' && <MealsTab state={state} update={update} />}
-      {tab === 'workout' && <WorkoutTab state={state} update={update} />}
+    <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
+      <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
+        {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
+        {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
+        {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
+        {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} pro={pro} />}
+      </div>
       <nav className="tabbar">
         {TABS.map(t => (
-          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-            <span className="ic">{t.ic}</span>
+          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => go(t.id)}>
+            {tab === t.id && <motion.span layoutId="tab-ind" className="tab-ind" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+            {Icon[t.id]}
             {t.label}
           </button>
         ))}
       </nav>
-    </>
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} onClose={() => history.back()} />}
+      {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
+      {clients && <CoachHome onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
+      {guides && <Guides first={guides.first} onClose={() => history.back()} />}
+      {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
+        onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
+      {pro.sheet && <ProSheet pro={pro} account={account} reason={pro.sheet.reason} onClose={pro.close} />}
+    </MotionConfig>
   )
 }

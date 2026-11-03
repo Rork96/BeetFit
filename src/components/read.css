@@ -1,0 +1,26 @@
+/* Guides */
+.rd-all { border: none; background: none; color: var(--accent); font: 600 12.5px var(--f-display); padding: 4px 0; }
+.rd-item { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 12px 0; border: none; border-top: 1px solid var(--line); background: none; color: var(--text); text-align: left; }
+.rd-item b { font: 600 15.5px var(--f-display); }
+.rd-item .hint { font-size: 12.5px; }
+.rd-cat { font: 200 10px var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+.rd-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; color: var(--text); animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.rd-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rd-row b { font: 600 15px var(--f-display); }
+.rd-row .hint { font-size: 12.5px; }
+.rd-row.done b { opacity: .6; }
+.rd-min { font-size: 12px; color: var(--hint); flex: none; }
+.rd-row.done .rd-min { color: var(--accent); }
+.rd-art { padding-top: 8px; padding-bottom: 40px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.rd-art h1 { font-size: 28px; line-height: 1.1; margin-bottom: 10px; }
+.rd-art h3 { font: 600 16px var(--f-display); margin: 22px 0 6px; }
+.rd-art p, .rd-art li { font-size: 15.5px; line-height: 1.6; color: rgba(241,242,246,.88); }
+.rd-art p { margin: 0 0 12px; }
+.rd-art ul { margin: 0 0 12px; padding-left: 0; list-style: none; }
+.rd-art li { position: relative; padding-left: 18px; margin-bottom: 6px; }
+.rd-art li::before { content: ''; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; background: var(--accent); }
+.rd-lead { font: 400 17px/1.5 var(--f-display) !important; color: var(--text) !important; }
+.rd-tip { padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--text) !important; }
+.rd-src { display: flex; flex-direction: column; gap: 6px; margin: 18px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.rd-src a { font-size: 13px; color: var(--accent); }
+.rd-note { font-size: 12px; margin: 10px 0 16px !important; }

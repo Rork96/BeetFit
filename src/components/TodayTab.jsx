@@ -1,0 +1,240 @@
+import React, { useState } from 'react'
+import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
+import { trackerFor } from '../camera/RepTracker.jsx'
+import { useCountUp, useBackClose } from '../lib/hooks.js'
+import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
+import { plansOn, planTitle, planDone } from '../lib/plans.js'
+import BodyFigure from './BodyFigure.jsx'
+import { haptic, hapticSuccess } from '../lib/platform.js'
+import { CoachNote, CoachStrip } from './Coach.jsx'
+import { BeetCard } from './Beet.jsx'
+import { ReadCard } from './Read.jsx'
+import SyncBadge from './SyncBadge.jsx'
+import InstallCard from './InstallCard.jsx'
+import './today.css'
+
+const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
+
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync }) {
+  const key = dayKey()
+  const t = targets(state)
+  const e = eaten(state, key)
+  const water = waterOf(state, key)
+  const tasks = dayTasks(state, key)
+  const si = streakInfo(state, key)
+  const st = si.days
+  const wk = week(state, key)
+  const units = state.settings?.units || 'kg'
+  const name = state.settings?.name
+
+  const remaining = Math.max(0, t.kcal - e.kcal)
+  const shownRemaining = useCountUp(remaining)
+  const kcalPct = Math.min(1, e.kcal / t.kcal)
+  const [splash, setSplash] = useState(0)
+  const [streakOpen, setStreakOpen] = useState(false)
+  useBackClose(streakOpen, () => setStreakOpen(false))
+  const [milestone, closeMilestone] = useMilestone(state)
+  const todayPlans = plansOn(state, key)
+  const calendar = o => { if (!openCalendar) return; history.back(); setTimeout(() => openCalendar(o), 60) }
+
+  const prog = program(state)
+  const dayIdx = nextDayIndex(state, key)
+  const day = prog.days[dayIdx]
+  const trainedToday = setsLogged(state, key) > 0
+  const camCount = day.exercises.filter(ex => trackerFor(ex)).length
+  const up = nextUp(state, key)
+  const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
+
+  const wNow = currentWeight(state)
+  const wStart = state.weightLog?.[0]?.kg ?? wNow
+  const toGo = +(wNow - state.profile.targetKg).toFixed(1)
+
+  const addGlass = delta => {
+    haptic(delta > 0 ? 'light' : 'medium')
+    const next = Math.max(0, water + delta)
+    if (delta > 0) setSplash(s => s + 1)
+    if (next === t.water && delta > 0) hapticSuccess()
+    update(prev => ({ water: { ...(prev.water || {}), [key]: next } }))
+  }
+
+  const R = 64, C = 2 * Math.PI * R
+
+  return (
+    <div className="page today">
+      <div className="row td-top">
+        <div>
+          <div className="td-date"><span className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>{sync && <SyncBadge sync={sync} onOpen={openSettings} />}</div>
+          <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
+        </div>
+        <div className="td-top-r">
+          <button className="td-icon" onClick={() => { haptic(); openSettings() }} aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="6" height="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="stk td-stack">
+        <NextUp up={up} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
+          onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
+        {coach && <CoachNote coach={coach} onOpen={openChat} />}
+        <CoachStrip openClients={openClients} />
+        {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
+        {/* Calories */}
+        <div className="card td-kcal">
+          <div className="td-ring">
+            <svg viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r={R} className="trk" />
+              <circle cx="80" cy="80" r={R} className={'val' + (e.kcal > t.kcal * 1.1 ? ' over' : '')}
+                style={{ strokeDasharray: C, strokeDashoffset: C * (1 - kcalPct) }} />
+            </svg>
+            <div className="td-ring-in">
+              <b className="num">{shownRemaining}</b>
+              <span>kcal left</span>
+            </div>
+          </div>
+          <div className="td-kcal-side">
+            <div><span className="label">Eaten</span><b className="num">{e.kcal}</b></div>
+            <div><span className="label">{t.coach ? <span className="ch-tag">Coach target</span> : t.dayType ? <span className={'td-dt ' + t.dayType}>{t.dayType === 'train' ? 'Training day' : 'Rest day'}</span> : 'Target'}</span><b className="num">{t.kcal}</b></div>
+            <Macro label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
+            <Macro label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
+            <Macro label="Fat" v={e.f} max={t.fat} color="var(--water)" />
+          </div>
+          <button className="td-link" onClick={() => go('meals')}>Log food →</button>
+        </div>
+
+        <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
+        {todayPlans.length > 0 && (
+          <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
+            <span className="label">On your calendar today</span>
+            {todayPlans.map(p => (
+              <span key={p.id} className={'td-plan' + (planDone(state, p, key) ? ' done' : '')}>
+                <i />{planTitle(p)}<span className="num">{p.time || ''}</span>
+              </span>
+            ))}
+          </button>
+        )}
+
+        {/* Water + Body */}
+        <div className="grid2">
+          <div className="card td-water">
+            <div className="row"><span className="label">Water</span><span className="num td-small">{water}/{t.water}</span></div>
+            <div className="td-glasses">
+              {Array.from({ length: t.water }, (_, i) => <i key={i} className={i < water ? 'on' : ''} style={{ transitionDelay: `${i * 29}ms` }} />)}
+            </div>
+            <div className="td-water-btns">
+              <button onClick={() => addGlass(-1)} disabled={!water} aria-label="Remove a glass">−</button>
+              <button className="add" onClick={() => addGlass(1)} aria-label="Add a glass">+ glass{splash > 0 && <span className="td-splash" key={splash} />}</button>
+            </div>
+          </div>
+          <button className="card td-body" onClick={() => go('progress')}>
+            <span className="td-fig"><BodyFigure sex={state.profile.sex} heightCm={state.profile.heightCm} startKg={wStart} currentKg={wNow} targetKg={state.profile.targetKg} goal={state.profile.goal} show="target" height={118} /></span>
+            <span className="label">Body</span>
+            <b className="num">{fmtWeight(wNow, units)}</b>
+            <span className="td-small">{toGo === 0 ? 'At target' : `${fmtWeight(Math.abs(toGo), units)} to go`}</span>
+            <span className={'td-delta ' + ((wNow - wStart) * (wStart - state.profile.targetKg) > 0 ? 'good' : 'flat')}>
+              {wNow - wStart === 0 ? 'since start: —' : `since start: ${wNow - wStart > 0 ? '+' : '−'}${fmtWeight(Math.abs(wNow - wStart), units)}`}
+            </span>
+          </button>
+        </div>
+
+        {askBeet && <BeetCard state={state} onAsk={askBeet} />}
+
+        {/* Week + today's tasks */}
+        <div className="card td-wk">
+          <div className="row"><span className="label">This week · <span className="num">{wk.filter(d => d.score >= 2).length}/7</span>{state.settings?.streak !== false && <> · {si.freezeLeft ? 'freeze ready' : 'freeze used'}</>}</span><button className="rd-all" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>Calendar →</button></div>
+          <div className="td-week">
+            {wk.map(d => (
+              <div key={d.key} className={'td-day' + (d.today ? ' today' : '')}>
+                <i className={d.paused && !(d.score >= 2) ? 'pz' : d.score == null ? 'future' : si.frozen.includes(d.key) ? 'frz' : `s${d.score}`} />
+                <span>{d.label}</span>
+              </div>
+            ))}
+          </div>
+          {state.settings?.streak !== false && <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>}
+        </div>
+
+        <InstallCard />
+        {openRead && <ReadCard state={state} onOpen={openRead} />}
+      </div>
+      {streakOpen && <StreakSheet state={state} update={update} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
+      {milestone && <Milestone days={milestone} onClose={closeMilestone} />}
+    </div>
+  )
+}
+
+const SEEN = 'beetfit_week_seen'
+const seenWeek = () => { try { return localStorage.getItem(SEEN) } catch { return null } }
+
+// Sunday: this week so far. Monday: last week. Dismissed per week.
+function WeekReview({ state, today, streak, units, onPlan }) {
+  const r = weekReview(state, today)
+  const [seen, setSeen] = useState(seenWeek)
+  if (!r || seen === r.id + (r.final ? 'f' : '')) return null
+  const close = () => { haptic(); const id = r.id + (r.final ? 'f' : ''); try { localStorage.setItem(SEEN, id) } catch { /* ignore */ } setSeen(id) }
+  const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const wc = r.weightChange
+  const wcText = wc == null ? '—' : `${wc > 0 ? '+' : ''}${units === 'lb' ? +(wc * KG_TO_LB).toFixed(1) : wc}`
+  const head = r.kept ? `Week kept: ${r.sessions} of ${r.planned} sessions.`
+    : r.final ? `${r.sessions} of ${r.planned} sessions last week.`
+      : `${r.sessions} of ${r.planned} sessions so far.`
+  const sub = r.kept ? (streak >= 3 ? `${streak}-day streak going into ${r.final ? 'this' : 'next'} week.` : `Same again ${r.final ? 'this' : 'next'} week.`)
+    : r.final ? `Plan for ${r.planned} this week. Pick the days now.`
+      : r.planned - r.sessions === 1 ? 'One session today hits the week.' : 'Today still counts. Do one session.'
+  return (
+    <div className={'card td-review' + (r.kept ? ' kept' : '')}>
+      <div className="row">
+        <span className="label">{r.final ? 'Last week' : 'This week'} · {fmtD(r.start)}–{fmtD(r.end)}</span>
+        <button className="td-x" onClick={close} aria-label="Dismiss">✕</button>
+      </div>
+      <div>
+        <b className="td-review-h">{head}</b>
+        <p className="hint" style={{ margin: '4px 0 0' }}>{sub}</p>
+      </div>
+      <div className="td-review-g">
+        <div><b className="num">{r.sessions}/{r.planned}</b><span>sessions</span></div>
+        <div><b className="num">{r.foodDays}/7</b><span>days logged</span></div>
+        <div><b className="num">{r.protein ?? '—'}{r.protein != null && <small>g</small>}</b><span>protein avg{r.protein != null ? ` / ${r.proteinTarget}` : ''}</span></div>
+        <div><b className="num">{wcText}{wc != null && <small>{units}</small>}</b><span>weight trend</span></div>
+      </div>
+      {!r.kept && onPlan && <button className="btn secondary small" onClick={onPlan}>Plan my training days</button>}
+    </div>
+  )
+}
+
+function Macro({ label, v, max, color }) {
+  return (
+    <div className="td-macro">
+      <div className="row"><span>{label}</span><span className="num">{v}<small>/{max}g</small></span></div>
+      <div className="td-bar"><i style={{ transform: `scaleX(${Math.min(1, v / max)})`, background: color }} /></div>
+    </div>
+  )
+}
+
+// One thing to do now. Everything else on Today is context for it.
+function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, units, go, onGlass, onStart }) {
+  const dayName = n => n.split('—')[1]?.trim() || n
+  const last = up.id === 'weigh' ? state.weightLog.reduce((m, w) => (w.date > m.date ? w : m)) : null
+  const h = {
+    train: { label: 'Next up · training day', title: dayName(day.name), sub: `${day.exercises.length} exercises${camCount ? ` · camera counts ${camCount}` : ''}`, cta: 'Start session', act: onStart },
+    food: { label: 'Next up', title: 'Log what you eat', sub: `Target ${t.kcal} kcal · ${t.protein} g protein. Photo, barcode or search.`, cta: 'Log food', act: () => { haptic(); go('meals') } },
+    weigh: last && { label: 'Next up · weekly check', title: 'Weigh in', sub: `Last: ${fmtWeight(last.kg, units)}, ${new Date(last.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. One number a week keeps the plan honest.`, cta: 'Log weight', act: () => { haptic(); go('progress') } },
+    water: { label: 'Next up', title: `Water: ${water} of ${t.water}`, sub: 'Last task for today.', cta: '+ glass', act: onGlass },
+    done: { label: 'Today is done', title: 'Nothing left for today', sub: `${streak ? `${streak}-day streak. ` : ''}Next session: ${dayName(tomorrow.name)}.`, cta: null }
+  }[up.id]
+  const done = up.id === 'done'
+  return (
+    <div className={'card td-next' + (done ? ' done' : '')}>
+      <span className="label">{h.label}</span>
+      <h2>{h.title}</h2>
+      <p className="hint">{h.sub}</p>
+      {h.cta && <button className="btn" onClick={h.act}>{h.cta}</button>}
+      <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
+        {tasks.map(tk => (
+          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')}>
+            <i>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</i>{tk.short || tk.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}

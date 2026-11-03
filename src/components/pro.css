@@ -1,0 +1,72 @@
+/* BeetFit PRO sheet */
+.pr { gap: 14px; padding-top: 20px; }
+.pr-top { display: flex; align-items: center; gap: 14px; }
+.pr-mark, .pr-badge { flex: none; width: 44px; height: 44px; border: 2.5px solid var(--accent); display: grid; place-items: center; box-shadow: 0 0 24px rgba(224,253,144,.25); }
+.pr-mark i, .pr-badge i { width: 14px; height: 14px; background: var(--accent); }
+.pr-badge { width: 64px; height: 64px; align-self: center; margin-top: 6px; } .pr-badge i { width: 20px; height: 20px; }
+.pr-h { margin: 0; font: 700 22px/1.15 var(--f-display); letter-spacing: -.01em; }
+.pr-badge + .pr-h { text-align: center; }
+.pr-why { margin: 0; padding: 9px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); font-size: 14px; }
+.pr-table { display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: var(--r-2); overflow: hidden; }
+.pr-tr { display: grid; grid-template-columns: 1fr 62px 62px; align-items: center; gap: 6px; padding: 8px 12px; font-size: 13px; border-top: 1px solid var(--line); }
+.pr-tr:first-child { border-top: 0; }
+.pr-tr > span:not(:first-child) { text-align: center; font: 600 12px var(--f-num); color: var(--hint); }
+.pr-th { background: var(--card-2); } .pr-th > span { font: 700 10.5px var(--f-display) !important; text-transform: uppercase; letter-spacing: .08em; }
+.pr-th > span:last-child { color: var(--accent) !important; }
+.pr-tr .pr-yes { color: var(--ok); font-size: 14px; }
+.pr-tr .pr-up { color: var(--accent); }
+.pr-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pr-plan { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; text-align: left; color: var(--text);
+  background: var(--card-2); border: 1.5px solid var(--line-2); border-radius: var(--r-2); transition: border-color var(--dur-2), background var(--dur-2); }
+.pr-plan.on { border-color: var(--accent); background: var(--accent-soft); }
+.pr-plan-n { display: flex; align-items: center; gap: 6px; font: 700 12px var(--f-display); text-transform: uppercase; letter-spacing: .06em; color: var(--hint); }
+.pr-plan.on .pr-plan-n { color: var(--accent); }
+.pr-plan-n em { font-style: normal; padding: 1px 5px; background: var(--accent); color: var(--on-accent); border-radius: 3px; font-size: 9.5px; letter-spacing: .04em; }
+.pr-plan b { font-size: 22px; letter-spacing: -.02em; } .pr-plan b small { font-size: 12px; color: var(--hint); margin-left: 2px; font-weight: 500; }
+.pr-per { font-size: 11.5px; color: var(--hint); }
+.pr-sign { display: flex; flex-direction: column; gap: 10px; }
+.pr-fine { margin: 0; font-size: 12px; line-height: 1.5; }
+.pr-state { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pr-state > div { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--card-2); border-radius: var(--r-2); }
+.pr-state b { font-size: 16px; }
+.pr .ac-link { align-self: center; color: var(--hint); }
+.pr-card .row { align-items: center; gap: 12px; }
+.pr-card-l { margin: 4px 0 0; font-size: 13.5px; color: var(--text); }
+.pr-keep { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-2); } .pr-keep b { color: var(--text); }
+.pr > * { flex-shrink: 0; }
+
+/* Sales layout */
+.pr-hero { display: flex; flex-direction: column; gap: 10px; }
+.pr-hero .pr-h { font-size: 26px; line-height: 1.12; }
+.pr-sub { margin: 0; font-size: 14px; line-height: 1.5; color: var(--hint); }
+.pr-demos { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
+.pr-demos::-webkit-scrollbar { display: none; }
+.pr-demo { flex: 0 0 78%; max-width: 300px; scroll-snap-align: center; display: flex; flex-direction: column; gap: 10px; padding: 14px; min-height: 236px;
+  background: var(--card-2); border: 1px solid var(--line-2); border-radius: var(--r-2); }
+.pr-eg { margin: -6px 0 0; font-size: 11px; color: var(--hint); }
+.pd-plate { position: relative; height: 96px; border-radius: var(--r-1); background: #14161d; overflow: hidden; display: grid; place-items: center; }
+.pd-plate svg { height: 100%; }
+.pd-dish { fill: #2a2e3a; } .pd-dish.in { fill: #343949; }
+.pd-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
+.pd-items li { display: flex; justify-content: space-between; gap: 8px; }
+.pd-items b { font-weight: 600; }
+.pd-up { color: var(--ok); }
+.pd-total { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--line-2); font-size: 14px; }
+.pd-total b { color: var(--accent); }
+.pd-chat { display: flex; flex-direction: column; gap: 8px; }
+.pd-chat p { margin: 0; padding: 8px 10px; font-size: 12.5px; line-height: 1.45; max-width: 92%; }
+.pd-chat .me { align-self: flex-end; background: var(--accent); color: var(--on-accent); }
+.pd-chat .beet { align-self: flex-start; background: var(--card); border: 1px solid var(--line-2); border-left: 2px solid var(--accent); }
+.pd-note { margin: 0; font-size: 11.5px; color: var(--hint); }
+.pd-chart { width: 100%; height: 86px; } .pd-grid { stroke: var(--line-2); stroke-width: 1; fill: none; }
+.pr-lim { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+.pr-lim li { display: flex; gap: 10px; align-items: baseline; } .pr-lim b { flex: none; min-width: 74px; color: var(--accent); font-weight: 700; }
+.pr-tl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pr-tl li { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; position: relative; font-size: 12px; color: var(--hint); border-top: 2px solid var(--accent); }
+.pr-tl li:last-child { border-top-style: dashed; border-color: var(--line-2); }
+.pr-tl b { color: var(--text); font: 700 12.5px var(--f-display); }
+.pr-tl i { display: none; }
+.pr-cta-bar { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); margin: 0 -16px -4px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(23,25,32,0), var(--card) 28%); z-index: 3; }
+.pr-cta-bar .btn { width: 100%; min-height: 52px; font-size: 16px; }
+
+.pd-box { fill: none; stroke: var(--accent); stroke-width: 1.5; } .pd-box.blue { stroke: #6fb6ff; }
