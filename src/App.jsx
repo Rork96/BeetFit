@@ -8,14 +8,14 @@ import ProgressTab from './components/ProgressTab.jsx'
 import MealsTab from './components/MealsTab.jsx'
 import WorkoutTab from './components/WorkoutTab.jsx'
 import Settings from './components/Settings.jsx'
-import { haptic } from './lib/platform.js'
+import { haptic, isNative } from './lib/platform.js'
+import { track } from './lib/track.js'
 import { useBackClose } from './lib/hooks.js'
 import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
 import { useAccount } from './lib/useAccount.js'
 import { usePro } from './lib/usePro.js'
-import { canBuyHere } from './lib/billing.js'
 import ProSheet from './components/Pro.jsx'
 import { CoachChat, CoachHome } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
@@ -62,6 +62,7 @@ export default function App() {
 
   useEffect(() => { if (!state) loadNativeBackup().then(s => { if (s) setState(s) }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state) saveState(state) }, [state])
+  useEffect(() => { track('open') }, [])
   useEffect(() => { if (state?.profile) persistStorage() }, [!!state?.profile]) // eslint-disable-line react-hooks/exhaustive-deps
   useBackClose(!!settings, () => setSettings(false))
   useBackClose(chat, () => setChat(false))
@@ -85,7 +86,7 @@ export default function App() {
       if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSettings('setup'); return }
       if (localStorage.getItem('beetfit_paywall') && pro.config) {
         localStorage.removeItem('beetfit_paywall')
-        if (canBuyHere(pro.config) && !pro.status?.pro) setTimeout(() => pro.open('welcome'), 500)
+        if (pro.config.on && !isNative() && !pro.status?.pro && !pro.status?.trialUsed) setTimeout(() => pro.open('welcome'), 500)
       }
     } catch { /* ignore */ }
   }, [hasPlan, pro.config]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -142,6 +143,7 @@ export default function App() {
         mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
       })
       if (coachCode) coach.join(coachCode)
+      track('plan_built')
       try { localStorage.setItem(asCoach ? 'beetfit_coach_intent' : 'beetfit_paywall', '1') } catch { /* ignore */ }
     }} />
   }

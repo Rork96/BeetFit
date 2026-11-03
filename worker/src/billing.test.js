@@ -78,19 +78,19 @@ describe('billing', () => {
     _clearPrices()
   })
 
-  it('checkout needs an account, then opens Stripe with a no-card 14-day trial', async () => {
+  it('checkout needs an account, then opens Stripe taking a card (the trial lives on the device)', async () => {
     const anon = await issueToken(SECRET)
     expect((await call(anon, '/api/billing/checkout', 'POST', { plan: 'year' })).error).toBe('sign_in_first')
     const tok = await signedIn('pay@example.com')
     expect((await call(tok, '/api/billing/checkout', 'POST', { plan: 'weekly' })).error).toBe('bad_plan')
     const r = await call(tok, '/api/billing/checkout', 'POST', { plan: 'year' })
-    expect(r).toMatchObject({ url: 'https://checkout.stripe.com/c/pay/cs_1', trial: true })
+    expect(r).toMatchObject({ url: 'https://checkout.stripe.com/c/pay/cs_1', trial: false })
     const cs = calls.filter(c => c.path === 'checkout/sessions').at(-1).body
     expect(cs).toMatchObject({
-      mode: 'subscription', customer: 'cus_1', 'line_items[0][price]': 'price_y', payment_method_collection: 'if_required',
-      'subscription_data[trial_period_days]': '14', 'subscription_data[trial_settings][end_behavior][missing_payment_method]': 'cancel',
-      success_url: 'https://beetfit.test/?billing=success'
+      mode: 'subscription', customer: 'cus_1', 'line_items[0][price]': 'price_y', success_url: 'https://beetfit.test/?billing=success'
     })
+    expect(cs.payment_method_collection).toBeUndefined() // card required
+    expect(cs['subscription_data[trial_period_days]']).toBeUndefined()
     expect(calls.find(c => c.path === 'customers').body['metadata[user_id]']).toBe(cs.client_reference_id)
     // the portal works right away (customer remembered before the webhook)
     expect((await call(tok, '/api/billing/portal', 'POST')).url).toMatch(/billing\.stripe\.com/)
@@ -112,6 +112,40 @@ describe('billing', () => {
     const cs = calls.filter(c => c.path === 'checkout/sessions').at(-1).body
     expect(cs['subscription_data[trial_period_days]']).toBeUndefined() // one trial per person
     expect(cs.payment_method_collection).toBeUndefined()
+  })
+
+  it('device trial: 14 days of PRO with no account and no card, once, then it ends by itself', async () => {
+    const tok = await issueToken(SECRET)
+    expect(await call(tok, '/api/billing/status')).toMatchObject({ pro: false, trialUsed: false })
+    const r = await call(tok, '/api/billing/trial', 'POST')
+    expect(r).toMatchObject({ ok: true, pro: true, source: 'trial', trialUsed: true })
+    expect(r.trialEnd).toBeGreaterThan(Date.now() + 13 * 864e5)
+    expect(await call(tok, '/api/billing/status')).toMatchObject({ pro: true, state: 'trialing', source: 'trial', manage: false })
+    expect((await call(tok, '/api/billing/trial', 'POST')).error).toBe('already_pro')
+    // a trial that ran out is over at once (no grace day) and cannot be taken twice
+    const uid = (await call(tok, '/api/billing/status')).appUserId
+    await env.DB.prepare('UPDATE subs SET period_end = ?, trial_end = ? WHERE id = ?').bind(Date.now() - 1000, Date.now() - 1000, `trial:${uid}`).run()
+    expect(await call(tok, '/api/billing/status')).toMatchObject({ pro: false, state: 'expired', trialUsed: true })
+    expect((await call(tok, '/api/billing/trial', 'POST')).error).toBe('trial_used')
+    // the free limits apply again
+    expect((await call(tok, '/api/billing/status')).usage.chats.limit).toBe(5)
+  })
+
+  it('funnel: events are counted once per device per day; stats need the key', async () => {
+    const a = await issueToken(SECRET), b = await issueToken(SECRET)
+    for (const t of [a, a, b]) await call(t, '/api/evt', 'POST', { name: 'welcome' })
+    await call(a, '/api/evt', 'POST', { name: 'plan_built' })
+    expect((await call(a, '/api/evt', 'POST', { name: 'drop table' })).ok).toBe(false)
+    expect((await call(null, '/api/stats')).status).toBe(404) // no STATS_KEY configured
+    env.STATS_KEY = 'stats-key-123'
+    try {
+      expect((await call(null, '/api/stats', 'GET', undefined, { 'x-stats-key': 'wrong-key-1234' })).status).toBe(404)
+      const r = await call(null, '/api/stats?days=7', 'GET', undefined, { 'x-stats-key': 'stats-key-123' })
+      expect(r.status).toBe(200)
+      expect(r.funnel.find(f => f.name === 'welcome').people).toBe(2)
+      expect(r.funnel.find(f => f.name === 'plan_built')).toMatchObject({ people: 1, ofPrev: 0.5 })
+      expect(r.funnel.find(f => f.name === 'trial_start').people).toBeGreaterThanOrEqual(1) // from the device trial above
+    } finally { delete env.STATS_KEY }
   })
 
   it('free devices get 5 Beet messages a day, PRO gets more', async () => {

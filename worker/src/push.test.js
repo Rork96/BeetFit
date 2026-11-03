@@ -36,7 +36,7 @@ describe('push', () => {
   })
   it('subscribes, schedules, and sends a due reminder only when not done', async () => {
     const s = await fakeSub()
-    const r = await call(A, '/api/push/subscribe', 'POST', { sub: s, tz: 'America/Winnipeg', prefs: { meals: { on: true, h: 12, m: 30 }, workout: { on: false }, streak: { on: false } } })
+    const r = await call(A, '/api/push/subscribe', 'POST', { sub: s, tz: 'America/Winnipeg', prefs: { meals: { on: true, h: 12, m: 30 }, workout: { on: false }, streak: { on: false }, brief: { on: false } } })
     expect(r.next.kind).toBe('meals')
     expect((await call(A, '/api/push/test', 'POST', { endpoint: s.endpoint })).ok).toBe(true)
     expect(sent.at(-1).url).toBe(s.endpoint)
@@ -52,7 +52,7 @@ describe('push', () => {
   })
   it('stays quiet when already logged, deletes dead subscriptions', async () => {
     const s = await fakeSub()
-    const r = await call(B, '/api/push/subscribe', 'POST', { sub: s, tz: 'UTC', prefs: { meals: { on: true, h: 9, m: 0 }, workout: { on: false }, streak: { on: false } } })
+    const r = await call(B, '/api/push/subscribe', 'POST', { sub: s, tz: 'UTC', prefs: { meals: { on: true, h: 9, m: 0 }, workout: { on: false }, streak: { on: false }, brief: { on: false } } })
     const today = new Date(r.next.at).toISOString().slice(0, 10)
     await call(B, '/api/sync', 'PUT', { data: { foodLog: { [today]: [{ at: 1 }] } }, baseRev: 0 })
     sent.length = 0
@@ -67,7 +67,7 @@ describe('push', () => {
   it('delivers a calendar reminder at its time', async () => {
     const s = await fakeSub()
     const at = Date.now() + 3600e3
-    const off = { meals: { on: false }, workout: { on: false }, streak: { on: false } }
+    const off = { meals: { on: false }, workout: { on: false }, streak: { on: false }, brief: { on: false } }
     const r = await call(A, '/api/push/subscribe', 'POST', { sub: s, tz: 'UTC', prefs: off, events: [{ at, kind: 'note', title: 'Physio', body: 'From your BeetFit calendar.', url: '/?cal=x', tag: 'plan-1' }] })
     expect(r).toMatchObject({ events: 1, next: { at, kind: 'event' } })
     sent.length = 0

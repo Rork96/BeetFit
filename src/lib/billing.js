@@ -48,6 +48,9 @@ export async function openPortal() {
   return r
 }
 
+// 14 days of PRO on this install: no account, no card. Paying later needs an account.
+export const startTrial = () => post('/api/billing/trial')
+
 export const canBuyHere = cfg => !isNative() && !!cfg?.web
 
 export function fmtMoney(p, per) {
@@ -63,5 +66,8 @@ export const BILLING_ERR = {
   already_pro: 'You already have PRO.',
   billing_not_configured: 'Payments aren’t switched on yet.',
   no_customer: 'No subscription to manage yet.',
+  trial_used: 'This device already had its free trial.',
+  already_pro: 'You already have PRO.',
+  too_many_tries: 'Too many tries from this network today. Try again tomorrow.',
   offline: 'No connection.'
 }

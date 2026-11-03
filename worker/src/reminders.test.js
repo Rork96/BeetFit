@@ -10,14 +10,29 @@ describe('reminder schedule', () => {
     expect(new Date(localToUtc(2026, 10, 24, 9, 30, 'Europe/Kyiv')).toISOString()).toBe('2026-10-24T06:30:00.000Z')
   })
   it('picks the next enabled reminder, rolling to tomorrow', () => {
-    const p = cleanPrefs(DEFAULT_PREFS) // meals 12:30, workout 18:00, streak 20:30
+    const p = cleanPrefs({ ...DEFAULT_PREFS, brief: { on: false } }) // meals 12:30, workout 18:00, streak 20:30
     const from = Date.parse('2026-10-24T20:00:00Z') // 15:00 in Winnipeg
     expect(nextDue(p, 'America/Winnipeg', from)).toEqual({ at: Date.parse('2026-10-24T23:00:00Z'), kind: 'workout' })
     const late = Date.parse('2026-10-25T00:30:00Z') // 19:30
     expect(nextDue(p, 'America/Winnipeg', late)).toEqual({ at: Date.parse('2026-10-25T01:30:00Z'), kind: 'streak' })
     const later = Date.parse('2026-10-25T02:00:00Z') // 21:00
     expect(nextDue(p, 'America/Winnipeg', later)).toEqual({ at: Date.parse('2026-10-25T17:30:00Z'), kind: 'meals' })
-    expect(nextDue(cleanPrefs({ meals: { on: false }, workout: { on: false }, streak: { on: false } }), 'UTC', from)).toBeNull()
+    expect(nextDue(cleanPrefs(DEFAULT_PREFS), 'America/Winnipeg', later).kind).toBe('brief') // 08:00 morning brief comes before lunch
+    expect(nextDue(cleanPrefs({ meals: { on: false }, workout: { on: false }, streak: { on: false }, brief: { on: false } }), 'UTC', from)).toBeNull()
+  })
+  it('morning brief states real numbers and stays quiet without data', () => {
+    const d = '2026-10-24', y = '2026-10-23'
+    expect(message('brief', null, d)).toBeNull()
+    expect(message('brief', { settings: { name: 'Max P' } }, d)).toBeNull() // no profile → nothing to say
+    const doc = {
+      profile: { sex: 'male', age: 28, heightCm: 178, weightKg: 82, targetKg: 76, goal: 'lose', activity: 'light' },
+      settings: { name: 'Max P', waterTarget: 8 }, program: [{ name: 'A', exercises: [] }, { name: 'B', exercises: [] }, { name: 'C', exercises: [] }],
+      foodLog: { [y]: [{ kcal: 700, p: 40, c: 60, f: 20 }, { kcal: 900, p: 50, c: 80, f: 30 }] }, workoutLog: { [y]: { Squat: { sets: [{}] } } }
+    }
+    const m = message('brief', doc, d)
+    expect(m.title).toBe('Beet: your day')
+    expect(m.body).toMatch(/^Max, today: \d+ kcal, \d+ g protein\. Yesterday 1600 kcal, trained\. 2 sessions left this week\./)
+    expect(message('brief', { ...doc, pauses: [{ from: d, to: '2026-10-30' }] }, d)).toBeNull()
   })
   it('local day follows the time zone', () => {
     expect(localDay(Date.parse('2026-10-25T02:00:00Z'), 'America/Winnipeg')).toBe('2026-10-24')

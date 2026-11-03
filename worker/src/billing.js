@@ -26,11 +26,14 @@ const LIVE = ['active', 'trialing', 'past_due'] // past_due: Stripe is still ret
 export async function entitlement(db, userId, now = Date.now()) {
   await ensureBillingSchema(db)
   const { results } = await db.prepare('SELECT * FROM subs WHERE user_id = ? ORDER BY updated DESC').bind(userId).all()
-  const live = results.find(r => LIVE.includes(r.status) && (!r.period_end || r.period_end > now - 864e5))
+  // A device trial has no Stripe behind it to flip the status, so it ends exactly at its time. Paid rows keep a day of grace.
+  const over = r => (r.source === 'trial' ? r.period_end <= now : r.period_end && r.period_end <= now - 864e5)
+  const live = results.find(r => LIVE.includes(r.status) && !over(r))
+  const head = results[0]
   return {
     pro: !!live,
     plan: live?.plan || null,
-    status: live?.status || (results[0]?.status ?? null),
+    status: live?.status || (head?.source === 'trial' && over(head) ? 'expired' : (head?.status ?? null)),
     source: live?.source || null,
     periodEnd: live?.period_end || null,
     trialEnd: live?.status === 'trialing' ? live.trial_end : null,
@@ -47,6 +50,16 @@ async function upsert(db, row) {
     ON CONFLICT(id) DO UPDATE SET user_id = excluded.user_id, plan = excluded.plan, status = excluded.status, period_end = excluded.period_end,
       trial_end = COALESCE(excluded.trial_end, subs.trial_end), cancel_at_end = excluded.cancel_at_end, customer = COALESCE(excluded.customer, subs.customer), updated = excluded.updated`)
     .bind(row.id, row.user_id, row.source, row.plan ?? null, row.status, row.period_end ?? null, row.trial_end ?? null, row.cancel_at_end ? 1 : 0, row.customer ?? null, Date.now()).run()
+}
+
+// 14 days of PRO on this install, no account and no card. One per user; paying later needs an account (Stripe) and has no second trial.
+export async function startTrial(db, userId, now = Date.now()) {
+  const ent = await entitlement(db, userId, now)
+  if (ent.pro) return { error: 'already_pro' }
+  if (ent.trialUsed) return { error: 'trial_used' }
+  const end = now + TRIAL_DAYS * 864e5
+  await upsert(db, { id: `trial:${userId}`, user_id: userId, source: 'trial', plan: null, status: 'trialing', period_end: end, trial_end: end })
+  return { ok: true, trialEnd: end }
 }
 
 // ---------- Stripe REST (no SDK in Workers) ----------
@@ -107,7 +120,7 @@ export async function checkout(env, db, userId, { plan, origin, email }) {
   if (ent.pro) return { error: 'already_pro' }
   let customer = ent.customer
   if (!customer) customer = (await stripe(env, 'customers', { email: email || undefined, metadata: { user_id: userId } })).id
-  const trial = !ent.trialUsed
+  const trial = false // the free trial is the device trial (startTrial); Stripe checkout always takes a card, so 'paid' means paid
   const session = await stripe(env, 'checkout/sessions', {
     mode: 'subscription',
     customer,

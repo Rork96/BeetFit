@@ -15,9 +15,9 @@ Stack: React 18 + Vite, vite-plugin-pwa, motion, Capacitor 8, one Cloudflare Wor
 | Beet | `Beet.jsx` | Chat tab. Sees plan, targets, today's log, recent weights, check-ins, pain reports. Not a doctor. |
 | Progress | `ProgressTab.jsx`, `Calendar.jsx` | Weight, strength trends, calendar plans. |
 | Coach mode | `Coach.jsx` | Client joins with a 6-character code; coach sees logs and check-ins, messages, sets targets. Free for 3 clients, PRO 200. |
-| PRO | `Pro.jsx`, `lib/billing.js` | 14-day no-card trial, monthly or yearly. Free: 3 photo estimates and 5 Beet questions a day, 3 coach clients. PRO: 30 / 60 / 200. |
+| PRO | `Pro.jsx`, `lib/billing.js` | 14-day trial on the device (no account, no card), then Stripe monthly or yearly with sign-in. Free: 3 photo estimates and 5 Beet questions a day, 3 coach clients. PRO: 30 / 60 / 200. |
 | Sync and accounts | `Account.jsx`, `lib/sync.js` | Email code, Google, Apple; cross-device sync; pairing codes. |
-| Reminders | `lib/push.js`, `worker/src/reminders.js`, `worker/src/mailrem.js` | Web Push, 15-minute cron: meals, workout, water, weigh-in, streak, coach messages. Email check-in: one a day at your time, only when something is open, signed-in accounts only, one-click unsubscribe. |
+| Reminders | `lib/push.js`, `worker/src/reminders.js`, `worker/src/mailrem.js` | Web Push, 15-minute cron: morning brief from Beet (today's targets, yesterday, sessions left), meals, workout, water, weigh-in, streak, coach messages. Email check-in: one a day at your time, only when something is open, signed-in accounts only, one-click unsubscribe. |
 
 ## Structure
 
@@ -56,6 +56,8 @@ All under `worker/src/index.js`. Everything except `/api/health`, `/api/device` 
 | `/api/coach/*` | Peek/join/leave, messages, client list with free-tier cap, target overrides |
 | `/api/push/*` | Web Push subscriptions; cron sends reminders |
 | `POST /api/program/review` | Gemini plan review; swaps validated against the same exercise pool, 4/day per device |
+| `POST /api/evt`, `GET /api/stats` | Funnel counters (distinct devices per day per event); stats read needs the `STATS_KEY` secret |
+| `POST /api/billing/trial` | 14 days of PRO on this device, once |
 | `/api/mail/rem` (GET/POST), `/api/mail/unsub` (public, signed) | Email check-in settings and one-click unsubscribe |
 | `/api/billing/*` | Config, status (+ daily `usage` meters), Stripe checkout and portal, Stripe and RevenueCat webhooks |
 
@@ -88,7 +90,7 @@ Billing is off until Stripe (or RevenueCat) is configured: with no keys nobody i
 
 ## Scripts
 
-`npm run dev` · `npm test` (182 tests: app logic, pose engine, worker routes with an in-memory D1) · `npm run build` · `npm run deploy` · `npm run api:dev` · `npm run native:build` · `npm run ios` · `npm run android` · `npm run vapid`
+`npm run dev` · `npm test` (186 tests: app logic, pose engine, worker routes with an in-memory D1) · `npm run build` · `npm run deploy` · `npm run api:dev` · `npm run native:build` · `npm run ios` · `npm run android` · `npm run vapid`
 
 ## Status
 

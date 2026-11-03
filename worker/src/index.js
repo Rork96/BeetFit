@@ -10,7 +10,8 @@
 //   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
 //   POST /api/chat                 Beet, the in-app assistant (Gemini)
 //   POST /api/program/review       AI review of the generated program: notes + validated exercise swaps (Gemini)
-//   /api/billing/*                 PRO: config, status, Stripe checkout + portal; Stripe and RevenueCat webhooks
+//   /api/billing/*                 PRO: config, status, device trial, Stripe checkout + portal; Stripe and RevenueCat webhooks
+//   /api/evt, /api/stats           funnel counters (distinct devices per day per event); stats read needs STATS_KEY
 //   everything else                → static assets (SPA fallback to index.html)
 //
 // /api/food/* and /api/snap need `Authorization: Bearer <device token>`. Tokens are HMAC-signed with
@@ -22,7 +23,8 @@ import { reviewProgram } from './review.js'
 import { getMail, setMail, unsubscribe, unsubToken, runMail } from './mailrem.js'
 import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
-import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
+import { track, report } from './stats.js'
+import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, startTrial, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
 import { fixSauce } from '../../src/data/sauces.js'
 
@@ -72,7 +74,10 @@ export default {
       if (url.pathname === '/api/billing/stripe-webhook' && req.method === 'POST') {
         const raw = await req.text()
         if (!env.DB || !(await verifyStripe(env.STRIPE_WEBHOOK_SECRET, raw, req.headers.get('stripe-signature')))) return json({ error: 'bad_signature' }, 400)
-        const r = await stripeEvent(env, env.DB, JSON.parse(raw))
+        const evt = JSON.parse(raw)
+        const r = await stripeEvent(env, env.DB, evt)
+        const o = evt.data?.object
+        if (evt.type === 'checkout.session.completed' && o?.client_reference_id && o.payment_status !== 'unpaid') await track(env.DB, 'paid', 'u:' + o.client_reference_id).catch(() => {})
         if (r.notify) notify(ctx, env, r.notify.userId, r.notify.payload)
         return json({ received: true })
       }
@@ -80,6 +85,13 @@ export default {
         const h = req.headers.get('authorization') || '', want = env.REVENUECAT_WEBHOOK_AUTH
         if (!env.DB || !want || (h !== want && h !== `Bearer ${want}`)) return json({ error: 'unauthorized' }, 401)
         return json(await revenuecatEvent(env.DB, await req.json().catch(() => null)))
+      }
+
+      // Funnel numbers for the owner. The endpoint answers 404 until STATS_KEY is set, so it cannot be probed.
+      if (url.pathname === '/api/stats' && req.method === 'GET') {
+        const want = env.STATS_KEY, got = req.headers.get('x-stats-key') || ''
+        if (!env.DB || !want || got.length !== want.length || [...got].reduce((d, c, i) => d | (c.charCodeAt(0) ^ want.charCodeAt(i)), 0) !== 0) return json({ error: 'not_found' }, 404)
+        return json(await report(env.DB, url.searchParams.get('days')), 200, { 'cache-control': 'no-store' })
       }
 
       // One-click unsubscribe from the email check-in: signed link, no sign-in (works from any mail app).
@@ -108,6 +120,13 @@ export default {
         return withCache(req, ctx, 60 * 60 * 24, () => search(q, env), cors)
       }
 
+      if (url.pathname === '/api/evt' && req.method === 'POST') {
+        if (!env.DB) return json({ ok: false }, 200, cors)
+        if (!(await underLimit(env, `evt:${device.id}`, 80))) return json({ ok: false }, 200, cors)
+        const b = await req.json().catch(() => ({}))
+        return json({ ok: await track(env.DB, String(b?.name || ''), device.id).catch(() => false) }, 200, cors)
+      }
+
       if (url.pathname === '/api/snap' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'snap_not_configured' }, 503, cors)
         const tier = await tierOf(env, device)
@@ -117,6 +136,7 @@ export default {
         const buf = await req.arrayBuffer()
         if (!buf.byteLength || buf.byteLength > 4 * 1024 * 1024) return json({ error: 'bad_image' }, 400, cors)
         const result = await snap(buf, req.headers.get('content-type') || 'image/jpeg', env)
+        if (env.DB) ctx?.waitUntil?.(track(env.DB, 'first_snap', device.id).catch(() => {}))
         return json(result, 200, cors)
       }
       if (url.pathname === '/api/chat' && req.method === 'POST') {
@@ -150,7 +170,7 @@ export default {
       }
       if (url.pathname.startsWith('/api/billing/')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
-        return await billingRoutes(req, url, env, device, cors)
+        return await billingRoutes(req, url, env, device, cors, ip)
       }
       if (url.pathname.startsWith('/api/push')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
@@ -520,7 +540,7 @@ async function tierOf(env, device) {
   return ent.pro ? { pro: true, ...PRO } : { pro: false, ...FREE }
 }
 
-async function billingRoutes(req, url, env, device, cors) {
+async function billingRoutes(req, url, env, device, cors, ip = 'local') {
   const db = env.DB
   await ensureSchema(db)
   await ensureAuthSchema(db)
@@ -540,6 +560,15 @@ async function billingRoutes(req, url, env, device, cors) {
     } : null
     return out({ ...ent, state: status, on, usage, manage: !!customer, appUserId: userId })
   }
+  // 14 days of PRO on this install: no account, no card. Paying later is what needs an account.
+  if (url.pathname === '/api/billing/trial' && req.method === 'POST') {
+    if (!billingOn(env)) return out({ error: 'billing_not_configured' }, 503)
+    if (!(await underLimit(env, `trialip:${ip}`, 5))) return out({ error: 'too_many_tries' }, 429)
+    const r = await startTrial(db, userId)
+    if (r.error) return out(r, 409)
+    await track(db, 'trial_start', device.id).catch(() => {})
+    return out({ ...r, ...(await entitlement(db, userId)), customer: undefined })
+  }
   if (!env.STRIPE_SECRET_KEY) return out({ error: 'billing_not_configured' }, 503)
   // PRO belongs to an account so it survives a new phone; anonymous installs sign in first.
   const account = await accountOf(db, userId)
@@ -547,6 +576,7 @@ async function billingRoutes(req, url, env, device, cors) {
     if (!account) return out({ error: 'sign_in_first' }, 403)
     const body = await req.json().catch(() => ({}))
     const r = await checkout(env, db, userId, { plan: body.plan, origin, email: account.email })
+    if (!r.error) await track(db, 'checkout_open', device.id).catch(() => {})
     return r.error ? out(r, 400) : out(r)
   }
   if (url.pathname === '/api/billing/portal' && req.method === 'POST') {

@@ -1,8 +1,11 @@
 // Daily reminders: when each one is next due in the user's own time zone, and what it says
 // (or whether to stay quiet because the thing is already done today).
 
-export const KINDS = ['meals', 'workout', 'water', 'weigh', 'streak']
+import { targets, eaten, streak as streakOf, setsLogged, addDays as dayAdd, activePause, program as programOf } from '../../src/lib/day.js'
+
+export const KINDS = ['meals', 'workout', 'water', 'weigh', 'streak', 'brief']
 export const DEFAULT_PREFS = {
+  brief: { on: true, h: 8, m: 0 },
   meals: { on: true, h: 12, m: 30 },
   workout: { on: true, h: 18, m: 0 },
   water: { on: false, h: 15, m: 0 },
@@ -111,6 +114,7 @@ export function message(kind, doc, today) {
     if ((doc?.weightLog || []).some(w => w.date === today)) return null
     return { title: 'Morning weigh-in', body: 'Same time, before breakfast. The weekly average is what counts.', url: '/?tab=progress', tag: 'weigh' }
   }
+  if (kind === 'brief') return briefMessage(doc, today, hi)
   if (kind === 'streak') {
     // Only with a synced doc (we must know what's done), only when there's a streak to keep.
     if (!doc) return null
@@ -123,6 +127,24 @@ export function message(kind, doc, today) {
     return { title: 'Keep your streak', body, url: '/', tag: 'streak' }
   }
   return null
+}
+
+// Beet's morning line: today's real targets, what yesterday was, what is left this week. Facts only, no verdict on the numbers.
+function briefMessage(doc, today, hi) {
+  if (!doc?.profile) return null
+  try {
+    if (activePause(doc, today)) return null
+    const t = targets(doc, today), y = dayAdd(today, -1), ye = eaten(doc, y)
+    const planned = programOf(doc).days.length
+    const done = Array.from({ length: 7 }, (_, i) => dayAdd(today, -i)).filter(k => setsLogged(doc, k) > 0).length
+    const left = Math.max(0, planned - done)
+    const s = doc.settings?.streak === false ? 0 : streakOf(doc, today)
+    const parts = [`${hi}today: ${t.kcal} kcal, ${t.protein} g protein.`]
+    if (ye.items) parts.push(`Yesterday ${ye.kcal} kcal${setsLogged(doc, y) > 0 ? ', trained' : ''}.`)
+    if (left > 0) parts.push(`${left} session${left > 1 ? 's' : ''} left this week.`)
+    if (s >= 2) parts.push(`Streak ${s} days.`)
+    return { title: 'Beet: your day', body: cap(parts.join(' ')), url: '/', tag: 'brief' }
+  } catch { return null }
 }
 
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)

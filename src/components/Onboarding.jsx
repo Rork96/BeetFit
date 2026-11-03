@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { macros, bmr, tdee } from '../lib/calories.js'
+import { track } from '../lib/track.js'
 
 const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activityFrom, exPool, stepsTarget } from '../lib/program.js'
@@ -48,6 +49,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const setI = (k, v) => { haptic(); setIt(s => ({ ...s, [k]: v })) }
   const setPf = (k, v) => setP(s => ({ ...s, [k]: v }))
 
+  useEffect(() => { track('welcome') }, [])
   const id = STEPS[step]
   const go = d => { haptic(); setDir(d); setStep(s => Math.max(0, Math.min(STEPS.length - 1, s + d))); window.scrollTo(0, 0) }
 

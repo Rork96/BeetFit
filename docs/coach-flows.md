@@ -58,3 +58,10 @@ The server decides the role: on open, the card asks for the coach account and fi
 - **Next up** reads the clock: a scheduled workout wins from 90 min before; without a time, training is suggested from 10:00 and dropped after 21:00. Then food, weigh-in (7+ days), pending training, water.
 - **Plan review**: the server rebuilds the allowed exercise pool from the intake. A swap is kept only if the target is in that pool, has the same movement pattern, is not already in the session; max 3. The person accepts each one. 4 reviews/day/device.
 - **Email check-in**: opt-in in Settings → Reminders, accounts only. One email a day at the chosen local time, only when the synced document shows something open. Skipped if the cron runs more than 2 h late. Failed sends retry within that window. Every message carries a signed one-click unsubscribe (`List-Unsubscribe-Post`).
+
+## Trial without an account, funnel, morning brief (0.15.0)
+
+- Trial: `POST /api/billing/trial` gives 14 days of PRO on this install, no account, no card (`source: trial`, ends exactly at day 14, once per user, 5 per IP per day). The welcome paywall and every limit upsell start it with one tap. Subscribing afterwards needs sign-in, then Stripe (card always required, so `paid` is real money). The PRO sheet shows "Subscribe · keep PRO" during the trial.
+- Funnel: `track()` in `src/lib/track.js` posts open, welcome, plan_built, paywall_view, signin; the Worker records trial_start, checkout_open, paid, first_snap itself. One row per device per event per day. `GET /api/stats` (x-stats-key) returns distinct people per step.
+- Morning brief: new reminder kind `brief`, 08:00, on by default. It reads the synced document: today's kcal and protein, yesterday's total and whether you trained, sessions left this week, streak. No verdict on the numbers. Quiet without a synced plan or during a pause.
+- PRO sheet uses real app screens (public/pro/*.webp, sample data) except the photo card, which is an illustration.

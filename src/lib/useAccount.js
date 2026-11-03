@@ -3,6 +3,7 @@ import { cachedAccount, fetchAccount, signOut as apiSignOut, deleteAccount } fro
 import { mergeStates } from './sync.js'
 import { clearState, migrate } from './store.js'
 import { disablePush, pushOn } from './push.js'
+import { track } from './track.js'
 
 // Account state for the whole app. Signing in merges the account's data into this phone and turns sync on;
 // signing out or deleting clears this phone (the device token stays, it maps to a fresh user).
@@ -11,6 +12,7 @@ export function useAccount(sync, setState) {
   useEffect(() => { fetchAccount().then(a => setValue(a ?? null)) }, [])
 
   const onSignedIn = useCallback(r => {
+    track('signin')
     setValue(r.account)
     const data = r.doc?.data
     if (data?.profile) setState(cur => (cur?.profile ? mergeStates(cur, data) : migrate(data)))

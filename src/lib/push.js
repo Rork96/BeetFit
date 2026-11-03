@@ -8,7 +8,8 @@ export const REMINDERS = [
   { id: 'workout', label: 'Workout', hint: 'Skipped once the week’s sessions are done' },
   { id: 'water', label: 'Water', hint: 'Only if you’re behind' },
   { id: 'weigh', label: 'Weigh-in', hint: 'Skipped if you already weighed in' },
-  { id: 'streak', label: 'Streak', hint: 'Evening nudge, only if today isn’t counted yet' }
+  { id: 'streak', label: 'Streak', hint: 'Evening nudge, only if today isn’t counted yet' },
+  { id: 'brief', label: 'Morning brief from Beet', hint: 'Today’s targets, yesterday, sessions left' }
 ]
 export const DEFAULT_REMINDERS = {
   meals: { on: true, h: 12, m: 30 },
@@ -16,6 +17,7 @@ export const DEFAULT_REMINDERS = {
   water: { on: false, h: 15, m: 0 },
   weigh: { on: false, h: 7, m: 30 },
   streak: { on: true, h: 20, m: 30 },
+  brief: { on: true, h: 8, m: 0 },
   coach: true
 }
 export const remindersOf = state => ({ ...DEFAULT_REMINDERS, ...(state.settings?.reminders || {}) })
@@ -119,7 +121,8 @@ const NATIVE_TEXT = {
   workout: ['Training today?', 'Start with the warm-up. The camera counts your reps.'],
   water: ['Water check', 'Have a glass now.'],
   weigh: ['Morning weigh-in', 'Same time, before breakfast.'],
-  streak: ['Keep your streak', 'Two of three today: a meal logged, water done, a session.']
+  streak: ['Keep your streak', 'Two of three today: a meal logged, water done, a session.'],
+  brief: ['Beet: your day', 'Open BeetFit for today’s targets and what’s left this week.']
 }
 async function enableNative(prefs, ask = true, events = []) {
   const { LocalNotifications } = await import('@capacitor/local-notifications')

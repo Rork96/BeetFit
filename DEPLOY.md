@@ -76,7 +76,11 @@ Paywall shows "Payments aren’t switched on yet" when `/api/billing/config` has
 5. Settings → Billing → Subscriptions and emails: turn on **trial ending reminder emails** and **renewal reminders** (push isn't on for everyone).
 6. Deploy, then `/api/health` → `"billing":{"web":true,"webhook":true,…}`. Test with card `4242 4242 4242 4242`: Settings → PRO → Start 14 days free → back in the app it shows "You have PRO".
 
-How the trial works: 14 days, no card. At the end, with no card on file, Stripe cancels it (`missing_payment_method: cancel`) and nothing is charged. One trial per account. Deleting the account cancels any subscription first.
+How the trial works: 14 days of PRO start on the device (`POST /api/billing/trial`), with no account and no card. It ends exactly at day 14 and cannot be taken twice (one per user, 5 per IP per day). Keeping PRO afterwards is a Stripe subscription: sign in, pick a plan, pay. Stripe checkout always takes a card, so a `paid` event in the funnel means money. Deleting the account cancels any subscription first. Known gap: a new install gets a new trial; the per-IP cap slows that, it does not stop it.
+
+**Funnel numbers.** `npx wrangler secret put STATS_KEY` (any long random string), deploy, then
+`curl -s -H "x-stats-key: <key>" "https://beetfit.wealthifai.xyz/api/stats?days=14"`.
+`funnel` lists distinct devices per step (welcome → plan_built → paywall_view → trial_start → checkout_open → paid) with the share of the previous step. Without `STATS_KEY` the route answers 404.
 
 **App Store / Google Play (RevenueCat), with the native release.**
 1. Create the products in App Store Connect / Play Console (`beetfit_pro_monthly`, `beetfit_pro_annual`), connect them in RevenueCat with an entitlement `pro`.
