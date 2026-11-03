@@ -97,14 +97,21 @@ export function dayTasks(state, key = dayKey()) {
   ]
 }
 
-// The one thing to do next today: training day → workout first, then the first meal,
-// a weigh-in when the last one is a week old, water, and finally "done". Rest days skip the workout.
-export function nextUp(state, key = dayKey()) {
+// The one thing to do next today, by the clock:
+//  - a workout scheduled today (calendar time) comes first from 90 minutes before it;
+//  - with no time set, mornings are for breakfast (train from 10:00) and after 21:00 it is too late to start;
+//  - then first meal, a weigh-in when the last one is a week old, the workout if it is still pending, water, done.
+// Rest days skip the workout. `hour` is local, decimal (18.5 = 18:30); `workoutTime` is "HH:MM" or null.
+export function nextUp(state, key = dayKey(), { hour = new Date().getHours() + new Date().getMinutes() / 60, workoutTime = null } = {}) {
   const t = Object.fromEntries(dayTasks(state, key).map(x => [x.id, x]))
-  if (!t.train.done && targets(state, key).dayType !== 'rest') return { id: 'train' }
+  const trainPending = !t.train.done && targets(state, key).dayType !== 'rest'
+  const at = workoutTime ? +workoutTime.split(':')[0] + +workoutTime.split(':')[1] / 60 : null
+  const trainNow = at != null ? hour >= at - 1.5 : hour >= 10 && hour < 21
+  if (trainPending && trainNow) return { id: 'train' }
   if (!t.food.done) return { id: 'food' }
   const last = (state.weightLog || []).reduce((m, w) => (w.date > m ? w.date : m), '')
   if (last && last <= addDays(key, -7)) return { id: 'weigh', last }
+  if (trainPending && (at != null || hour < 21)) return { id: 'train' }
   if (!t.water.done) return { id: 'water' }
   return { id: 'done' }
 }

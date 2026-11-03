@@ -9,6 +9,7 @@
 //   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
 //   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
 //   POST /api/chat                 Beet, the in-app assistant (Gemini)
+//   POST /api/program/review       AI review of the generated program: notes + validated exercise swaps (Gemini)
 //   /api/billing/*                 PRO: config, status, Stripe checkout + portal; Stripe and RevenueCat webhooks
 //   everything else                → static assets (SPA fallback to index.html)
 //
@@ -17,6 +18,8 @@
 // Set ALLOW_UNSIGNED=1 only for local `wrangler dev`.
 
 import { sendPush, vapidPublic } from './webpush.js'
+import { reviewProgram } from './review.js'
+import { getMail, setMail, unsubscribe, unsubToken, runMail } from './mailrem.js'
 import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
 import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
@@ -35,6 +38,7 @@ export default {
   // Cron (wrangler.toml [triggers]): send the reminders that came due.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runReminders(env, event.scheduledTime || Date.now()))
+    ctx.waitUntil(runMail(env, event.scheduledTime || Date.now(), { origin: env.APP_ORIGIN || 'https://beetfit.wealthifai.xyz', accountOf, getDoc: async (db, id) => parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(id).first())?.data) }).catch(() => {}))
   },
 
   async fetch(req, env, ctx) {
@@ -78,6 +82,15 @@ export default {
         return json(await revenuecatEvent(env.DB, await req.json().catch(() => null)))
       }
 
+      // One-click unsubscribe from the email check-in: signed link, no sign-in (works from any mail app).
+      if (url.pathname === '/api/mail/unsub' && (req.method === 'GET' || req.method === 'POST')) {
+        const u = url.searchParams.get('u') || '', t = url.searchParams.get('t') || ''
+        if (!env.DB || !env.DEVICE_SECRET || !u || t !== (await unsubToken(env.DEVICE_SECRET, u))) return new Response('This link is not valid.', { status: 400, headers: { 'content-type': 'text/plain' } })
+        await ensureAuthSchema(env.DB)
+        await unsubscribe(env.DB, u)
+        return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;background:#0c0d11;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0"><div style="max-width:360px;padding:24px"><h2>Unsubscribed</h2><p style="color:#aaa">No more BeetFit check-in emails. You can turn them back on in Settings → Reminders.</p></div>', { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })
+      }
+
       if (url.pathname === '/api/push/key') {
         if (!env.VAPID_JWK) return json({ error: 'push_not_configured' }, 503, cors)
         return json({ key: vapidPublic(env.VAPID_JWK) }, 200, cors)
@@ -115,6 +128,25 @@ export default {
         const body = await req.json().catch(() => null)
         if (!body || !Array.isArray(body.messages) || !body.messages.length) return json({ error: 'bad_request' }, 400, cors)
         return json(await chat(body, env), 200, cors)
+      }
+      if (url.pathname === '/api/mail/rem') {
+        if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
+        if (!env.RESEND_API_KEY || !env.MAIL_FROM) return json({ error: 'email_not_configured' }, 503, cors)
+        await ensureSchema(env.DB); await ensureAuthSchema(env.DB)
+        const uid = await userOf(env.DB, device.id)
+        if (!(await accountOf(env.DB, uid))?.email) return json({ error: 'sign_in_first' }, 403, cors)
+        if (req.method === 'GET') return json(await getMail(env.DB, uid), 200, { ...cors, 'cache-control': 'no-store' })
+        if (req.method === 'POST') {
+          if (!(await underLimit(env, `mailset:${uid}`, 30))) return json({ error: 'daily_limit' }, 429, cors)
+          return json(await setMail(env.DB, uid, await req.json().catch(() => ({}))), 200, { ...cors, 'cache-control': 'no-store' })
+        }
+      }
+      if (url.pathname === '/api/program/review' && req.method === 'POST') {
+        if (!env.GEMINI_API_KEY) return json({ error: 'review_not_configured' }, 503, cors)
+        if (!(await underLimit(env, `reviewip:${ip}`, 20)) || !(await underLimit(env, `review:${device.id}`, 4))) return json({ error: 'daily_limit' }, 429, cors)
+        const body = await req.json().catch(() => null)
+        const r = await reviewProgram(body, env)
+        return json(r, r.error ? 400 : 200, cors)
       }
       if (url.pathname.startsWith('/api/billing/')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)

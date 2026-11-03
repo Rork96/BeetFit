@@ -12,10 +12,11 @@ import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
 import { planEvents } from '../lib/plans.js'
 import { AccountCard } from './Account.jsx'
+import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.js'
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.13.1'
+const VERSION = '0.14.0'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
@@ -105,7 +106,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
           </Row>
         </section>
 
-        <RemindersCard state={state} update={update} />
+        <RemindersCard state={state} update={update} sync={sync} account={account?.value} />
 
         {coach && <YourCoachCard coach={coach} syncOn={sync?.on} onChat={openChat} />}
 
@@ -225,7 +226,7 @@ function SyncCard({ sync, update }) {
 
 const pad = n => String(n).padStart(2, '0')
 
-function RemindersCard({ state, update }) {
+function RemindersCard({ state, update, sync, account }) {
   const prefs = remindersOf(state)
   const support = pushSupport()
   const [on, setOnState] = useState(() => pushOn() && (support === 'native' || permission() === 'granted'))
@@ -265,9 +266,45 @@ function RemindersCard({ state, update }) {
           <Toggle on={prefs.coach !== false} onChange={v => { haptic(); update(prev => ({ settings: { ...(prev.settings || {}), reminders: { ...remindersOf(prev), coach: v } } })) }} />
         </Row>
       )}
+      <MailRem sync={sync} account={account} />
       {on && <button className="btn secondary" onClick={async () => { haptic(); const r = await testPush(); setMsg(r.ok ? 'Sent. It should arrive in a few seconds.' : (PUSH_ERR[r.error] || 'Test failed.')) }}>Send a test notification</button>}
       {msg && <p className={msg.startsWith('Next') || msg.startsWith('Sent') ? 'hint' : 'sy-err'}>{msg}</p>}
     </section>
+  )
+}
+
+// One email a day at a time you pick, only when something is still open. Needs an account (the address) and sync (what is done).
+function MailRem({ sync, account }) {
+  const acct = account || cachedAccount()
+  const [v, setV] = useState({ on: false, h: 18, m: 0 })
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    if (!acct?.email) return
+    let live = true
+    getMailRem().then(r => { if (live && r.status === 200) setV({ on: !!r.on, h: r.h, m: r.m }) })
+    return () => { live = false }
+  }, [acct?.email])
+  const save = async next => {
+    const prev = v
+    setV(next); setMsg('')
+    const r = await setMailRem(next)
+    if (r.status !== 200) { setV(prev); setMsg(MAIL_ERR[r.error] || 'Couldn’t save. Try again.') }
+    else if (next.on) setMsg(`Next email: ${new Date(r.next).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.`)
+  }
+  return (
+    <>
+      <Row label="Daily email check-in" hint={acct?.email ? (v.on ? acct.email : 'One email a day, only if something is still open') : 'Sign in to get it by email'}>
+        <Toggle on={v.on} onChange={on => { if (!acct?.email) return setMsg(MAIL_ERR.sign_in_first); save({ ...v, on }) }} />
+      </Row>
+      {v.on && (
+        <div className="rm-row">
+          <div className="rm-t"><b>Send at</b><span className="hint">{sync?.on ? 'Your local time' : 'Turn on sync so we know what you already did'}</span></div>
+          <input type="time" className="rm-time num" value={`${pad(v.h)}:${pad(v.m)}`}
+            onChange={e => { const [h, m] = e.target.value.split(':').map(Number); if (Number.isFinite(h)) save({ ...v, h, m: m || 0 }) }} />
+        </div>
+      )}
+      {msg && <p className={msg.startsWith('Next') ? 'hint' : 'sy-err'}>{msg}</p>}
+    </>
   )
 }
 

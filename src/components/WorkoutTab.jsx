@@ -6,6 +6,7 @@ import { useBackClose } from '../lib/hooks.js'
 import { haptic } from '../lib/platform.js'
 import Session, { setsOf } from './Session.jsx'
 import Library from './Library.jsx'
+import PlanReview from './PlanReview.jsx'
 import { liveSession, setLiveSession } from '../lib/store.js'
 
 export default function WorkoutTab({ state, update, intent, clearIntent }) {
@@ -116,6 +117,9 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
           Pose detection runs on your phone — no video leaves the device.
         </p>
       </div>
+      {state.intake && state.program?.length > 0 && !running && (
+        <PlanReview profile={state.profile} intake={state.intake} program={state.program} onChange={p => update({ program: p })} />
+      )}
       {toast && <div className="toast">{toast}</div>}
     </div>
   )

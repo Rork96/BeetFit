@@ -111,3 +111,4 @@
 .fc-meter { border: 0; outline: none; align-self: center; min-height: 40px; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.75); font-size: 12.5px; }
 .fc-meter .num { color: #fff; font-weight: 700; }
 .fc-meter.out { background: rgba(255,120,90,.18); color: #ffb4a3; }
+.fc-sc .fc-more { background: none; border-style: dashed; }

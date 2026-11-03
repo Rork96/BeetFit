@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mkProg, paceInfo, planWhy, activityFrom, exPool, DEFAULT_INTAKE } from './program.js'
+import { mkProg, applySwap, paceInfo, planWhy, activityFrom, exPool, DEFAULT_INTAKE } from './program.js'
 
 const it_ = (p = {}) => ({ ...DEFAULT_INTAKE, ...p })
 const names = prog => prog.flatMap(d => d.exercises.map(e => e.name))
@@ -79,5 +79,20 @@ describe('exercise priority', () => {
     expect(a).toContain('Push-up')
     expect(a).not.toContain('Lateral raises')
     expect(a).toContain('Table row')
+  })
+})
+
+describe('applySwap', () => {
+  it('replaces one exercise in one day and leaves the rest untouched', () => {
+    const it0 = it_({ loc: 'gym', daysWk: 3 })
+    const prog = mkProg('lose', it0)
+    const ex = prog[0].exercises[0]
+    const alt = exPool(it0).find(L => L.pat === ex.pattern && L.id !== ex.id && !prog[0].exercises.some(e => e.id === L.id))
+    const out = applySwap(prog, { day: 0, from: ex.id, to: alt.id }, it0)
+    expect(out[0].exercises[0].id).toBe(alt.id)
+    expect(out[0].exercises[0].pattern).toBe(ex.pattern)
+    expect(out[0].exercises.slice(1)).toEqual(prog[0].exercises.slice(1))
+    expect(out.slice(1)).toEqual(prog.slice(1))
+    expect(applySwap(prog, { day: 0, from: ex.id, to: 'nope' }, it0)).toBe(prog)
   })
 })

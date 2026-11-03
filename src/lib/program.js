@@ -68,6 +68,13 @@ function repsOf(L, it) {
   return L.dr >= 20 ? String(L.dr) : `${Math.max(1, Math.round(L.dr * 0.7))}-${L.dr}`
 }
 
+// One accepted review swap: same slot, new exercise built the same way the generator builds it.
+export function applySwap(program, swap, it) {
+  const L = LIB.find(x => x.id === swap.to)
+  if (!L || !program[swap.day]) return program
+  return program.map((d, i) => (i !== swap.day ? d : { ...d, exercises: d.exercises.map(e => (e.id === swap.from ? mkEx(L, it) : e)) }))
+}
+
 export function mkEx(L, it) {
   const ex = {
     id: L.id, name: L.n, sets: 3, rest: L.pat === 'cardio' ? 45 : 75,

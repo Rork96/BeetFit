@@ -9,15 +9,15 @@ Stack: React 18 + Vite, vite-plugin-pwa, motion, Capacitor 8, one Cloudflare Wor
 | Area | Where | What |
 |---|---|---|
 | Onboarding | `Onboarding.jsx` | Goal, body, days, kit → calories, macros, training plan, pace. Welcome offers sign-in, a coach code, or "I coach people". The free-trial paywall shows once after the plan. |
-| Today | `TodayTab.jsx` | One "Next up" card (`nextUp()` in `lib/day.js`: workout on a training day → first meal → weekly weigh-in → water → done), calories ring, week and streak, Beet card. |
-| Train | `WorkoutTab.jsx`, `Session.jsx`, `Warmup.jsx` | Plan, session with camera rep counting, warm-up with animated moves, exercise how-to animations (`lib/pose2d.js`). |
+| Today | `TodayTab.jsx` | One "Next up" card (`nextUp()` in `lib/day.js`: by time of day: a scheduled workout wins from 90 min before, otherwise train from 10:00 and not after 21:00 → first meal → weekly weigh-in → water → done), calories ring, week and streak, Beet card. |
+| Train | `WorkoutTab.jsx`, `Session.jsx`, `Warmup.jsx`, `PlanReview.jsx` | AI review of your plan (`/api/program/review`): a read specific to your answers plus up to 3 swaps you accept one by one; Plan, session with camera rep counting, warm-up with animated moves, exercise how-to animations (`lib/pose2d.js`). |
 | Food | `MealsTab.jsx`, `FoodHistory.jsx` | Search, barcode, meal photo, quick add; meal ideas (not counted as eaten until logged); 30-day history and re-log. |
 | Beet | `Beet.jsx` | Chat tab. Sees plan, targets, today's log, recent weights, check-ins, pain reports. Not a doctor. |
 | Progress | `ProgressTab.jsx`, `Calendar.jsx` | Weight, strength trends, calendar plans. |
 | Coach mode | `Coach.jsx` | Client joins with a 6-character code; coach sees logs and check-ins, messages, sets targets. Free for 3 clients, PRO 200. |
 | PRO | `Pro.jsx`, `lib/billing.js` | 14-day no-card trial, monthly or yearly. Free: 3 photo estimates and 5 Beet questions a day, 3 coach clients. PRO: 30 / 60 / 200. |
 | Sync and accounts | `Account.jsx`, `lib/sync.js` | Email code, Google, Apple; cross-device sync; pairing codes. |
-| Reminders | `lib/push.js`, `worker/src/reminders.js` | Web Push, 15-minute cron: meals, workout, water, weigh-in, streak, coach messages. |
+| Reminders | `lib/push.js`, `worker/src/reminders.js`, `worker/src/mailrem.js` | Web Push, 15-minute cron: meals, workout, water, weigh-in, streak, coach messages. Email check-in: one a day at your time, only when something is open, signed-in accounts only, one-click unsubscribe. |
 
 ## Structure
 
@@ -33,6 +33,7 @@ src/
 worker/src/
   index.js                API + static assets
   auth.js billing.js reminders.js webpush.js   accounts, Stripe/RevenueCat, reminder schedule, Web Push
+  review.js mailrem.js                          AI plan review (validated swaps), daily email check-in
 scripts/                  fetch-mediapipe.mjs (prebuild), native-permissions.mjs, vapid.mjs
 docs/coach-flows.md       coach/client flows, limits, navigation and paywall decisions
 wrangler.toml             Worker config, custom domain, cron
@@ -54,7 +55,11 @@ All under `worker/src/index.js`. Everything except `/api/health`, `/api/device` 
 | `/api/auth/*` | Email code, Google, Apple, sign out, delete account |
 | `/api/coach/*` | Peek/join/leave, messages, client list with free-tier cap, target overrides |
 | `/api/push/*` | Web Push subscriptions; cron sends reminders |
+| `POST /api/program/review` | Gemini plan review; swaps validated against the same exercise pool, 4/day per device |
+| `/api/mail/rem` (GET/POST), `/api/mail/unsub` (public, signed) | Email check-in settings and one-click unsubscribe |
 | `/api/billing/*` | Config, status (+ daily `usage` meters), Stripe checkout and portal, Stripe and RevenueCat webhooks |
+
+Email needs `RESEND_API_KEY` and `MAIL_FROM` (verified sending domain); `APP_ORIGIN` defaults to the production URL. Without them the toggle reports it is not switched on.
 
 Billing is off until Stripe (or RevenueCat) is configured: with no keys nobody is limited and no meters show.
 
@@ -83,8 +88,8 @@ Billing is off until Stripe (or RevenueCat) is configured: with no keys nobody i
 
 ## Scripts
 
-`npm run dev` · `npm test` (164 tests: app logic, pose engine, worker routes with an in-memory D1) · `npm run build` · `npm run deploy` · `npm run api:dev` · `npm run native:build` · `npm run ios` · `npm run android` · `npm run vapid`
+`npm run dev` · `npm test` (182 tests: app logic, pose engine, worker routes with an in-memory D1) · `npm run build` · `npm run deploy` · `npm run api:dev` · `npm run native:build` · `npm run ios` · `npm run android` · `npm run vapid`
 
 ## Status
 
-Not verified on real hardware: iPhone behaviour, two-device coach ↔ client linking, live Stripe/Resend, Gemini photo latency (the `/api/snap` response carries `ms` for measuring it). Store release and RevenueCat wiring are deferred. Exercise and warm-up content has not been reviewed by a trainer.
+Not verified on real hardware: iPhone behaviour, two-device coach ↔ client linking, live Stripe and Resend delivery, Gemini photo latency (the `/api/snap` response carries `ms` for measuring it). Store release and RevenueCat wiring are deferred. Exercise and warm-up content has not been reviewed by a trainer.

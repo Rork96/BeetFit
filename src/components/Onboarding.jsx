@@ -12,6 +12,7 @@ import { claimPairCode } from '../lib/sync.js'
 import { SignIn } from './Account.jsx'
 import { coachPeek, cleanCode, CODE_RE } from '../lib/coach.js'
 import { migrate } from '../lib/store.js'
+import PlanReview from './PlanReview.jsx'
 import './onboarding.css'
 
 const STEPS = ['welcome', 'goal', 'body', 'days', 'training', 'building', 'ready']
@@ -51,7 +52,10 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const go = d => { haptic(); setDir(d); setStep(s => Math.max(0, Math.min(STEPS.length - 1, s + d))); window.scrollTo(0, 0) }
 
   const profile = useMemo(() => ({ ...p, activity: activityFrom(it) }), [p, it])
-  const program = useMemo(() => mkProg(p.goal, it), [p.goal, it])
+  const built = useMemo(() => mkProg(p.goal, it), [p.goal, it])
+  const [swapped, setSwapped] = useState(null) // program after accepted review swaps; reset when answers change
+  useEffect(() => { setSwapped(null) }, [built])
+  const program = swapped || built
   const pace = paceInfo(profile, it)
   const valid = p.age >= 14 && p.age <= 100 && p.heightCm >= 120 && p.heightCm <= 230 && p.weightKg >= 35 && p.weightKg <= 250 && p.targetKg >= 35 && p.targetKg <= 250
 
@@ -180,7 +184,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
 
         {id === 'building' && <Building it={it} profile={profile} program={program} onDone={() => go(1)} />}
 
-        {id === 'ready' && <Ready profile={profile} it={it} program={program} name={name} onStart={finish} />}
+        {id === 'ready' && <Ready profile={profile} it={it} program={program} name={name} onStart={finish} onProgram={setSwapped} />}
       </div>
     </div>
   )
@@ -322,7 +326,7 @@ function Building({ it, profile, program, onDone }) {
   )
 }
 
-function Ready({ profile, it, program, name, onStart }) {
+function Ready({ profile, it, program, name, onStart, onProgram }) {
   const m = macros(profile)
   const kcal = useCountUp(m.kcal, 900)
   const why = planWhy(it, program)
@@ -364,6 +368,7 @@ function Ready({ profile, it, program, name, onStart }) {
           </div>
         ))}
       </div>
+      <PlanReview profile={profile} intake={it} program={program} onChange={onProgram} auto />
       <button className="btn" onClick={onStart}>Start Day 1</button>
       <p className="hint" style={{ fontSize: 11.5 }}>These are formula estimates, not medical advice. Stop if you feel chest pain, dizziness or sharp joint pain.</p>
     </Step>

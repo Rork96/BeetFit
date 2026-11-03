@@ -42,7 +42,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const day = prog.days[dayIdx]
   const trainedToday = setsLogged(state, key) > 0
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
-  const up = nextUp(state, key)
+  const wPlan = todayPlans.find(x => x.kind === 'workout' && x.time && !planDone(state, x, key))
+  const up = nextUp(state, key, { workoutTime: wPlan?.time || null })
   const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
 
   const wNow = currentWeight(state)

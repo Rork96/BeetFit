@@ -16,7 +16,7 @@ export const SAUCES = [
   S('pesto', 'Pesto', 16, [460, 5, 5, 46], ['pesto']),
   S('hummus', 'Hummus', 15, [230, 8, 20, 15], ['hummus']),
   S('tzatziki', 'Tzatziki', 15, [120, 4, 5, 9], ['tzatziki', 'yogurt sauce']),
-  S('soy', 'Soy sauce', 16, [55, 8, 5, 0], ['soy sauce', 'soy']),
+  S('soy', 'Soy sauce', 16, [53, 8.1, 4.9, 0.6], ['soy sauce', 'soy', 'shoyu', 'tamari']),
   S('teriyaki', 'Teriyaki', 17, [90, 6, 16, 0], ['teriyaki', 'teriyaki sauce']),
   S('sweetchili', 'Sweet chili', 17, [200, 0, 50, 0], ['sweet chili', 'sweet chilli', 'sweet chili sauce']),
   S('sriracha', 'Sriracha', 6, [93, 2, 19, 1], ['sriracha', 'hot sauce', 'chili sauce']),
@@ -26,8 +26,21 @@ export const SAUCES = [
   S('butter', 'Butter', 14, [717, 0.9, 0.1, 81], ['butter']),
   S('oil', 'Olive oil', 14, [884, 0, 0, 100], ['olive oil', 'oil']),
   S('cheese', 'Cheese', 28, [400, 25, 2, 33], ['cheese', 'melted cheese', 'shredded cheese', 'grated cheese', 'parmesan']),
-  S('peanut', 'Peanut sauce', 16, [260, 10, 14, 19], ['peanut sauce', 'satay', 'satay sauce'])
+  S('peanut', 'Peanut sauce', 16, [260, 10, 14, 19], ['peanut sauce', 'satay', 'satay sauce']),
+  S('fish', 'Fish sauce', 18, [35, 5.1, 3.6, 0], ['fish sauce', 'nam pla', 'nuoc mam']),
+  S('oyster', 'Oyster sauce', 18, [51, 1.4, 10.9, 0.3], ['oyster sauce']),
+  S('hoisin', 'Hoisin', 16, [220, 3.3, 44, 3.4], ['hoisin', 'hoisin sauce']),
+  S('buffalo', 'Buffalo sauce', 15, [105, 1, 3, 10], ['buffalo', 'buffalo sauce', 'wing sauce']),
+  S('honeymustard', 'Honey mustard', 17, [330, 1, 45, 16], ['honey mustard']),
+  S('sweetsour', 'Sweet & sour', 17, [150, 0, 37, 0.2], ['sweet and sour', 'sweet sour', 'sweet and sour sauce']),
+  S('curry', 'Curry sauce', 60, [100, 2, 9, 6], ['curry sauce', 'tikka masala sauce', 'butter chicken sauce']),
+  S('guac', 'Guacamole', 15, [155, 2, 9, 14], ['guacamole', 'guac']),
+  S('tahini', 'Tahini', 15, [595, 17, 21, 54], ['tahini', 'tahini sauce']),
+  S('honey', 'Honey', 21, [304, 0.3, 82, 0], ['honey'])
 ]
+
+// What people reach for first. Everything else is behind "More" so the chips stay short.
+export const COMMON_SAUCES = ['mayo', 'ketchup', 'soy', 'ranch', 'cheese', 'sriracha', 'bbq', 'oil']
 
 // Words that only describe how it is served: "ranch dressing (drizzled)" is still ranch.
 const clean = name => String(name || '').toLowerCase().replace(/\(.*?\)/g, ' ').replace(/\b(a little|some|extra|side of|on the side|drizzle of|drizzled|dollop of|visible|light|heavy)\b/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()

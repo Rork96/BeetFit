@@ -52,3 +52,9 @@ The server decides the role: on open, the card asks for the coach account and fi
 - Coach is not on Today any more. Clients: first screen ("I have a coach code") or Settings → Your coach. Coaches: first screen ("I coach people" → Settings opens on coach setup, name field focused) or Settings → Coach mode. A coach who has set up sees one "Coach · N clients" strip on Today.
 - Paywall: shown once, right after the plan is built (reason `welcome`, only rows that differ, "Continue free" visible). Not shown on web-less/native builds, to coaches mid-setup, or to restored accounts. Other triggers unchanged: photo/Beet limit hit, strength trends, coach client cap.
 - Welcome screen: promise + "Build my plan" first, privacy notes below the actions.
+
+## Time of day, plan review, email (0.14.0)
+
+- **Next up** reads the clock: a scheduled workout wins from 90 min before; without a time, training is suggested from 10:00 and dropped after 21:00. Then food, weigh-in (7+ days), pending training, water.
+- **Plan review**: the server rebuilds the allowed exercise pool from the intake. A swap is kept only if the target is in that pool, has the same movement pattern, is not already in the session; max 3. The person accepts each one. 4 reviews/day/device.
+- **Email check-in**: opt-in in Settings → Reminders, accounts only. One email a day at the chosen local time, only when the synced document shows something open. Skipped if the cron runs more than 2 h late. Failed sends retry within that window. Every message carries a signed one-click unsubscribe (`List-Unsubscribe-Post`).

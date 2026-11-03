@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useCamera } from './useCamera.js'
 import { getBarcodeDetector, validGtin } from './barcode.js'
 import { lookupBarcode, snapMeal, warmApi } from '../lib/api.js'
-import { SAUCES, sauceItem } from '../data/sauces.js'
+import { SAUCES, COMMON_SAUCES, sauceItem } from '../data/sauces.js'
 import { haptic, hapticError, hapticSuccess } from '../lib/platform.js'
 import { fetchStatus, useUsage, usageLeft } from '../lib/billing.js'
 import { FAT_OPTIONS, fatItem, kcalRange } from '../lib/foods.js'
@@ -222,6 +222,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
   const [res, setRes] = useState(null)
   const [err, setErr] = useState(null)
   const [shot, setShot] = useState(null)
+  const [moreSauces, setMoreSauces] = useState(false)
   const [fat, setFat] = useState(null) // id from FAT_OPTIONS; asked every time because photos can't see oil
   useEffect(() => { warmApi(); if (onUpgrade) fetchStatus() }, [onUpgrade])
   const left = usageLeft(useUsage(), 'snaps')
@@ -338,9 +339,12 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
             <div className="fc-sauces">
               <span className="ct-p">Sauce, dressing or cheese we missed?</span>
               <div className="fc-sc">
-                {SAUCES.filter(sc => !res.items.some(x => x.name === sc.label)).slice(0, 12).map(sc => (
-                  <button key={sc.id} onClick={() => addSauce(sc)}>+ {sc.label}<small className="num">{sauceItem(sc).kcal}</small></button>
-                ))}
+                {SAUCES.filter(sc => !res.items.some(x => x.name === sc.label) && (moreSauces || COMMON_SAUCES.includes(sc.id)))
+                  .sort((a, b) => (moreSauces ? a.label.localeCompare(b.label) : COMMON_SAUCES.indexOf(a.id) - COMMON_SAUCES.indexOf(b.id)))
+                  .map(sc => (
+                    <button key={sc.id} onClick={() => addSauce(sc)}>+ {sc.label}<small className="num">{sauceItem(sc).kcal}</small></button>
+                  ))}
+                <button className="fc-more" onClick={() => { haptic(); setMoreSauces(m => !m) }}>{moreSauces ? 'Fewer' : 'More…'}</button>
               </div>
             </div>
             <div className="fc-fat">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { findSauce, fixSauce, sauceItem, SAUCES } from './sauces.js'
+import { findSauce, fixSauce, sauceItem, SAUCES, COMMON_SAUCES } from './sauces.js'
 
 describe('sauces', () => {
   it('recognises a standalone sauce, not a dish', () => {
@@ -33,4 +33,16 @@ describe('sauces', () => {
   it('sauceItem builds a logged item', () => {
     expect(sauceItem(SAUCES.find(s => s.id === 'ketchup'))).toMatchObject({ name: 'Ketchup', grams: 17, kcal: 17 })
   })
+  it('soy sauce is there, matches USDA (53 kcal / 100 g) and sits in the first chips', () => {
+    expect(findSauce('Soy sauce')?.id).toBe('soy')
+    expect(findSauce('Tamari')?.id).toBe('soy')
+    expect(sauceItem(findSauce('soy sauce'), 100).kcal).toBe(53)
+    expect(COMMON_SAUCES).toContain('soy')
+  })
+  it('fish, oyster and hoisin follow USDA per-100 g values', () => {
+    expect(sauceItem(findSauce('fish sauce'), 100).kcal).toBe(35)
+    expect(sauceItem(findSauce('oyster sauce'), 100).kcal).toBe(51)
+    expect(sauceItem(findSauce('hoisin sauce'), 100).kcal).toBe(220)
+  })
+  it('common chips all exist', () => { for (const id of COMMON_SAUCES) expect(SAUCES.some(s => s.id === id), id).toBe(true) })
 })

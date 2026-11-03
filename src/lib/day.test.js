@@ -149,14 +149,35 @@ describe('suggested meals are not eaten food', () => {
   })
 })
 
+describe('nextUp by time of day', () => {
+  const T = '2026-11-02'
+  const base = { profile: { sex: 'male', age: 30, heightCm: 180, weightKg: 90, targetKg: 80, activity: 'moderate', goal: 'lose' }, settings: {}, weightLog: [{ date: T, kg: 90 }], foodLog: {}, water: {}, workoutLog: {} }
+  it('morning with nothing scheduled: breakfast first, then the workout', () => {
+    expect(nextUp(base, T, { hour: 7.5 }).id).toBe('food')
+    const fed = { ...base, foodLog: { [T]: [{ name: 'Eggs', kcal: 150, p: 12, c: 1, f: 10, grams: 100 }] } }
+    expect(nextUp(fed, T, { hour: 7.5 }).id).toBe('train')
+  })
+  it('daytime: workout first; after 21:00 do not start one', () => {
+    expect(nextUp(base, T, { hour: 17 }).id).toBe('train')
+    expect(nextUp(base, T, { hour: 22 }).id).toBe('food')
+    const fed = { ...base, foodLog: { [T]: [{ name: 'Eggs', kcal: 150, p: 12, c: 1, f: 10, grams: 100 }] } }
+    expect(nextUp(fed, T, { hour: 22 }).id).toBe('water')
+  })
+  it('a scheduled workout wins from 90 minutes before its time', () => {
+    expect(nextUp(base, T, { hour: 15, workoutTime: '18:30' }).id).toBe('food')
+    expect(nextUp(base, T, { hour: 17.1, workoutTime: '18:30' }).id).toBe('train')
+    expect(nextUp(base, T, { hour: 7, workoutTime: '07:30' }).id).toBe('train')
+  })
+})
+
 describe('nextUp', () => {
   const T = '2026-11-02'
   const base = { profile: { sex: 'male', age: 30, heightCm: 180, weightKg: 90, targetKg: 80, activity: 'moderate', goal: 'lose' }, settings: {}, weightLog: [{ date: T, kg: 90 }], foodLog: {}, water: {}, workoutLog: {} }
   const food = { foodLog: { [T]: [{ name: 'Eggs', kcal: 150, p: 12, c: 1, f: 10, grams: 100 }] } }
   const rest = { plans: [{ id: 'w', auto: 'week', kind: 'workout', repeat: 'weekly', date: addDays(T, 1) }] } // training day is tomorrow, so today is a rest day
   it('starts with the workout, then food, then water, then done', () => {
-    expect(nextUp(base, T).id).toBe('train')
-    expect(nextUp({ ...base, workoutLog: { [T]: { goblet: { sets: [{ reps: 8, kg: 20 }] } } } }, T).id).toBe('food') // trained → next is the first meal
+    expect(nextUp(base, T, { hour: 14 }).id).toBe('train')
+    expect(nextUp({ ...base, workoutLog: { [T]: { goblet: { sets: [{ reps: 8, kg: 20 }] } } } }, T, { hour: 14 }).id).toBe('food') // trained → next is the first meal
   })
   it('rest day skips the workout', () => {
     expect(nextUp({ ...base, ...rest }, T).id).toBe('food')

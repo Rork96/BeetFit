@@ -90,3 +90,14 @@ export const ACCOUNT_ERR = {
   unauthorized: 'Server key missing (DEVICE_SECRET).',
   offline: 'No connection.'
 }
+
+// Daily email check-in (one a day, only when something is open). Accounts only: the address comes from the sign-in.
+export const getMailRem = () => api('/api/mail/rem')
+export const setMailRem = p => post('/api/mail/rem', { ...p, tz: Intl.DateTimeFormat().resolvedOptions().timeZone })
+export const MAIL_ERR = {
+  offline: 'No connection.',
+  sign_in_first: 'Sign in first. The email goes to your account address.',
+  email_not_configured: 'Email check-ins are not switched on yet.',
+  daily_limit: 'Too many changes today. Try again tomorrow.',
+  sync_not_configured: 'Email check-ins are not switched on yet.'
+}
