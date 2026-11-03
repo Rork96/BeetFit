@@ -15,6 +15,7 @@ import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
 import { useAccount } from './lib/useAccount.js'
 import { usePro } from './lib/usePro.js'
+import { canBuyHere } from './lib/billing.js'
 import ProSheet from './components/Pro.jsx'
 import { CoachChat, CoachHome } from './components/Coach.jsx'
 import BeetChat from './components/Beet.jsx'
@@ -34,6 +35,7 @@ const Icon = {
   today: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><rect x="9" y="9" width="6" height="6" /></svg>,
   workout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="9" width="4" height="6" /><rect x="18" y="9" width="4" height="6" /><path d="M6 12h12" /><rect x="6" y="6" width="3" height="12" /><rect x="15" y="6" width="3" height="12" /></svg>,
   meals: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><path d="M3 12h18M12 12v9" /></svg>,
+  beet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4h18v12H11l-5 4v-4H3z" /><path d="M8 10h8" /></svg>,
   progress: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18" /><rect x="5" y="12" width="3" height="6" /><rect x="10.5" y="8" width="3" height="10" /><rect x="16" y="4" width="3" height="14" /></svg>
 }
 
@@ -41,6 +43,7 @@ const TABS = [
   { id: 'today', label: 'Today' },
   { id: 'workout', label: 'Train' },
   { id: 'meals', label: 'Food' },
+  { id: 'beet', label: 'Beet' },
   { id: 'progress', label: 'Progress' }
 ]
 
@@ -53,7 +56,6 @@ export default function App() {
   const [clients, setClients] = useState(false)
   useBackClose(clients, () => setClients(false))
   const [chat, setChat] = useState(false)
-  const [beet, setBeet] = useState(null) // null | { first: question or null }
   const [guides, setGuides] = useState(null) // null | { first: guide id or null }
   const [cal, setCal] = useState(null) // null | { day, plan }
   const prevTab = useRef(tab)
@@ -63,7 +65,6 @@ export default function App() {
   useEffect(() => { if (state?.profile) persistStorage() }, [!!state?.profile]) // eslint-disable-line react-hooks/exhaustive-deps
   useBackClose(!!settings, () => setSettings(false))
   useBackClose(chat, () => setChat(false))
-  useBackClose(!!beet, () => setBeet(null))
   useBackClose(!!guides, () => setGuides(null))
   useBackClose(!!cal, () => setCal(null))
 
@@ -76,6 +77,18 @@ export default function App() {
   const sync = useSync(state, setState)
   const account = useAccount(sync, setState)
   const pro = usePro(!!state?.profile)
+  // Right after the plan is built: coaches go to coach setup; everyone else gets the free-trial offer once.
+  const hasPlan = !!state?.profile
+  useEffect(() => {
+    if (!hasPlan) return
+    try {
+      if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSettings('setup'); return }
+      if (localStorage.getItem('beetfit_paywall') && pro.config) {
+        localStorage.removeItem('beetfit_paywall')
+        if (canBuyHere(pro.config) && !pro.status?.pro) setTimeout(() => pro.open('welcome'), 500)
+      }
+    } catch { /* ignore */ }
+  }, [hasPlan, pro.config]) // eslint-disable-line react-hooks/exhaustive-deps
   const coachHook = useCoach(sync.on)
   // Joining a coach turns sync on: the coach reads the synced copy.
   const coach = { ...coachHook, join: async code => { const r = await coachHook.join(code); if (r.status === 200) sync.setOn(true); return r } }
@@ -129,7 +142,7 @@ export default function App() {
         mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
       })
       if (coachCode) coach.join(coachCode)
-      if (asCoach) { try { localStorage.setItem('beetfit_coach_intent', '1') } catch { /* ignore */ } }
+      try { localStorage.setItem(asCoach ? 'beetfit_coach_intent' : 'beetfit_paywall', '1') } catch { /* ignore */ }
     }} />
   }
 
@@ -141,9 +154,10 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => setBeet({ first: q })} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
+        {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
         {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} pro={pro} />}
       </div>
       <nav className="tabbar">
@@ -155,13 +169,12 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {clients && <CoachHome onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
-      {beet && <BeetChat state={view} first={beet.first} onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
       {pro.sheet && <ProSheet pro={pro} account={account} reason={pro.sheet.reason} onClose={pro.close} />}
     </MotionConfig>
   )

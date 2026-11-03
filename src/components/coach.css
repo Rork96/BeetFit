@@ -90,3 +90,7 @@
 .ch-cap span:nth-child(2) { flex: 1; }
 .ch-cap u { color: var(--accent, #ff6b4a); text-underline-offset: 2px; white-space: nowrap; }
 .ch-cap.full { background: rgba(255,107,74,.14); color: var(--text, inherit); }
+
+.card.ce-strip { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; min-height: 56px; padding: 12px 16px; text-align: left; color: var(--text); }
+.ce-strip .ce-t { display: flex; flex-direction: column; gap: 2px; }
+.ce-strip .ce-go { color: var(--accent); font-size: 13px; }

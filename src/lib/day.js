@@ -97,6 +97,18 @@ export function dayTasks(state, key = dayKey()) {
   ]
 }
 
+// The one thing to do next today: training day → workout first, then the first meal,
+// a weigh-in when the last one is a week old, water, and finally "done". Rest days skip the workout.
+export function nextUp(state, key = dayKey()) {
+  const t = Object.fromEntries(dayTasks(state, key).map(x => [x.id, x]))
+  if (!t.train.done && targets(state, key).dayType !== 'rest') return { id: 'train' }
+  if (!t.food.done) return { id: 'food' }
+  const last = (state.weightLog || []).reduce((m, w) => (w.date > m ? w.date : m), '')
+  if (last && last <= addDays(key, -7)) return { id: 'weigh', last }
+  if (!t.water.done) return { id: 'water' }
+  return { id: 'done' }
+}
+
 export const dayScore = (state, key) => dayTasks(state, key).filter(t => t.done).length
 
 // 0 = Monday … 6 = Sunday

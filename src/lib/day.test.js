@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { eaten, dayTasks, streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
+import { nextUp, eaten, dayTasks, streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
 
 const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, targetKg: 75, goal: 'lose', activity: 'moderate' }
 const program = [{ name: 'A', exercises: [] }, { name: 'B', exercises: [] }, { name: 'C', exercises: [] }]
@@ -146,5 +146,26 @@ describe('suggested meals are not eaten food', () => {
   it('eaten() counts logged food only', () => {
     const st = { mealPlan: plan, foodLog: { [k]: [{ name: 'Rice', kcal: 260, p: 5, c: 56, f: 1 }] } }
     expect(eaten(st, k)).toMatchObject({ kcal: 260, items: 1 })
+  })
+})
+
+describe('nextUp', () => {
+  const T = '2026-11-02'
+  const base = { profile: { sex: 'male', age: 30, heightCm: 180, weightKg: 90, targetKg: 80, activity: 'moderate', goal: 'lose' }, settings: {}, weightLog: [{ date: T, kg: 90 }], foodLog: {}, water: {}, workoutLog: {} }
+  const food = { foodLog: { [T]: [{ name: 'Eggs', kcal: 150, p: 12, c: 1, f: 10, grams: 100 }] } }
+  const rest = { plans: [{ id: 'w', auto: 'week', kind: 'workout', repeat: 'weekly', date: addDays(T, 1) }] } // training day is tomorrow, so today is a rest day
+  it('starts with the workout, then food, then water, then done', () => {
+    expect(nextUp(base, T).id).toBe('train')
+    expect(nextUp({ ...base, workoutLog: { [T]: { goblet: { sets: [{ reps: 8, kg: 20 }] } } } }, T).id).toBe('food') // trained → next is the first meal
+  })
+  it('rest day skips the workout', () => {
+    expect(nextUp({ ...base, ...rest }, T).id).toBe('food')
+    expect(nextUp({ ...base, ...rest, ...food }, T).id).toBe('water')
+    expect(nextUp({ ...base, ...rest, ...food, water: { [T]: 8 } }, T).id).toBe('done')
+  })
+  it('asks for a weigh-in when the last one is a week old, before water', () => {
+    const s = { ...base, ...rest, ...food, weightLog: [{ date: addDays(T, -8), kg: 90 }] }
+    expect(nextUp(s, T)).toEqual({ id: 'weigh', last: addDays(T, -8) })
+    expect(nextUp({ ...s, weightLog: [{ date: addDays(T, -6), kg: 90 }] }, T).id).toBe('water')
   })
 })

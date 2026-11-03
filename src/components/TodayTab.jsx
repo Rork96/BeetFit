@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
+import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp, useBackClose } from '../lib/hooks.js'
 import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
 import { plansOn, planTitle, planDone } from '../lib/plans.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
-import { CoachNote, CoachEntry } from './Coach.jsx'
+import { CoachNote, CoachStrip } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
@@ -42,6 +42,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const day = prog.days[dayIdx]
   const trainedToday = setsLogged(state, key) > 0
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
+  const up = nextUp(state, key)
+  const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
 
   const wNow = currentWeight(state)
   const wStart = state.weightLog?.[0]?.kg ?? wNow
@@ -72,21 +74,11 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       </div>
 
       <div className="stk td-stack">
+        <NextUp up={up} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
+          onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
-        {coach && <CoachEntry coach={coach} openChat={openChat} openClients={openClients} />}
+        <CoachStrip openClients={openClients} />
         {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
-        <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
-        {todayPlans.length > 0 && (
-          <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
-            <span className="label">On your calendar today</span>
-            {todayPlans.map(p => (
-              <span key={p.id} className={'td-plan' + (planDone(state, p, key) ? ' done' : '')}>
-                <i />{planTitle(p)}<span className="num">{p.time || ''}</span>
-              </span>
-            ))}
-          </button>
-        )}
-
         {/* Calories */}
         <div className="card td-kcal">
           <div className="td-ring">
@@ -110,18 +102,17 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           <button className="td-link" onClick={() => go('meals')}>Log food →</button>
         </div>
 
-        {/* Workout */}
-        <div className="card td-work">
-          <div className="row">
-            <span className="label">{trainedToday ? 'Trained today' : "Today's session"}</span>
-            {camCount > 0 && <span className="ex-cam">▣ {camCount} camera-tracked</span>}
-          </div>
-          <h2>{day.name.split('—')[1]?.trim() || day.name}</h2>
-          <p className="hint num">{day.exercises.length} exercises · {day.exercises.map(x => x.name.split(' (')[0]).slice(0, 3).join(', ')}…</p>
-          <button className={'btn' + (trainedToday ? ' secondary' : '')} onClick={() => { haptic(); go('workout', { start: true, dayIdx }) }}>
-            {trainedToday ? 'Open workout' : 'Start session'}
+        <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
+        {todayPlans.length > 0 && (
+          <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
+            <span className="label">On your calendar today</span>
+            {todayPlans.map(p => (
+              <span key={p.id} className={'td-plan' + (planDone(state, p, key) ? ' done' : '')}>
+                <i />{planTitle(p)}<span className="num">{p.time || ''}</span>
+              </span>
+            ))}
           </button>
-        </div>
+        )}
 
         {/* Water + Body */}
         <div className="grid2">
@@ -157,13 +148,6 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
                 <i className={d.paused && !(d.score >= 2) ? 'pz' : d.score == null ? 'future' : si.frozen.includes(d.key) ? 'frz' : `s${d.score}`} />
                 <span>{d.label}</span>
               </div>
-            ))}
-          </div>
-          <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
-            {tasks.map(tk => (
-              <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')}>
-                <i>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</i>{tk.short || tk.label}
-              </span>
             ))}
           </div>
           {state.settings?.streak !== false && <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>}
@@ -222,6 +206,35 @@ function Macro({ label, v, max, color }) {
     <div className="td-macro">
       <div className="row"><span>{label}</span><span className="num">{v}<small>/{max}g</small></span></div>
       <div className="td-bar"><i style={{ transform: `scaleX(${Math.min(1, v / max)})`, background: color }} /></div>
+    </div>
+  )
+}
+
+// One thing to do now. Everything else on Today is context for it.
+function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, units, go, onGlass, onStart }) {
+  const dayName = n => n.split('—')[1]?.trim() || n
+  const last = up.id === 'weigh' ? state.weightLog.reduce((m, w) => (w.date > m.date ? w : m)) : null
+  const h = {
+    train: { label: 'Next up · training day', title: dayName(day.name), sub: `${day.exercises.length} exercises${camCount ? ` · camera counts ${camCount}` : ''}`, cta: 'Start session', act: onStart },
+    food: { label: 'Next up', title: 'Log what you eat', sub: `Target ${t.kcal} kcal · ${t.protein} g protein. Photo, barcode or search.`, cta: 'Log food', act: () => { haptic(); go('meals') } },
+    weigh: last && { label: 'Next up · weekly check', title: 'Weigh in', sub: `Last: ${fmtWeight(last.kg, units)}, ${new Date(last.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. One number a week keeps the plan honest.`, cta: 'Log weight', act: () => { haptic(); go('progress') } },
+    water: { label: 'Next up', title: `Water: ${water} of ${t.water}`, sub: 'Last task for today.', cta: '+ glass', act: onGlass },
+    done: { label: 'Today is done', title: 'Nothing left for today', sub: `${streak ? `${streak}-day streak. ` : ''}Next session: ${dayName(tomorrow.name)}.`, cta: null }
+  }[up.id]
+  const done = up.id === 'done'
+  return (
+    <div className={'card td-next' + (done ? ' done' : '')}>
+      <span className="label">{h.label}</span>
+      <h2>{h.title}</h2>
+      <p className="hint">{h.sub}</p>
+      {h.cta && <button className="btn" onClick={h.act}>{h.cta}</button>}
+      <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
+        {tasks.map(tk => (
+          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')}>
+            <i>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</i>{tk.short || tk.label}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -130,3 +130,10 @@
 /* The tiny sync badge keeps its look; its tap area is 40px tall. */
 .sb { position: relative; }
 .sb::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 40px; transform: translateY(-50%); }
+
+/* Next-up hero */
+.td-next { gap: 8px; border-color: var(--accent-line); background: linear-gradient(180deg, rgba(212,255,95,.07), transparent 70%), var(--card); }
+.td-next h2 { font-size: 24px; line-height: 1.15; }
+.td-next .btn { margin-top: 4px; }
+.td-next .td-tasks { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.td-next.done { border-color: var(--line-2); background: var(--card); }

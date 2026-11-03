@@ -41,3 +41,15 @@
 .bt-meter .num { font-weight: 700; color: var(--text, inherit); }
 .bt-meter.low { color: var(--accent, #ff6b4a); }
 .bt-meter u { text-underline-offset: 2px; }
+
+/* Beet as a tab: header and input stay put, the input sits on top of the tab bar. */
+.bt-tab { min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: calc(60px + env(safe-area-inset-bottom)); animation: cutIn var(--dur-3) var(--ease-out) backwards; }
+.bt-tab .screen-top { padding-top: max(12px, env(safe-area-inset-top)); }
+.bt-tab .bt-page { padding-bottom: 150px; }
+.bt-tab .bt-empty { padding-top: 6vh; }
+.bt-foot { background: rgba(12,13,17,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+.bt-foot .bt-input { position: static; border-top: 0; padding-bottom: 10px; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.bt-foot .bt-meter { padding-bottom: 0; min-height: 32px; }
+.bt-tab .bt-foot { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); max-width: 520px; margin: 0 auto; z-index: 15; }
+.screen .bt-foot { position: sticky; bottom: 0; }
+.screen .bt-foot .bt-input { padding-bottom: max(10px, env(safe-area-inset-bottom)); }

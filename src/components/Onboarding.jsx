@@ -237,17 +237,13 @@ function Welcome({ onStart, onRestore, account }) {
       <div className="ob-hero stk">
         <div className="ob-glow" />
         <Suspense fallback={<div className="ob-gem-ph" />}><Gem3D size={170} className="ob-gem" /></Suspense>
-        <h1>Your week,<br />built around<br />you.</h1>
-        <p>Answer a few questions. BeetFit builds a program that fits your kit, your days and your body — and the camera counts your reps.</p>
+        <h1>Your week,<br />planned. Then<br />watched.</h1>
+        <p>Two minutes of questions. You get your daily calories, a training plan for your kit and days, and Beet, an assistant that knows your plan, food and weigh-ins. The camera counts your reps.</p>
       </div>
-      <ul className="ob-privacy stk">
-        <li>Camera tracking runs on your phone and is never uploaded.</li>
-        <li>Your data stays on this device unless you sign in or turn on sync. Export or erase it any time.</li>
-        <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
-      </ul>
-      <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Get started</button>
+      <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Build my plan</button>
+      <p className="hint ob-free">2 minutes · free to start · no card</p>
       <div className="ob-alt">
-        <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => { pick('sync'); setLinkCode(false); setNote('') }}>Sign in</button>
+        <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => { pick('sync'); setLinkCode(false); setNote('') }}>I already have an account</button>
         <button className={'chip' + (open === 'coach' ? ' on' : '')} onClick={() => pick('coach')}>I have a coach code</button>
         <button className={'chip' + (open === 'trainer' ? ' on' : '')} onClick={() => pick('trainer')}>I coach people</button>
       </div>
@@ -260,7 +256,7 @@ function Welcome({ onStart, onRestore, account }) {
         <div className="ob-claim stk" key="signin">
           <SignIn autoFocus onDone={r => {
             account?.onSignedIn(r)
-            if (!r.doc?.data?.profile) setNote('Signed in. This account has no plan yet: tap Get started and it will be saved to your account.')
+            if (!r.doc?.data?.profile) setNote('Signed in. This account has no plan yet: tap Build my plan and it will be saved to your account.')
           }} />
           {note && <p className="hint ob-note">{note}</p>}
           <button className="ac-link" onClick={() => { haptic(); setLinkCode(true) }}>No account? Link with a code from your other phone</button>
@@ -288,6 +284,11 @@ function Welcome({ onStart, onRestore, account }) {
           {err && <p className="sy-err">{err}</p>}
         </div>
       )}
+      <ul className="ob-privacy stk sm">
+        <li>Camera tracking runs on your phone and is never uploaded.</li>
+        <li>Your data stays on this device unless you sign in or turn on sync. Export or erase it any time.</li>
+        <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
+      </ul>
       <p className="hint" style={{ textAlign: 'center', fontSize: 11.5 }}>Not medical advice. Check with a physician before starting a new program.</p>
     </div>
   )
@@ -336,6 +337,11 @@ function Ready({ profile, it, program, name, onStart }) {
           <span><b className="num">{m.fat}g</b> fat</span>
         </div>
         <p className="hint num">BMR {bmr(profile)} · TDEE {tdee(profile)} · activity: {profile.activity}</p>
+      </div>
+      <div className="card ob-pace">
+        <span className="label">Where this gets you</span>
+        <b className="num">{paceInfo(profile, it).line}</b>
+        <p className="hint">Pace comes from your target and timeframe. Weigh in once a week and watch it play out.</p>
       </div>
       <div className="card">
         <span className="label">Now → target</span>

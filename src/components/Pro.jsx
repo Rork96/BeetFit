@@ -13,6 +13,7 @@ const REASON = {
   chat: 'That was today’s last free question for Beet.',
   strength: 'Strength trends for every lift are part of PRO.',
   clients: 'Free coaching covers 3 clients. PRO lifts that to 200.',
+  welcome: 'Your plan is built. Beet and photo estimates are what keep you on it: try them free first.',
   success: null
 }
 
@@ -105,7 +106,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         <div className="pr-top">
           <span className="pr-mark"><i /></span>
           <div>
-            <h2 className="pr-h">BeetFit PRO</h2>
+            <h2 className="pr-h">{reason === 'welcome' ? 'Keep this plan on track' : 'BeetFit PRO'}</h2>
             <p className="hint" style={{ margin: 0 }}>Logging stays free, always. PRO is for the AI and the deeper numbers.</p>
           </div>
         </div>
@@ -113,7 +114,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
 
         <div className="pr-table" role="table" aria-label="Free and PRO">
           <div className="pr-tr pr-th" role="row"><span /><span>Free</span><span>PRO</span></div>
-          {rows(cfg.free).map(([l, f, p]) => (
+          {rows(cfg.free).filter(([l, f, p]) => reason !== 'welcome' || !(f === true && p === true || l === 'Coach clients')).map(([l, f, p]) => (
             <div className="pr-tr" role="row" key={l}>
               <span>{l}</span>
               <span className={f === true ? 'pr-yes' : ''}>{f === true ? '✓' : f}</span>
@@ -157,7 +158,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
           </>
         )}
         {err && <p className="ac-err">{err}</p>}
-        <button className="ac-link" onClick={() => history.back()}>Not now</button>
+        <button className="ac-link" onClick={() => history.back()}>{reason === 'welcome' ? 'Continue free' : 'Not now'}</button>
       </>
     )
   }

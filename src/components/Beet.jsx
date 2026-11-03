@@ -25,7 +25,7 @@ export function BeetMark({ busy }) {
   return <span className={'bt-mark' + (busy ? ' busy' : '')}><i /><i /><i /></span>
 }
 
-export default function BeetChat({ state, first, onClose, onUpgrade }) {
+export default function BeetChat({ state, first, onClose, onUpgrade, embedded }) {
   const [msgs, setMsgs] = useState(loadChat)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,9 +52,9 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
 
   const qs = suggestions(state)
   return (
-    <div className="screen bt-screen">
+    <div className={embedded ? 'bt-screen bt-tab' : 'screen bt-screen'}>
       <header className="screen-top">
-        <button className="td-icon" onClick={onClose} aria-label="Back">←</button>
+        {embedded ? <span style={{ width: 44 }} /> : <button className="td-icon" onClick={onClose} aria-label="Back">←</button>}
         <div className="bt-title"><BeetMark busy={busy} /><h2>Beet</h2></div>
         {msgs.length ? <button className="td-icon" aria-label="Clear chat" onClick={() => { haptic('medium'); setMsgs([]) }}>⌫</button> : <span style={{ width: 44 }} />}
       </header>
@@ -79,6 +79,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
           <i ref={end} />
         </div>
       </div>
+      <div className="bt-foot">
       {onUpgrade && left != null && (
         <button className={'bt-meter' + (left <= 1 ? ' low' : '')} onClick={() => { haptic(); onUpgrade() }}>
           <span className="num">{left}</span> free {left === 1 ? 'question' : 'questions'} left today · <u>PRO has 60</u>
@@ -89,6 +90,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade }) {
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} />
         <button className="btn" disabled={!text.trim() || busy} onClick={() => send()}>Send</button>
+      </div>
       </div>
     </div>
   )

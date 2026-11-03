@@ -15,9 +15,9 @@ import { AccountCard } from './Account.jsx'
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.12.0'
+const VERSION = '0.13.0'
 
-export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, onClose }) {
+export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
   useBackClose(coachHome, () => setCoachHome(false))
   const s = state.settings || {}
@@ -111,7 +111,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
 
         {sync && <SyncCard sync={sync} update={update} />}
 
-        <CoachModeCard onOpen={() => setCoachHome(true)} />
+        <CoachModeCard onOpen={() => setCoachHome(true)} focus={focusCoach} />
 
         <section className="card">
           <span className="label">Your data</span>

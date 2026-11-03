@@ -44,3 +44,11 @@ The server decides the role: on open, the card asks for the coach account and fi
 - Billing off (no Stripe/RevenueCat keys) → no caps, no meters.
 - Onboarding: "I coach people" chip → after the plan is built, Today opens coach setup once.
 - The 3-client free cap is a pricing choice, not tested against users. Change `FREE.clients` in worker/src/billing.js.
+
+
+## Navigation and first-run flow (0.13.0)
+- Tabs: Today · Train · Food · Beet · Progress. Beet is a tab now (chat embedded, meter above the input); Today's Beet card opens it with the tapped question.
+- Today = one "Next up" card: workout on a training day, then first meal, weigh-in if the last is 7+ days old, water, then "Today is done". `nextUp()` in src/lib/day.js, tested. The Food/Water/Train chips live inside that card.
+- Coach is not on Today any more. Clients: first screen ("I have a coach code") or Settings → Your coach. Coaches: first screen ("I coach people" → Settings opens on coach setup, name field focused) or Settings → Coach mode. A coach who has set up sees one "Coach · N clients" strip on Today.
+- Paywall: shown once, right after the plan is built (reason `welcome`, only rows that differ, "Continue free" visible). Not shown on web-less/native builds, to coaches mid-setup, or to restored accounts. Other triggers unchanged: photo/Beet limit hit, strength trends, coach client cap.
+- Welcome screen: promise + "Build my plan" first, privacy notes below the actions.

@@ -175,7 +175,7 @@ const ME_KEY = 'beetfit_coach_me'
 const readMe = () => { try { return JSON.parse(localStorage.getItem(ME_KEY)) } catch { return null } }
 
 // Settings card: become a coach, share the invite code, open the client list.
-export function CoachModeCard({ onOpen, onSaved }) {
+export function CoachModeCard({ onOpen, onSaved, focus }) {
   const [me, setMe] = useState(readMe) // { name, code }
   const [name, setName] = useState('')
   const [err, setErr] = useState('')
@@ -183,6 +183,8 @@ export function CoachModeCard({ onOpen, onSaved }) {
   const [copied, setCopied] = useState(false)
   const [armNew, setArmNew] = useState(false)
   const save = v => { setMe(v); try { localStorage.setItem(ME_KEY, JSON.stringify(v)) } catch { /* ignore */ }; onSaved?.(v) }
+  const box = useRef(null)
+  useEffect(() => { if (focus) setTimeout(() => box.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350) }, [focus])
 
   useEffect(() => { coachClients().then(r => { if (r.status === 200 && r.coach) save(r.coach) }) }, [])
 
@@ -210,13 +212,13 @@ export function CoachModeCard({ onOpen, onSaved }) {
   }
 
   return (
-    <section className="card">
+    <section className="card" ref={box}>
       <span className="label">Coach mode</span>
       {!me ? (
         <>
           <p className="hint">Coach other people: invite them with a code, see their logs and check-ins, message them and set their targets.</p>
           <div className="sy-enter">
-            <input placeholder="Your name as clients see it" value={name} maxLength={40} onChange={e => setName(e.target.value)} />
+            <input placeholder="Your name as clients see it" value={name} maxLength={40} autoFocus={!!focus} onChange={e => setName(e.target.value)} />
             <button className="btn" disabled={name.trim().length < 2 || busy} onClick={setup}>{busy ? '…' : 'Start'}</button>
           </div>
         </>
@@ -225,7 +227,7 @@ export function CoachModeCard({ onOpen, onSaved }) {
           <div className="sy-code ch-code">
             <span className="label">Your invite code</span>
             <b className="num">{me.code}</b>
-            <span className="hint">Clients enter it on Today → Coaching, or on the first screen.</span>
+            <span className="hint">Clients enter it on the first screen (“I have a coach code”) or in Settings → Your coach.</span>
           </div>
           <div className="grid2">
             <button className="btn secondary" onClick={share}>{copied ? '✓ Copied' : 'Share invite'}</button>
@@ -239,65 +241,31 @@ export function CoachModeCard({ onOpen, onSaved }) {
   )
 }
 
-// Today-tab entry, for both roles, so nobody has to dig through Settings.
-// Client row: connect a coach code, or open messages. Coach row: start coach mode, or open clients.
-export function CoachEntry({ coach, openChat, openClients }) {
+// Today strip for coaches only. Clients and "be a coach" live in Settings and on the first screen,
+// so the home screen stays about the person's own day.
+export function CoachStrip({ openClients }) {
   const [me, setMe] = useState(readMe)
-  const [sheet, setSheet] = useState(null) // 'client' | 'coach' | null
   const [flagged, setFlagged] = useState(0)
-  useBackClose(!!sheet, () => setSheet(null))
-  // Chose "I coach people" on the first screen: open coach setup once, the first time Today shows.
+  const [n, setN] = useState(null)
   useEffect(() => {
-    try { if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSheet('coach') } } catch { /* ignore */ }
-  }, [])
-  // The server knows if this account coaches, even on a new phone: ask once, keep the local copy in step.
-  useEffect(() => {
+    // Chose "I coach people" on the first screen: finish coach setup once, from Settings.
+    if (!me) return
     coachClients().then(r => {
       if (r.status !== 200) return
       if (r.coach) { setMe(r.coach); try { localStorage.setItem(ME_KEY, JSON.stringify(r.coach)) } catch { /* ignore */ } }
+      setN((r.clients || []).length)
       setFlagged((r.clients || []).filter(c => c.summary?.pain || c.unread).length)
     })
-  }, [])
-
-  const linked = coach?.link?.coach
-  const unread = coach?.unread?.length || 0
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!me) return null
   return (
-    <>
-      <section className="card ce">
-        <div className="ce-row">
-          <div className="ce-t">
-            <span className="label">{linked ? 'Your coach' : 'Coaching'}</span>
-            <b>{linked ? linked.name : 'Training with a coach?'}</b>
-            <span className="hint">{linked ? 'Messages, check-ins and targets' : 'Enter the code they sent you'}</span>
-          </div>
-          {linked
-            ? <button className="btn small secondary" onClick={() => { haptic(); openChat() }}>Messages{unread ? ` · ${unread}` : ''}</button>
-            : <button className="btn small secondary" onClick={() => { haptic(); setSheet('client') }}>Connect</button>}
-        </div>
-        <div className="ce-row">
-          <div className="ce-t">
-            <span className="label">Coach others</span>
-            {me
-              ? <><b>Your clients{flagged ? ` · ${flagged} need you` : ''}</b><span className="hint num">Invite code {me.code}</span></>
-              : <><b>Be a coach</b><span className="hint">Invite clients, see their logs, set targets</span></>}
-          </div>
-          {me
-            ? <button className="btn small secondary" onClick={() => { haptic(); openClients() }}>Open</button>
-            : <button className="btn small secondary" onClick={() => { haptic(); setSheet('coach') }}>Start</button>}
-        </div>
-      </section>
-      {sheet && (
-        <>
-          <div className="sheet-back" onClick={() => history.back()} />
-          <div className="sheet ce-sheet">
-            {sheet === 'client'
-              ? <YourCoachCard coach={coach} syncOn onChat={() => { setSheet(null); openChat() }} />
-              : <CoachModeCard onSaved={setMe} />}
-            <button className="btn secondary" onClick={() => history.back()}>Done</button>
-          </div>
-        </>
-      )}
-    </>
+    <button className="card ce-strip" onClick={() => { haptic(); openClients() }}>
+      <span className="ce-t">
+        <span className="label">Coach · {me.name}</span>
+        <b>{n == null ? 'Your clients' : `${n} ${n === 1 ? 'client' : 'clients'}`}{flagged ? ` · ${flagged} need you` : ''}</b>
+      </span>
+      <span className="ce-go">Open →</span>
+    </button>
   )
 }
 
