@@ -68,6 +68,16 @@ describe('billing', () => {
     expect(await call(tok, '/api/billing/status')).toMatchObject({ pro: false, on: true, trialUsed: false, manage: false })
   })
 
+  it('config tells the owner why prices are missing, and keeps web on', async () => {
+    _clearPrices()
+    const bad = { ...env, STRIPE_PRICE_MONTH: 'prod_wrong' }
+    const r = await (await worker.fetch(new Request('https://beetfit.test/api/billing/config'), bad, {})).json()
+    expect(r.web).toBe(true)
+    expect(r.prices).toBeNull()
+    expect(r.priceError).toMatch(/stripe 404/)
+    _clearPrices()
+  })
+
   it('checkout needs an account, then opens Stripe with a no-card 14-day trial', async () => {
     const anon = await issueToken(SECRET)
     expect((await call(anon, '/api/billing/checkout', 'POST', { plan: 'year' })).error).toBe('sign_in_first')

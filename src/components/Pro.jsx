@@ -151,7 +151,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
   } else if (!cfg?.on) {
     body = <><h2 className="pr-h">BeetFit PRO</h2><p className="hint">PRO isn’t switched on yet. Everything is open for now.</p><button className="btn" onClick={() => history.back()}>OK</button></>
   } else {
-    const trialLine = trial ? `Start ${cfg.trialDays} days free` : `Subscribe · ${fmtMoney(price)}/${per}`
+    const trialLine = trial ? `Start ${cfg.trialDays} days free` : price ? `Subscribe · ${fmtMoney(price)}/${per}` : 'Subscribe'
     const go = () => { if (!signedIn) { haptic(); signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } else buy() }
     body = (
       <>
@@ -178,7 +178,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
 
         {isNative() ? (
           <p className="hint pr-fine">In-app purchase arrives with the App Store and Google Play release.</p>
-        ) : !canBuyHere(cfg) || !pr ? (
+        ) : !canBuyHere(cfg) ? (
           <p className="hint pr-fine">Payments aren’t switched on yet.</p>
         ) : (
           <>
@@ -190,12 +190,12 @@ export default function ProSheet({ pro, account, reason, onClose }) {
               </ol>
             )}
             <div className="pr-plans" role="radiogroup" aria-label="Plan">
-              {[['year', pr.year], ['month', pr.month]].map(([id, p]) => (
+              {[['year', pr?.year], ['month', pr?.month]].map(([id, p]) => (
                 <button key={id} role="radio" aria-checked={plan === id} className={'pr-plan' + (plan === id ? ' on' : '')} onClick={() => { haptic(); setPlan(id) }}>
                   <span className="pr-plan-n">{id === 'year' ? 'Yearly' : 'Monthly'}{id === 'year' && save > 0 && <em>−{save}%</em>}</span>
-                  <b className="num">{fmtMoney(p)}<small>/{id === 'year' ? 'year' : 'month'}</small></b>
-                  {id === 'year' ? <span className="num pr-per">{fmtMoney(p, 12)} a month</span>
-                    : <span className="num pr-per">{fmtMoney(p, 1 / 12)} a year</span>}
+                  {p ? <b className="num">{fmtMoney(p)}<small>/{id === 'year' ? 'year' : 'month'}</small></b> : <b className="num">—</b>}
+                  {p && (id === 'year' ? <span className="num pr-per">{fmtMoney(p, 12)} a month</span>
+                    : <span className="num pr-per">{fmtMoney(p, 1 / 12)} a year</span>)}
                 </button>
               ))}
             </div>
@@ -206,7 +206,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
               </div>
             )}
             <p className="hint pr-fine">
-              {trial
+              {!price ? 'Billed monthly or yearly, renewing until you cancel. ' : trial
                 ? `With a card it’s ${fmtMoney(price)} a ${per}, renewing until you cancel. `
                 : `${fmtMoney(price)} a ${per}, renewing until you cancel. `}
               Cancel any time in Settings → PRO. Payments by Stripe.

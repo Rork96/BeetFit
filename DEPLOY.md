@@ -65,6 +65,10 @@ In the iOS/Android apps only email is offered until the native sign-in plugin is
 Free stays free: all logging, plan, camera counting, streak, calendar, reminders, sync, export. PRO: 30 photo estimates and 60 Beet questions a day (free: 3 and 5), strength trends for every lift. Until Stripe or RevenueCat is configured, nobody is limited.
 
 **Stripe (web).** Test mode first, then repeat in live mode.
+
+Fastest path: `STRIPE_SECRET_KEY=sk_test_… node scripts/stripe-setup.mjs` creates the product, both prices and the webhook, and prints the two `wrangler.toml` lines and the secret commands. Manual steps below do the same.
+
+Paywall shows "Payments aren’t switched on yet" when `/api/billing/config` has `web: false`. If it has `web: true` but no `prices`, read `priceError` in that response: usually a test key with live price IDs (or the reverse), or a `prod_…` id where a `price_…` belongs.
 1. Product catalog → + Add product "BeetFit PRO" with two recurring prices: **$6.99 monthly** and **$49.99 yearly**. Copy both price IDs (`price_…`) into `STRIPE_PRICE_MONTH` / `STRIPE_PRICE_YEAR` in `wrangler.toml`.
 2. Developers → API keys → secret key → `npx wrangler secret put STRIPE_SECRET_KEY`.
 3. Developers → Webhooks → + Add endpoint `https://beetfit.wealthifai.xyz/api/billing/stripe-webhook` with events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end`. Signing secret → `npx wrangler secret put STRIPE_WEBHOOK_SECRET`.

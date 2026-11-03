@@ -83,6 +83,11 @@ export async function prices(env) {
 }
 export const _clearPrices = () => { priceCache = null }
 
+// Why the amounts could not be loaded (wrong key mode, a prod_ id instead of price_, a deleted price). Shown to the owner, not the buyer.
+export async function priceProblem(env) {
+  try { await prices(env); return null } catch (e) { return String(e.message || e).slice(0, 160) }
+}
+
 export async function billingConfig(env) {
   return {
     on: billingOn(env),
@@ -90,7 +95,8 @@ export async function billingConfig(env) {
     store: !!env.REVENUECAT_WEBHOOK_AUTH,
     trialDays: TRIAL_DAYS,
     free: FREE,
-    prices: await prices(env).catch(() => null)
+    prices: await prices(env).catch(() => null),
+    ...(await priceProblem(env).then(e => (e ? { priceError: e } : {})))
   }
 }
 
