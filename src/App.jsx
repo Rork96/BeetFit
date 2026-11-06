@@ -123,7 +123,8 @@ export default function App() {
     if (q.get('pro') === '1') pro.open()
     const b = q.get('billing') // back from Stripe
     if (b === 'success') pro.open('success')
-    else if (b === 'portal' || b === 'cancel') pro.refresh()
+    else if (b === 'cancel') { pro.refresh(); pro.open() } // closed Checkout: put the plans back in front of them
+    else if (b === 'portal') pro.refresh()
   }
   const openRef = useRef(openLink)
   openRef.current = openLink

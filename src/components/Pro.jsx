@@ -91,15 +91,24 @@ export default function ProSheet({ pro, account, reason, onClose }) {
     if (r.ok) { hapticSuccess(); await pro.refresh(); setBusy(false); setWelcome(true) }
     else { setBusy(false); setErr(BILLING_ERR[r.error] || 'Couldn’t start the trial. Try again.') }
   }
+  // Checkout and the portal replace this page. Back from Stripe the browser restores it frozen mid-"Opening checkout…" (bfcache),
+  // and a cancelled navigation leaves it there too, so un-stick the button in both cases.
+  useEffect(() => {
+    const back = e => { if (e.persisted) setBusy(false) }
+    window.addEventListener('pageshow', back)
+    return () => window.removeEventListener('pageshow', back)
+  }, [])
   const buy = async () => {
     haptic('medium'); setErr(''); setBusy(true)
     const r = await startCheckout(plan)
     if (!r.url) { setBusy(false); setErr(BILLING_ERR[r.error] || 'Couldn’t open checkout. Try again.') }
+    else setTimeout(() => setBusy(false), 8000)
   }
   const manage = async () => {
     haptic(); setErr(''); setBusy(true)
     const r = await openPortal()
     if (!r.url) { setBusy(false); setErr(BILLING_ERR[r.error] || 'Couldn’t open billing. Try again.') }
+    else setTimeout(() => setBusy(false), 8000)
   }
 
   const planPicker = (

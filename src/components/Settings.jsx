@@ -16,7 +16,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.15.0'
+const VERSION = '0.15.1'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
