@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'motion/react'
 import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR } from '../lib/billing.js'
@@ -83,7 +83,6 @@ export default function ProSheet({ pro, account, reason, onClose }) {
   const price = plan === 'year' ? pr?.year : pr?.month
   const per = plan === 'year' ? 'year' : 'month'
   const signedIn = !!account?.value
-  const signRef = useRef(null)
 
   const beginTrial = async () => {
     haptic('medium'); setErr(''); setBusy(true)
@@ -143,10 +142,9 @@ export default function ProSheet({ pro, account, reason, onClose }) {
             <p className="hint pr-fine">Your trial ends {fmtDate(st.trialEnd)}. {st.source === 'trial' ? 'No card was taken, so nothing can be charged. It just stops.' : 'With no card on file it simply stops; nothing is charged.'}</p>
             {st.source === 'trial' && canBuyHere(cfg) && (
               <div className="pr-keep">
-                <p className="pr-fine">Want to keep PRO after {fmtDate(st.trialEnd)}? {pr ? `${fmtMoney(pr.year)} a year or ${fmtMoney(pr.month)} a month` : 'Yearly or monthly'}. You sign in first, so PRO moves with you to a new phone.</p>
+                <p className="pr-fine">Want to keep PRO after {fmtDate(st.trialEnd)}? {pr ? `${fmtMoney(pr.year)} a year or ${fmtMoney(pr.month)} a month` : 'Yearly or monthly'}, renewing until you cancel.</p>
                 {planPicker}
-                {!signedIn && <div className="pr-sign" ref={signRef}><SignIn onDone={r => account.onSignedIn(r)} /></div>}
-                <button className="btn" disabled={busy} onClick={() => (signedIn ? buy() : signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))}>{busy ? 'Opening checkout…' : 'Subscribe · keep PRO'}</button>
+                <button className="btn" disabled={busy} onClick={buy}>{busy ? 'Opening checkout…' : 'Subscribe · keep PRO'}</button>
               </div>
             )}
             {pr && st.manage && !store && (
@@ -156,6 +154,12 @@ export default function ProSheet({ pro, account, reason, onClose }) {
               </div>
             )}
           </>
+        )}
+        {st?.pro && st.source === 'stripe' && !signedIn && (
+          <div className="pr-keep">
+            <p className="pr-fine"><b>Save PRO to an account.</b> Right now it lives on this phone only. Sign in with the email you paid with and it follows you to a new phone.</p>
+            <SignIn onDone={r => account.onSignedIn(r)} />
+          </div>
         )}
         {st?.state === 'past_due' && <p className="ac-err">The last payment didn’t go through. Update your card in Manage; PRO stays on meanwhile.</p>}
         {st?.cancelAtEnd && st?.state !== 'trialing' && <p className="hint pr-fine">Cancelled. PRO stays until {fmtDate(st.periodEnd)}, then your logs carry on as free.</p>}
@@ -168,7 +172,6 @@ export default function ProSheet({ pro, account, reason, onClose }) {
   } else if (!cfg?.on) {
     body = <><h2 className="pr-h">BeetFit PRO</h2><p className="hint">PRO isn’t switched on yet. Everything is open for now.</p><button className="btn" onClick={() => history.back()}>OK</button></>
   } else {
-    const go = () => { if (!signedIn) { haptic(); signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } else buy() }
     body = (
       <>
         <div className="pr-hero">
@@ -214,18 +217,12 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         ) : (
           <>
             {planPicker}
-            {!signedIn && (
-              <div className="pr-sign" ref={signRef}>
-                <p className="hint" style={{ margin: 0 }}>Sign in first. PRO lives on your account, so it moves with you to a new phone.</p>
-                <SignIn onDone={r => account.onSignedIn(r)} />
-              </div>
-            )}
             <p className="hint pr-fine">
               {!price ? 'Billed monthly or yearly, renewing until you cancel. ' : `${fmtMoney(price)} a ${per}, renewing until you cancel. `}
-              Cancel any time in Settings → PRO. Payments by Stripe.
+              Cancel any time in Settings → PRO. Payments by Stripe; no account needed to pay.
             </p>
             <div className="pr-cta-bar">
-              <button className="btn pr-cta" disabled={busy} onClick={go}>{busy ? 'Opening checkout…' : (price ? `Subscribe · ${fmtMoney(price)}/${per}` : 'Subscribe')}</button>
+              <button className="btn pr-cta" disabled={busy} onClick={buy}>{busy ? 'Opening checkout…' : (price ? `Subscribe · ${fmtMoney(price)}/${per}` : 'Subscribe')}</button>
             </div>
           </>
         )}

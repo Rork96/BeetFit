@@ -570,12 +570,11 @@ async function billingRoutes(req, url, env, device, cors, ip = 'local') {
     return out({ ...r, ...(await entitlement(db, userId)), customer: undefined })
   }
   if (!env.STRIPE_SECRET_KEY) return out({ error: 'billing_not_configured' }, 503)
-  // PRO belongs to an account so it survives a new phone; anonymous installs sign in first.
+  // No account needed to pay: Stripe asks for the email. The app then offers to save PRO to an account (signing in moves it).
   const account = await accountOf(db, userId)
   if (url.pathname === '/api/billing/checkout' && req.method === 'POST') {
-    if (!account) return out({ error: 'sign_in_first' }, 403)
     const body = await req.json().catch(() => ({}))
-    const r = await checkout(env, db, userId, { plan: body.plan, origin, email: account.email })
+    const r = await checkout(env, db, userId, { plan: body.plan, origin, email: account?.email })
     if (!r.error) await track(db, 'checkout_open', device.id).catch(() => {})
     return r.error ? out(r, 400) : out(r)
   }

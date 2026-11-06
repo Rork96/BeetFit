@@ -28,7 +28,8 @@ export async function entitlement(db, userId, now = Date.now()) {
   const { results } = await db.prepare('SELECT * FROM subs WHERE user_id = ? ORDER BY updated DESC').bind(userId).all()
   // A device trial has no Stripe behind it to flip the status, so it ends exactly at its time. Paid rows keep a day of grace.
   const over = r => (r.source === 'trial' ? r.period_end <= now : r.period_end && r.period_end <= now - 864e5)
-  const live = results.find(r => LIVE.includes(r.status) && !over(r))
+  const lives = results.filter(r => LIVE.includes(r.status) && !over(r))
+  const live = lives.find(r => r.source !== 'trial') || lives[0] // a paid plan bought during the device trial wins
   const head = results[0]
   return {
     pro: !!live,
@@ -43,11 +44,13 @@ export async function entitlement(db, userId, now = Date.now()) {
   }
 }
 
+// The owner of a row is fixed at insert. Signing in later moves rows to the account (auth.signIn); a renewal webhook still
+// carries the old anonymous id in its metadata and must not move the plan back.
 async function upsert(db, row) {
   await ensureBillingSchema(db)
   await db.prepare(`INSERT INTO subs (id, user_id, source, plan, status, period_end, trial_end, cancel_at_end, customer, updated)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET user_id = excluded.user_id, plan = excluded.plan, status = excluded.status, period_end = excluded.period_end,
+    ON CONFLICT(id) DO UPDATE SET plan = excluded.plan, status = excluded.status, period_end = excluded.period_end,
       trial_end = COALESCE(excluded.trial_end, subs.trial_end), cancel_at_end = excluded.cancel_at_end, customer = COALESCE(excluded.customer, subs.customer), updated = excluded.updated`)
     .bind(row.id, row.user_id, row.source, row.plan ?? null, row.status, row.period_end ?? null, row.trial_end ?? null, row.cancel_at_end ? 1 : 0, row.customer ?? null, Date.now()).run()
 }
@@ -117,7 +120,7 @@ export async function checkout(env, db, userId, { plan, origin, email }) {
   const price = plan === 'year' ? env.STRIPE_PRICE_YEAR : plan === 'month' ? env.STRIPE_PRICE_MONTH : null
   if (!price) return { error: 'bad_plan' }
   const ent = await entitlement(db, userId)
-  if (ent.pro) return { error: 'already_pro' }
+  if (ent.pro && ent.source !== 'trial') return { error: 'already_pro' } // paying during the device trial is the point of it
   let customer = ent.customer
   if (!customer) customer = (await stripe(env, 'customers', { email: email || undefined, metadata: { user_id: userId } })).id
   const trial = false // the free trial is the device trial (startTrial); Stripe checkout always takes a card, so 'paid' means paid

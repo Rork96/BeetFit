@@ -23,8 +23,8 @@ async function sign(payload, t = Math.floor(Date.now() / 1000)) {
 }
 const hook = async evt => { const raw = JSON.stringify(evt); return call(null, '/api/billing/stripe-webhook', 'POST', raw, { 'stripe-signature': await sign(raw) }) }
 
-async function signedIn(email) {
-  const tok = await issueToken(SECRET)
+async function signedIn(email, existing) {
+  const tok = existing || await issueToken(SECRET)
   await call(tok, '/api/auth/email/start', 'POST', { email })
   const code = mails.filter(m => m.to[0] === email).at(-1).subject.slice(0, 6)
   await call(tok, '/api/auth/email/verify', 'POST', { email, code })
@@ -78,9 +78,28 @@ describe('billing', () => {
     _clearPrices()
   })
 
-  it('checkout needs an account, then opens Stripe taking a card (the trial lives on the device)', async () => {
+  it('checkout works without an account (Stripe asks the email), also during the device trial', async () => {
     const anon = await issueToken(SECRET)
-    expect((await call(anon, '/api/billing/checkout', 'POST', { plan: 'year' })).error).toBe('sign_in_first')
+    expect((await call(anon, '/api/billing/trial', 'POST')).ok).toBe(true)
+    const r0 = await call(anon, '/api/billing/checkout', 'POST', { plan: 'month' })
+    expect(r0.url).toMatch(/checkout\.stripe\.com/)
+    expect(calls.filter(c => c.path === 'customers').at(-1).body.email).toBeUndefined()
+    // pays during the trial: the paid plan wins over the trial row
+    const { appUserId: uid } = await call(anon, '/api/billing/status')
+    await hook({ type: 'customer.subscription.created', data: { object: { ...sub('sub_G', uid), status: 'active', trial_end: null } } })
+    expect(await call(anon, '/api/billing/status')).toMatchObject({ pro: true, source: 'stripe', state: 'active' })
+    expect((await call(anon, '/api/billing/checkout', 'POST', { plan: 'month' })).error).toBe('already_pro')
+    // signing in moves PRO to the account; a later renewal with the old id in metadata does not move it back
+    await signedIn('guest@example.com') // the account already exists on another phone
+    const t2 = await signedIn('guest@example.com', anon)
+    const { appUserId: acct } = await call(t2, '/api/billing/status')
+    expect(acct).not.toBe(uid)
+    await hook({ type: 'customer.subscription.updated', data: { object: { ...sub('sub_G', uid), status: 'active', trial_end: null } } })
+    expect(await call(t2, '/api/billing/status')).toMatchObject({ pro: true, source: 'stripe' })
+    expect(acct).toBeTruthy()
+  })
+
+  it('checkout opens Stripe taking a card (the trial lives on the device)', async () => {
     const tok = await signedIn('pay@example.com')
     expect((await call(tok, '/api/billing/checkout', 'POST', { plan: 'weekly' })).error).toBe('bad_plan')
     const r = await call(tok, '/api/billing/checkout', 'POST', { plan: 'year' })
@@ -91,7 +110,7 @@ describe('billing', () => {
     })
     expect(cs.payment_method_collection).toBeUndefined() // card required
     expect(cs['subscription_data[trial_period_days]']).toBeUndefined()
-    expect(calls.find(c => c.path === 'customers').body['metadata[user_id]']).toBe(cs.client_reference_id)
+    expect(calls.filter(c => c.path === 'customers').at(-1).body['metadata[user_id]']).toBe(cs.client_reference_id)
     // the portal works right away (customer remembered before the webhook)
     expect((await call(tok, '/api/billing/portal', 'POST')).url).toMatch(/billing\.stripe\.com/)
   })
