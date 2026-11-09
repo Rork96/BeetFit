@@ -67,7 +67,8 @@ export function program(state) {
 
 function planName(state) {
   const g = { lose: 'Fat loss', maintain: 'Get fit', gain: 'Muscle' }[state.profile.goal] || 'Your plan'
-  return `${g} · ${state.program.filter(d => !d.run).length} days/week`
+  const n = state.program.filter(d => !d.run).length
+  return `${g} · ${n} ${n === 1 ? 'day' : 'days'}/week`
 }
 
 // Next training day = the plan day after the last one trained (matched by exercise names, last 14 days).

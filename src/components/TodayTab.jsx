@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
+import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp, useBackClose } from '../lib/hooks.js'
 import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
@@ -8,6 +8,7 @@ import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote, CoachStrip } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
+import BeetMascot from './BeetMascot.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
 import InstallCard from './InstallCard.jsx'
@@ -26,6 +27,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const wk = week(state, key)
   const units = state.settings?.units || 'kg'
   const name = state.settings?.name
+  const need = todayStanding(state, key).need
+  const mascotMood = st >= 7 ? 'cheer' : st > 0 && need === 0 ? 'happy' : st > 0 && need > 0 && new Date().getHours() >= 17 ? 'tired' : 'idle'
 
   const remaining = Math.max(0, t.kcal - e.kcal)
   const shownRemaining = useCountUp(remaining)
@@ -68,6 +71,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
         </div>
         <div className="td-top-r">
+          <BeetMascot size={52} mood={mascotMood} />
           <button className="td-icon" onClick={() => { haptic(); openSettings() }} aria-label="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="6" height="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" /></svg>
           </button>

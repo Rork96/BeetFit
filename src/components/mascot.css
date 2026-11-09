@@ -1,0 +1,26 @@
+.bm { display: block; overflow: visible; flex: none; }
+.bm-shadow { fill: #000; opacity: .35; }
+.bm-body { transform-box: fill-box; transform-origin: 50% 100%; animation: bmBob 3.4s ease-in-out infinite; }
+.bm-leaves { transform-box: fill-box; transform-origin: 50% 100%; animation: bmSway 4.2s ease-in-out infinite; }
+.bm-face { fill: var(--rork-ink, #1d1d1d); }
+.bm-eye { transform-box: fill-box; transform-origin: center; animation: bmBlink 5.2s infinite; }
+.bm-arc { fill: none; stroke: var(--rork-ink, #1d1d1d); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.bm-fill { fill: var(--rork-ink, #1d1d1d); }
+.bm-dots { fill: var(--accent); }
+.bm.think .bm-dots circle { animation: bmDot 1.2s ease-in-out infinite; }
+.bm.think .bm-dots circle:nth-child(2) { animation-delay: .2s; }
+.bm.think .bm-dots circle:nth-child(3) { animation-delay: .4s; }
+.bm.cheer .bm-body { animation: bmJump 0.9s cubic-bezier(.3, .7, .4, 1) infinite; }
+.bm.tired .bm-body { animation: bmBob 6s ease-in-out infinite; }
+.bm.tired .bm-leaves { animation: none; transform: rotate(-5deg); }
+@keyframes bmBob { 0%, 100% { transform: scale(1, 1) } 50% { transform: scale(1.025, .975) } }
+@keyframes bmSway { 0%, 100% { transform: rotate(-2.5deg) } 50% { transform: rotate(2.5deg) } }
+@keyframes bmBlink { 0%, 92%, 100% { transform: scaleY(1) } 95% { transform: scaleY(.1) } }
+@keyframes bmJump { 0%, 100% { transform: translateY(0) scale(1.03, .97) } 45% { transform: translateY(-9px) scale(.97, 1.03) } }
+@keyframes bmDot { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+
+.bt-hello { display: flex; align-items: flex-end; gap: 14px; }
+.bt-hello .bm { margin-bottom: -4px; }
+.td-top .bm { margin-right: 6px; }
+.td-top-r { display: flex; align-items: center; gap: 4px; }
+.bt-msg.typing { display: flex; align-items: center; padding: 6px 12px; }

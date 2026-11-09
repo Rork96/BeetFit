@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { haptic } from '../lib/platform.js'
 import { fetchStatus, useUsage, usageLeft } from '../lib/billing.js'
 import { askBeet, loadChat, saveChat, suggestions, BEET_ERR } from '../lib/beet.js'
+import BeetMascot from './BeetMascot.jsx'
 import './beet.css'
 
 // Today card: a way in, with questions picked from today's data.
@@ -61,6 +62,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
       <div className="page bt-page">
         {!msgs.length && (
           <div className="bt-empty stk">
+            <div className="bt-hello"><BeetMascot size={104} mood="idle" title="Beet" /></div>
             <h1>What do you need?</h1>
             <p className="hint">Beet sees your plan, targets, today’s food and water, recent weights, check-ins and pain reports. It isn’t a doctor.</p>
             <div className="bt-sugg col">
@@ -75,7 +77,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
               {m.upgrade && onUpgrade && i === msgs.length - 1 && <button className="btn small bt-up" onClick={() => { haptic(); onUpgrade() }}>See PRO</button>}
             </div>
           ))}
-          {busy && <div className="bt-msg beet typing"><BeetMark busy /></div>}
+          {busy && <div className="bt-msg beet typing"><BeetMascot size={40} mood="think" title="Beet is thinking" /></div>}
           <i ref={end} />
         </div>
       </div>
