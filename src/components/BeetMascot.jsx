@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { haptic } from '../lib/platform.js'
 import './mascot.css'
 
 // Beet, the mascot: an original beetroot in the brand palette (violet bulb, lime leaves).
@@ -10,6 +11,7 @@ const EYES = {
   happy: <><path className="bm-arc" d="M42 70q5-9 10 0" /><path className="bm-arc" d="M68 70q5-9 10 0" /></>,
 }
 EYES.cheer = EYES.happy
+EYES.dizzy = <><path className="bm-arc" d="M43 63l8 9M51 63l-8 9" /><path className="bm-arc" d="M69 63l8 9M77 63l-8 9" /></>
 
 const MOUTH = {
   idle: <path className="bm-arc" d="M52 83q8 6 16 0" />,
@@ -17,9 +19,10 @@ const MOUTH = {
   cheer: <path d="M49 80h22q-1 13-11 13T49 80z" className="bm-fill" />,
   tired: <path className="bm-arc" d="M54 86h12" />,
   think: <circle className="bm-fill" cx="60" cy="85" r="3.2" />,
+  dizzy: <path className="bm-arc" d="M49 86q2.75-4 5.5 0t5.5 0 5.5 0 5.5 0" />,
 }
 
-export default function BeetMascot({ mood = 'idle', size = 96, className = '', title }) {
+function Figure({ mood = 'idle', size = 96, className = '', title }) {
   const m = MOUTH[mood] ? mood : 'idle'
   return (
     <svg className={`bm ${m} ${className}`} width={size} height={size} viewBox="0 0 120 120" role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
@@ -55,5 +58,54 @@ export function BeetEmpty({ mood = 'idle', title, hint, size = 84, children, com
         {children}
       </div>
     </div>
+  )
+}
+
+// What Beet says when poked. Short, on-brand, never preachy.
+const LINES = {
+  idle: ['Hey!', 'That tickles.', 'Protein first.', 'One more set?', 'Water break?', 'I’m a beet, not a doctor.', 'Boop.'],
+  happy: ['Nice work today.', 'Beet that!', 'Look at you go.', 'Same time tomorrow?'],
+  cheer: ['Let’s gooo!', 'High five!', 'New record energy.', 'Unbeetable.'],
+  tired: ['Two tasks and we rest.', 'A glass of water counts.', 'Tiny step, still counts.'],
+  think: ['Thinking…', 'Crunching numbers.', 'Hmm.'],
+}
+const MOVES = ['jump', 'squish', 'spin', 'wiggle']
+
+// Beet you can poke: each tap plays a different move, cheers up for a second and says a line.
+// Five quick taps make him dizzy. `tap={false}` for decorative copies (typing indicator).
+export default function BeetMascot({ tap = true, bubble = 'top', lines, onPoke, ...p }) {
+  const [n, setN] = useState(0)
+  const [say, setSay] = useState(null)
+  const [dizzy, setDizzy] = useState(false)
+  const taps = useRef([])
+  const timers = useRef([])
+  const dizzyUntil = useRef(0)
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  if (!tap) return <Figure {...p} />
+
+  const poke = e => {
+    e.stopPropagation()
+    const now = Date.now()
+    if (dizzyUntil.current > now) return
+    taps.current = [...taps.current.filter(t => now - t < 2500), now]
+    const spin = taps.current.length >= 5
+    haptic(spin ? 'heavy' : 'light')
+    timers.current.forEach(clearTimeout)
+    const pool = lines || LINES[p.mood] || LINES.idle
+    setN(x => x + 1)
+    setDizzy(spin)
+    setSay(spin ? 'Okay, okay. I’m dizzy.' : pool[(n + Math.floor(now / 1000)) % pool.length])
+    if (spin) { taps.current = []; dizzyUntil.current = now + 1800 }
+    timers.current = [setTimeout(() => setDizzy(false), spin ? 1800 : 0), setTimeout(() => setSay(null), spin ? 2200 : 1700)]
+    onPoke?.()
+  }
+  const move = dizzy ? 'spin' : MOVES[n % MOVES.length]
+  const mood = dizzy ? 'dizzy' : n && say && p.mood !== 'tired' ? (p.mood === 'think' ? 'happy' : 'cheer') : p.mood
+  return (
+    <span className={'bm-tap b-' + bubble} role="button" tabIndex={0} aria-label="Poke Beet"
+      onClick={poke} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); poke(e) } }}>
+      <span key={n} className={n ? 'bm-move ' + move : 'bm-move'}><Figure {...p} mood={mood} /></span>
+      {say && <span key={'s' + n} className="bm-say" role="status">{say}</span>}
+    </span>
   )
 }

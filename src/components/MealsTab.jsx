@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Ic, { Stat } from './Icons.jsx'
+import { MacroBar, MacroChips } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
@@ -144,14 +145,21 @@ export default function MealsTab({ state, update, onUpgrade }) {
             const items = logged.filter(x => x.slot === sl)
             return (
               <div key={sl} className="ml-slot">
-                <div className="ml-h"><span>{sl}</span><span className="num">{Math.round(items.reduce((a, x) => a + x.kcal, 0))} kcal</span></div>
+                <div className="ml-h"><span>{sl}</span><span className="num ml-hk"><Ic n="flame" />{Math.round(items.reduce((a, x) => a + x.kcal, 0))}</span></div>
                 <AnimatePresence initial={false}>
                   {items.map(x => (
                     <motion.div className="meal" key={x.at} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
                       <div>
-                        <div style={{ fontWeight: 600 }}>{x.name}{x.est && <span className="ml-est">estimate</span>}</div>
-                        <div className="macros num">{x.source === 'quick' ? `${x.kcal} kcal${x.p ? ` · P ${x.p}` : ''} · ballpark` : `${x.source === 'plan' ? '1 serving' : `${x.grams} g`} · ${x.kcal} kcal · P ${x.p} · C ${x.c} · F ${x.f}${x.source === 'snap' ? ' · photo' : ''}`}</div>
+                        <div className="ml-n">
+                          {x.source === 'snap' ? <Ic n="cam" label="From a photo" /> : x.source === 'off' || x.code ? <Ic n="barcode" label="Scanned" /> : x.source === 'quick' ? <Ic n="target" label="Ballpark" /> : null}
+                          <span>{x.name}</span>{x.est && <span className="ml-est">≈</span>}
+                        </div>
+                        <div className="macros ml-m">
+                          <span className="ml-k num"><Ic n="flame" />{x.kcal}</span>
+                          {x.source !== 'quick' && <MacroChips sm p={x.p} c={x.c} f={x.f} />}
+                          {x.grams > 0 && <span className="ml-g num">{x.grams} g</span>}
+                        </div>
                       </div>
                       <button className="btn small secondary" onClick={() => removeFood(x)} aria-label={`Remove ${x.name}`}>×</button>
                     </motion.div>
@@ -216,9 +224,9 @@ function FoodSearch({ onAdd, slotLabel }) {
                   inputRef.current?.blur() // drop the keyboard first so the dialog sits in the visible area
                   setOpen(key)
                 }}>
-                  {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph" />}
-                  <div><b>{it.name}</b><span className="num">{it.brand ? it.brand + ' · ' : ''}{it.per100.kcal} kcal / 100 g</span></div>
-                  <span className="fs-src">{it.source === 'usda' ? 'USDA' : 'OFF'}</span>
+                  {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph"><Ic n="food" /></span>}
+                  <div><b>{it.name}</b><span className="fs-sub">{it.brand && <span className="fs-brand">{it.brand}</span>}<MacroBar p={it.per100.p} c={it.per100.c} f={it.per100.f} w={44} /></span></div>
+                  <span className="fs-kcal num" aria-label={`${it.per100.kcal} kcal per 100 g`}><b>{it.per100.kcal}</b><small>/100g</small></span>
                 </button>
                 {open === key && (
                   <CenterDialog onClose={() => setOpen(null)}>

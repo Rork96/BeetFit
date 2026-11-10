@@ -11,6 +11,8 @@ import { useBackClose } from '../lib/hooks.js'
 const CATS = ['All', 'Legs', 'Push', 'Pull', 'Core', 'Cardio']
 const ABBR = { squat: 'SQT', hinge: 'HNG', lunge: 'LNG', push: 'PSH', pull: 'PUL', core: 'COR', carry: 'CRY', cardio: 'CAR' }
 
+const LVL = { beginner: 1, novice: 1, easy: 1, intermediate: 2, medium: 2, advanced: 3, hard: 3 }
+
 export default function Library({ state, onClose }) {
   const it = state.intake || DEFAULT_INTAKE
   const [cat, setCat] = useState('All')
@@ -61,12 +63,16 @@ export default function Library({ state, onClose }) {
             <h2>{open.n}</h2>
             {howtoFor(open.id) && <button className="ht-lib" onClick={() => { haptic(); setHow(open.id) }} aria-label={`How to do ${open.n}`}><ExerciseAnim H={howtoFor(open.id).H} size="lg" /><span className="btn small">▶ Step by step</span></button>}
             {CUEX[open.n] && <p className="ss-cue">{CUEX[open.n]}</p>}
-            <div className="grid2">
-              <div className="stat"><div className="v" style={{ fontSize: 14 }}>{open.pri}</div><div className="l">primary</div></div>
-              <div className="stat"><div className="v" style={{ fontSize: 14 }}>{open.sec || '—'}</div><div className="l">secondary</div></div>
+            <div className="lib-mus" aria-label={`Works ${open.pri}${open.sec ? `, also ${open.sec}` : ''}`}>
+              {open.pri.split(/,\s*/).map(m => <span key={m} className="pri">{m}</span>)}
+              {(open.sec || '').split(/,\s*/).filter(Boolean).map(m => <span key={m}>{m}</span>)}
             </div>
-            <p className="hint">Equipment: {open.eq.map(e => EQLABEL[e] || e).join(' or ')} · Level: {open.lvl} · {open.type === 'hold' ? `hold ${open.dr}s` : `${open.dr} reps`}</p>
-            {TRACKER_BY_NAME[open.n] && <p className="hint" style={{ color: 'var(--accent)' }}>▣ The camera counts this one automatically.</p>}
+            <div className="lib-facts">
+              <div aria-label={`Equipment: ${open.eq.map(e => EQLABEL[e] || e).join(' or ')}`}><Ic n="weight" /><span>{open.eq.map(e => EQLABEL[e] || e).join(' / ')}</span></div>
+              <div aria-label={`Level: ${open.lvl}`}><span className="lib-lvl">{[0, 1, 2].map(i => <i key={i} className={i < (LVL[open.lvl] || 1) ? 'on' : ''} />)}</span><span>{open.lvl}</span></div>
+              <div aria-label={open.type === 'hold' ? `Hold ${open.dr} seconds` : `${open.dr} reps`}><Ic n={open.type === 'hold' ? 'timer' : 'reps'} /><span className="num">{open.type === 'hold' ? `${open.dr}s` : open.dr}</span></div>
+              {TRACKER_BY_NAME[open.n] && <div className="cam" aria-label="The camera counts this one automatically"><Ic n="cam" className="solid" /><span>auto count</span></div>}
+            </div>
             <button className="btn secondary" onClick={() => history.back()}>Close</button>
           </div>
         </>

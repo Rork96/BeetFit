@@ -112,3 +112,46 @@
 .fc-meter .num { color: #fff; font-weight: 700; }
 .fc-meter.out { background: rgba(255,120,90,.18); color: #ffb4a3; }
 .fc-sc .fc-more { background: none; border-style: dashed; }
+
+/* ---- Info cards v2: ring, chips, confidence dots ---- */
+.fc-ph { display: grid; place-items: center; color: var(--accent); }
+.fc-ph .ic { width: 26px; height: 26px; }
+.fc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.fc-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; color: var(--hint); background: rgba(255,255,255,.05); border-radius: var(--r-pill); }
+.fc-tag .ic { width: 13px; height: 13px; color: var(--text); }
+.fc-tag small { color: var(--dim); font-size: 10.5px; }
+.fc-portion { display: flex; align-items: center; gap: 16px; padding: 12px; background: rgba(255,255,255,.03); border-radius: var(--r-2); }
+.fc-portion-r { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.fc-portion-r .fc-step { max-width: 100%; }
+
+.fc-hero { display: flex; align-items: center; gap: 12px; }
+.fc-thumb { width: 60px; height: 60px; flex: none; object-fit: cover; border-radius: var(--r-2); border: 1px solid var(--line-2); }
+.fc-hero-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fc-hero-t .label { display: inline-flex; align-items: center; gap: 5px; }
+.fc-hero-t .label .ic { width: 13px; height: 13px; color: var(--accent); }
+.fc-hero-t .ct-h { line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fc-sure { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 2px 7px; border-radius: var(--r-pill); }
+.fc-sure .ic { width: 12px; height: 12px; stroke-width: 2.6; }
+.fc-sure.ok { color: var(--ok); background: rgba(111,211,154,.12); }
+.fc-sure.warn { color: var(--warn); background: rgba(244,201,93,.12); }
+.fc-why { display: flex; gap: 6px; align-items: flex-start; }
+.fc-why .ic { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--warn); }
+
+.fc-item { gap: 10px; transition: border-color var(--dur-2); }
+.fc-item.unsure { border-color: rgba(244,201,93,.35); }
+.fc-item-top { align-items: center; justify-content: flex-start; }
+.fc-item-top .fc-name { flex: 1; min-width: 0; font-size: 14.5px; }
+.fc-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; }
+.fc-dot.ok { background: var(--ok); } .fc-dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(244,201,93,.18); } .fc-dot.x { background: var(--rork-violet); }
+.fc-kcal { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; background: rgba(255,255,255,.06); border-radius: var(--r-pill); font-size: 13.5px; }
+.fc-kcal .ic { width: 13px; height: 13px; color: var(--hint); }
+.fc-item-top .fc-x { margin: -10px -10px -10px -4px; }
+.fc-item-row .fc-step { max-width: 150px; }
+.fc-item-m { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.fc-sauces .label, .fc-fat .label { display: block; margin-bottom: 8px; }
+.fc-grid label > span { display: inline-flex; align-items: center; gap: 4px; color: var(--c, var(--hint)); }
+.fc-grid label .ic { width: 13px; height: 13px; }
+.fc-chip { display: inline-flex; align-items: center; gap: 6px; }
+.fc-chip .ic { width: 16px; height: 16px; }
+.fc-busy { gap: 10px; }
+.fc-busy .bm .bm-body { animation-duration: 1.6s; }

@@ -312,7 +312,11 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
         <HowToThumb id={ex.id || ex.name} onOpen={onHow} />
         <div className="ex-main">
           <div className="ex-name">{ex.name}{tid && <span className="ex-cam i"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
-          <div className="ex-meta num">{ex.sets} × {ex.reps}{ex.weight ? ` · ${ex.weight} kg` : ''}{ex.rest ? ` · rest ${ex.rest}s` : ''}</div>
+          <div className="ex-meta num ex-chips" aria-label={`${ex.sets} sets of ${ex.reps}${ex.weight ? `, ${ex.weight} kg` : ''}${ex.rest ? `, rest ${ex.rest} seconds` : ''}`}>
+            <span><Ic n="sets" />{ex.sets}</span><span><Ic n="reps" />{ex.reps}</span>
+            {ex.weight ? <span><Ic n="weight" />{ex.weight}<small>kg</small></span> : null}
+            {ex.rest ? <span><Ic n="timer" />{ex.rest}<small>s</small></span> : null}
+          </div>
         </div>
         <button className="ss-more" onClick={() => setOpen(o => !o)} aria-label="More">⋯</button>
       </div>
@@ -344,7 +348,7 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
             ))}
           </div>
           {tid && nextSi !== -1 && (
-            <button className="btn secondary" onClick={() => onCamera(nextSi)}>▣ Count set {nextSi + 1} with camera</button>
+            <button className="btn secondary btn-ic" onClick={() => onCamera(nextSi)}><Ic n="cam" className="solid" />Count set {nextSi + 1} with camera</button>
           )}
         </>
       )}

@@ -63,7 +63,7 @@ export function StreakSheet({ state, update, onClose, onCalendar }) {
       <div className="sheet-back" onClick={onClose} />
       <div className="sheet sk" role="dialog" aria-label="Streak">
         <div className="sk-top">
-          <div className="sk-big"><BeetMascot size={56} mood={info.days >= 7 ? 'cheer' : s.need === 0 && info.days > 0 ? 'happy' : s.need > 0 && new Date().getHours() >= 17 ? 'tired' : 'idle'} /><b className="num">{info.days}</b></div>
+          <div className="sk-big"><BeetMascot size={56} bubble="right" mood={info.days >= 7 ? 'cheer' : s.need === 0 && info.days > 0 ? 'happy' : s.need > 0 && new Date().getHours() >= 17 ? 'tired' : 'idle'} /><b className="num">{info.days}</b></div>
           <div>
             <div className="sk-h">{info.days === 1 ? 'day' : 'days'} in a row</div>
             <div className="hint num">Best {best} · next milestone {next}</div>

@@ -1,0 +1,30 @@
+.nu-ring { position: relative; flex: none; display: grid; place-items: center; }
+.nu-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.nu-track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 10; }
+.nu-arc { fill: none; stroke-width: 10; stroke-linecap: butt; transition: stroke-dasharray var(--dur-3) var(--ease-out), stroke-dashoffset var(--dur-3) var(--ease-out); }
+.nu-mid { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.nu-mid b { font: 700 22px var(--f-num); letter-spacing: -.02em; }
+.nu-mid span { font: 300 9.5px var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--hint); margin-top: 3px; }
+
+.nu-bar { display: inline-flex; height: 6px; gap: 2px; overflow: hidden; flex: none; }
+.nu-bar i { display: block; height: 100%; min-width: 2px; }
+
+.nu-chips { display: inline-flex; align-items: center; gap: 10px; }
+.nu-chips > span { display: inline-flex; align-items: center; gap: 3px; }
+.nu-chips b { font-size: 13px; font-weight: 600; }
+.nu-chips .ic { width: 15px; height: 15px; }
+.nu-chips.sm { gap: 8px; }
+.nu-chips.sm b { font-size: 12px; }
+.nu-chips.sm .ic { width: 13px; height: 13px; }
+
+.nu-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.nu-tiles > div { --c: var(--text); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 9px; background: rgba(255,255,255,.04); border-radius: var(--r-1); }
+.nu-tiles .ic { width: 20px; height: 20px; color: var(--c); }
+.nu-tiles b { font-size: 17px; line-height: 1; }
+.nu-tiles small { font-size: 10px; color: var(--dim); }
+
+.nu-range { display: flex; flex-direction: column; gap: 5px; }
+.nu-range-t { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(224,253,144,.25), rgba(224,253,144,.7), rgba(224,253,144,.25)); }
+.nu-range-t i { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; background: var(--text); border-radius: 2px; box-shadow: 0 0 0 3px rgba(12,13,17,.8); }
+.nu-range-l { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--hint); }
+.nu-range-l span:nth-child(2) { font: 300 9.5px var(--f-display); text-transform: uppercase; letter-spacing: .1em; }

@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
+import Ic from '../components/Icons.jsx'
+import { MacroRing, MacroTiles, MacroChips, MacroBar, KcalRange } from '../components/Nutri.jsx'
+import BeetMascot from '../components/BeetMascot.jsx'
 import { useCamera } from './useCamera.js'
 import { getBarcodeDetector, validGtin } from './barcode.js'
 import { lookupBarcode, snapMeal, warmApi } from '../lib/api.js'
@@ -175,14 +178,23 @@ function PortionCard({ item, slotLabel, onAdd, onRescan, backLabel = 'Scan anoth
   return (
     <div className="fc-card">
       <div className="fc-prod">
-        {item.image ? <img src={item.image} alt="" /> : <span className="fc-ph" />}
-        <div>
+        {item.image ? <img src={item.image} alt="" /> : <span className="fc-ph"><Ic n={item.code ? 'barcode' : 'food'} /></span>}
+        <div style={{ minWidth: 0 }}>
           <div className="fc-name">{item.name}</div>
-          <div className="ct-p dim">{item.brand || (item.source === 'usda' ? 'USDA' : 'Open Food Facts')} · <span className="num">{item.per100.kcal}</span> kcal / 100 g</div>
+          <div className="fc-tags">
+            <span className="fc-tag">{item.brand || (item.source === 'usda' ? 'USDA' : 'Open Food Facts')}</span>
+            <span className="fc-tag num" aria-label={`${item.per100.kcal} kcal per 100 g`}><Ic n="flame" />{item.per100.kcal}<small>/100g</small></span>
+          </div>
         </div>
       </div>
-      <Stepper value={g} onChange={setG} step={g >= 100 ? 25 : 10} unit="g" />
-      <Macros x={x} />
+      <div className="fc-portion">
+        <MacroRing kcal={x.kcal} p={x.p} c={x.c} f={x.f} size={104} />
+        <div className="fc-portion-r">
+          <span className="label">Portion</span>
+          <Stepper value={g} onChange={setG} step={g >= 100 ? 25 : 10} unit="g" />
+          <MacroChips p={x.p} c={x.c} f={x.f} />
+        </div>
+      </div>
       <button className="ct-btn" onClick={() => { hapticSuccess(); onAdd(g) }}>Add to {slotLabel}</button>
       <button className="ct-link" onClick={onRescan}>{backLabel}</button>
     </div>
@@ -200,13 +212,13 @@ function CustomFood({ code, slotLabel, onAdd, onRescan }) {
   return (
     <div className="fc-card">
       <div className="ct-h sm">Not in the database yet</div>
-      <div className="fc-chip">▣ barcode <span className="num">{code}</span></div>
+      <div className="fc-chip"><Ic n="barcode" /> <span className="num">{code}</span></div>
       <input placeholder="Product name" value={f.name} onChange={set('name')} />
       <div className="fc-grid">
-        <label>kcal/100g<input inputMode="decimal" value={f.kcal} onChange={set('kcal')} /></label>
-        <label>protein<input inputMode="decimal" value={f.p} onChange={set('p')} /></label>
-        <label>carbs<input inputMode="decimal" value={f.c} onChange={set('c')} /></label>
-        <label>fat<input inputMode="decimal" value={f.f} onChange={set('f')} /></label>
+        <label><span><Ic n="flame" />kcal/100g</span><input inputMode="decimal" value={f.kcal} onChange={set('kcal')} /></label>
+        <label style={{ '--c': 'var(--accent)' }}><span><Ic n="protein" className="solid" />protein</span><input inputMode="decimal" value={f.p} onChange={set('p')} /></label>
+        <label style={{ '--c': 'var(--data-2)' }}><span><Ic n="carbs" className="solid" />carbs</span><input inputMode="decimal" value={f.c} onChange={set('c')} /></label>
+        <label style={{ '--c': 'var(--water)' }}><span><Ic n="fat" className="solid" />fat</span><input inputMode="decimal" value={f.f} onChange={set('f')} /></label>
       </div>
       <Stepper value={+f.grams} onChange={v => setF(s => ({ ...s, grams: v }))} step={10} unit="g" />
       <button className="ct-btn" disabled={!ok} onClick={add}>Save & add to {slotLabel}</button>
@@ -287,9 +299,10 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
         </>
       )}
       {stage === 'busy' && (
-        <div className="ct-sheet">
+        <div className="ct-sheet center fc-busy">
+          <BeetMascot mood="think" size={84} tap={false} />
+          <div className="ct-h sm center">Reading your plate…</div>
           <div className="fc-skel big"><i /><i /><i /></div>
-          <div className="ct-h sm center">Analyzing…</div>
         </div>
       )}
       {stage === 'error' && (
@@ -308,36 +321,43 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
         const total = items.reduce((a, x) => a + x.kcal, 0) + (oil?.kcal || 0)
         const conf = res.items.reduce((a, x) => a + (x.confidence ?? 0.6), 0) / res.items.length
         const [lo, hi] = kcalRange(total, conf)
+        const sum = [...items, ...(oil ? [oil] : [])].reduce((a, x) => ({ p: a.p + (+x.p || 0), c: a.c + (+x.c || 0), f: a.f + (+x.f || 0) }), { p: 0, c: 0, f: 0 })
         return (
           <div className="ct-sheet fc-result">
-            <div className="ct-h sm">Looks like {res.title || 'a meal'}</div>
-            <div className="fc-est">
-              <b className="num">≈ {total}</b><span>kcal estimate · likely <span className="num">{lo}–{hi}</span></span>
+            <div className="fc-hero">
+              {shot && <img className="fc-thumb" src={shot} alt="" />}
+              <div className="fc-hero-t">
+                <span className="label"><Ic n="cam" /> Photo estimate</span>
+                <div className="ct-h sm">{res.title || 'Your meal'}</div>
+                <span className={'fc-sure ' + (conf >= 0.7 ? 'ok' : 'warn')}><Ic n={conf >= 0.7 ? 'check' : 'target'} />{conf >= 0.7 ? 'Clear photo' : 'Check the grams'}</span>
+              </div>
+              <MacroRing kcal={total} p={sum.p} c={sum.c} f={sum.f} size={92} />
             </div>
-            <p className="ct-p dim fc-why">Photos miss hidden fat and sauces, so apps tend to count low. Check the grams, add what we missed, and tell us about oil.</p>
-            <div className="fc-items stk">
+            <KcalRange lo={lo} hi={hi} at={total} />
+            <p className="ct-p dim fc-why"><Ic n="target" />Photos miss hidden oil and sauces. Check grams, add extras.</p>
+            <div className="fc-items">
               {res.items.map(raw => {
                 const it = scaled(raw)
                 const sure = raw.confidence >= 0.7
                 return (
-                  <div className="fc-item" key={raw.id}>
+                  <div className={'fc-item' + (sure || raw.extra ? '' : ' unsure')} key={raw.id}>
                     <div className="fc-item-top">
+                      <span className={'fc-dot ' + (raw.extra ? 'x' : sure ? 'ok' : 'warn')} title={raw.extra ? 'Added by you' : sure ? 'Looks right' : 'Check the amount'} />
                       <span className="fc-name">{it.name}</span>
-                      {raw.extra
-                        ? <button className="fc-x" onClick={() => dropItem(raw.id)} aria-label={`Remove ${it.name}`}>×</button>
-                        : <span className={'fc-conf ' + (sure ? 'ok' : 'warn')}>{sure ? 'looks right' : 'check amount'}</span>}
+                      <span className="num fc-kcal"><Ic n="flame" />{it.kcal}</span>
+                      {raw.extra && <button className="fc-x" onClick={() => dropItem(raw.id)} aria-label={`Remove ${it.name}`}>×</button>}
                     </div>
                     <div className="fc-item-row">
                       <Stepper value={raw.grams} unit="g" step={10}
                         onChange={g => setRes(r => ({ ...r, items: r.items.map(x => (x.id === raw.id ? { ...x, grams: g } : x)) }))} />
-                      <span className="num fc-kcal">{it.kcal} kcal</span>
+                      <div className="fc-item-m"><MacroBar p={it.p} c={it.c} f={it.f} w={56} /><MacroChips sm p={it.p} c={it.c} f={it.f} /></div>
                     </div>
                   </div>
                 )
               })}
             </div>
             <div className="fc-sauces">
-              <span className="ct-p">Sauce, dressing or cheese we missed?</span>
+              <span className="label">Missed a sauce?</span>
               <div className="fc-sc">
                 {SAUCES.filter(sc => !res.items.some(x => x.name === sc.label) && (moreSauces || COMMON_SAUCES.includes(sc.id)))
                   .sort((a, b) => (moreSauces ? a.label.localeCompare(b.label) : COMMON_SAUCES.indexOf(a.id) - COMMON_SAUCES.indexOf(b.id)))
@@ -348,7 +368,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
               </div>
             </div>
             <div className="fc-fat">
-              <span className="ct-p">Cooked in oil or butter?</span>
+              <span className="label">Cooked in oil or butter?</span>
               <div className="fc-seg wide">
                 {FAT_OPTIONS.map(o => (
                   <button key={o.id} className={fat === o.id ? 'on' : ''} onClick={() => { haptic(); setFat(o.id) }}>
@@ -421,15 +441,6 @@ function Stepper({ value, onChange, step = 10, unit }) {
   )
 }
 
-function Macros({ x }) {
-  return (
-    <div className="fc-macros">
-      <div><b className="num">{x.kcal}</b><span>kcal</span></div>
-      <div><b className="num">{x.p}</b><span>protein</span></div>
-      <div><b className="num">{x.c}</b><span>carbs</span></div>
-      <div><b className="num">{x.f}</b><span>fat</span></div>
-    </div>
-  )
-}
+function Macros({ x }) { return <MacroTiles x={x} /> }
 
 export { PortionCard, portion }

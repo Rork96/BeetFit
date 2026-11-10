@@ -11,7 +11,7 @@ export function BeetCard({ state, onAsk }) {
   return (
     <div className="card bt-card">
       <div className="bt-head">
-        <BeetMascot size={44} mood="happy" />
+        <BeetMascot size={44} mood="happy" bubble="right" />
         <div><b>Ask Beet</b><span className="hint">Knows your plan, targets and today’s log</span></div>
       </div>
       <div className="bt-sugg">
@@ -56,13 +56,13 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
     <div className={embedded ? 'bt-screen bt-tab' : 'screen bt-screen'}>
       <header className="screen-top">
         {embedded ? <span style={{ width: 44 }} /> : <button className="td-icon" onClick={onClose} aria-label="Back">←</button>}
-        <div className="bt-title"><BeetMascot size={30} mood={busy ? 'think' : 'idle'} /><h2>Beet</h2></div>
+        <div className="bt-title"><BeetMascot size={30} mood={busy ? 'think' : 'idle'} bubble="bottom" /><h2>Beet</h2></div>
         {msgs.length ? <button className="td-icon" aria-label="Clear chat" onClick={() => { haptic('medium'); setMsgs([]) }}>⌫</button> : <span style={{ width: 44 }} />}
       </header>
       <div className="page bt-page">
         {!msgs.length && (
           <div className="bt-empty stk">
-            <div className="bt-hello"><BeetMascot size={104} mood="idle" title="Beet" /></div>
+            <div className="bt-hello"><BeetMascot size={104} mood="idle" title="Beet" bubble="right" /></div>
             <h1>What do you need?</h1>
             <p className="hint">Beet sees your plan, targets, today’s food and water, recent weights, check-ins and pain reports. It isn’t a doctor.</p>
             <div className="bt-sugg col">
@@ -77,7 +77,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
               {m.upgrade && onUpgrade && i === msgs.length - 1 && <button className="btn small bt-up" onClick={() => { haptic(); onUpgrade() }}>See PRO</button>}
             </div>
           ))}
-          {busy && <div className="bt-msg beet typing"><BeetMascot size={40} mood="think" title="Beet is thinking" /></div>}
+          {busy && <div className="bt-msg beet typing"><BeetMascot size={40} mood="think" title="Beet is thinking" tap={false} /></div>}
           <i ref={end} />
         </div>
       </div>

@@ -72,7 +72,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
         </div>
         <div className="td-top-r">
-          <BeetMascot size={52} mood={mascotMood} />
+          <BeetMascot size={52} mood={mascotMood} bubble="left" />
           <button className="td-icon" onClick={() => { haptic(); openSettings() }} aria-label="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="6" height="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5" /></svg>
           </button>
