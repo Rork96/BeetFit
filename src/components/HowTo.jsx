@@ -26,43 +26,83 @@ export const markSeen = id => { try { const s = readSeen(); s[id] = 1; localStor
 const LEN_T = LEN.torso
 const ln = (a, b) => ({ x1: a[0], y1: -a[1], x2: b[0], y2: -b[1] })
 
+// Tapered capsule from a to b (r0 at a, r1 at b), y flipped to screen space.
+const cap = (a, b, r0, r1) => {
+  const x0 = a[0], y0 = -a[1], x1 = b[0], y1 = -b[1]
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1
+  const nx = -dy / d, ny = dx / d
+  const f = n => +n.toFixed(2)
+  return `M${f(x0 + nx * r0)} ${f(y0 + ny * r0)}L${f(x1 + nx * r1)} ${f(y1 + ny * r1)}A${r1} ${r1} 0 0 0 ${f(x1 - nx * r1)} ${f(y1 - ny * r1)}L${f(x0 - nx * r0)} ${f(y0 - ny * r0)}A${r0} ${r0} 0 0 0 ${f(x0 + nx * r0)} ${f(y0 + ny * r0)}Z`
+}
+
+// Draws limbs as one silhouette: a dark cut-out pass first (so the body separates from props and ground
+// without seams at the joints), then the fills. parts: [{ k, d, hl?, dim? }]
+function Body({ parts, head, neck }) {
+  return (
+    <>
+      <g className="ht-out">
+        {parts.map(p => <path key={p.k} d={p.d} />)}
+        {neck && <path d={neck} />}
+        {head && <circle cx={head[0]} cy={-head[1]} r={6.4} />}
+      </g>
+      <g className="ht-body">
+        {parts.map(p => <path key={p.k} d={p.d} className={p.hl ? 'hl' : p.dim ? 'dim' : undefined} />)}
+        {neck && <path d={neck} />}
+        {head && <circle cx={head[0]} cy={-head[1]} r={6.4} />}
+      </g>
+    </>
+  )
+}
+
 // One drawn figure for joints `j`. y is flipped here (the maths is y-up).
 export function Figure({ j, spec, box }) {
   const hl = new Set(spec.hl || [])
-  const seg = (name, a, b, w = 3.6) => <line key={name} {...ln(a, b)} className={'ht-seg' + (hl.has(name) ? ' hl' : '')} strokeWidth={name === 'torso' ? 5.2 : w} />
-  const dim = (a, b, k) => <line key={k} {...ln(a, b)} className="ht-seg dim" strokeWidth={3.2} />
   const gy = spec.gy ?? 0
   const eq = (spec.eq || []).map((e, i) => <Equip key={i} e={e} j={j} spec={spec} box={box} />)
+  const far = []
+  if (j.knee2) far.push({ k: 'k2', d: cap(j.hip, j.knee2, 4.2, 3.3), dim: 1 }, { k: 'a2', d: cap(j.knee2, j.ankle2, 3.3, 2.5), dim: 1 }, { k: 't2', d: cap(j.ankle2, j.toe2, 2.4, 1.9), dim: 1 })
+  if (j.elbow2) far.push({ k: 'e2', d: cap(j.shoulder, j.elbow2, 3, 2.5), dim: 1 }, { k: 'w2', d: cap(j.elbow2, j.wrist2, 2.5, 2), dim: 1 })
+  const near = [
+    { k: 'shin', d: cap(j.ankle, j.knee, 2.7, 3.4), hl: hl.has('shin') },
+    { k: 'foot', d: cap(j.ankle, j.toe, 2.4, 1.9), hl: hl.has('foot') },
+    { k: 'thigh', d: cap(j.knee, j.hip, 3.5, 4.6), hl: hl.has('thigh') },
+  ]
+  let torsoD = cap(j.hip, j.shoulder, 5, 5.6)
+  if (j.arch?.[0]) {
+    const q = `M${j.hip[0]} ${-j.hip[1]} Q${(j.hip[0] + j.shoulder[0]) / 2 - (j.shoulder[1] - j.hip[1]) / LEN_T * j.arch[0] * 2} ${-(j.hip[1] + j.shoulder[1]) / 2 - (j.shoulder[0] - j.hip[0]) / LEN_T * j.arch[0] * 2} ${j.shoulder[0]} ${-j.shoulder[1]}`
+    torsoD = q
+  }
+  near.push({ k: 'torso', d: torsoD, hl: hl.has('torso'), curve: !!j.arch?.[0] })
+  const arms = [{ k: 'ua', d: cap(j.shoulder, j.elbow, 3, 2.5), hl: hl.has('ua') }, { k: 'fa', d: cap(j.elbow, j.wrist, 2.5, 2), hl: hl.has('fa') }]
+  const neck = cap(j.shoulder, j.head, 2.6, 2.3)
   return (
     <>
       {spec.ground !== false && <line x1={box.x0 - 6} x2={box.x1 + 6} y1={-gy} y2={-gy} className="ht-ground" />}
       {eq}
-      {j.knee2 && <>{dim(j.hip, j.knee2, 'k2')}{dim(j.knee2, j.ankle2, 'a2')}{dim(j.ankle2, j.toe2, 't2')}</>}
-      {j.elbow2 && <>{dim(j.shoulder, j.elbow2, 'e2')}{dim(j.elbow2, j.wrist2, 'w2')}</>}
-      {seg('shin', j.ankle, j.knee)}
-      {seg('thigh', j.knee, j.hip)}
-      {seg('foot', j.ankle, j.toe, 3)}
-      {j.arch?.[0] ? <path d={`M${j.hip[0]} ${-j.hip[1]} Q${(j.hip[0] + j.shoulder[0]) / 2 - (j.shoulder[1] - j.hip[1]) / (LEN_T) * j.arch[0] * 2} ${-(j.hip[1] + j.shoulder[1]) / 2 - (j.shoulder[0] - j.hip[0]) / (LEN_T) * j.arch[0] * 2} ${j.shoulder[0]} ${-j.shoulder[1]}`} className={'ht-seg' + (hl.has('torso') ? ' hl' : '')} strokeWidth={5.2} /> : seg('torso', j.hip, j.shoulder)}
-      {seg('ua', j.shoulder, j.elbow)}
-      {seg('fa', j.elbow, j.wrist)}
-      <circle cx={j.head[0]} cy={-j.head[1]} r={6.2} className="ht-head" />
+      {far.length > 0 && <Body parts={far} />}
+      <Body parts={near.filter(p => !p.curve)} head={j.head} neck={neck} />
+      {near.filter(p => p.curve).map(p => <React.Fragment key={p.k}><path d={p.d} className="ht-out-s" /><path d={p.d} className={'ht-torso-s' + (p.hl ? ' hl' : '')} /></React.Fragment>)}
+      <Body parts={arms} />
     </>
   )
 }
 
 export function FrontFigure({ j, wall, hl = 'arms' }) {
-  const L = (a, b, c = 'ht-seg', w = 3.6) => <line {...ln(a, b)} className={c} strokeWidth={w} />
+  const arm = hl === 'arms'
+  const parts = [
+    { k: 'tl', d: cap(j.hipL, j.kneeL, 4.4, 3.4) }, { k: 'sl', d: cap(j.kneeL, j.ankleL, 3.4, 2.6) },
+    { k: 'tr', d: cap(j.hipR, j.kneeR, 4.4, 3.4) }, { k: 'sr', d: cap(j.kneeR, j.ankleR, 3.4, 2.6) },
+    { k: 'tor', d: cap(j.hipC, j.neck, 6, 6.4) },
+    { k: 'sh', d: cap(j.shL, j.shR, 3, 3) }, { k: 'hp', d: cap(j.hipL, j.hipR, 3.4, 3.4), hl: hl === 'hips' },
+    { k: 'ul', d: cap(j.shL, j.elL, 3, 2.5), hl: arm }, { k: 'fl', d: cap(j.elL, j.wrL, 2.5, 2), hl: arm },
+    { k: 'ur', d: cap(j.shR, j.elR, 3, 2.5), hl: arm }, { k: 'fr', d: cap(j.elR, j.wrR, 2.5, 2), hl: arm },
+  ]
   return (
     <>
       <line x1={-44} x2={44} y1={0} y2={0} className="ht-ground" />
       {wall && <rect x={-46} y={-114} width={92} height={114} className="ht-eq bench" />}
-      {L(j.hipL, j.kneeL)}{L(j.kneeL, j.ankleL)}{L(j.hipR, j.kneeR)}{L(j.kneeR, j.ankleR)}
-      {L(j.hipC, j.neck, 'ht-seg', 5.2)}
-      {L(j.shL, j.shR, 'ht-seg', 4)}{L(j.hipL, j.hipR, 'ht-seg', 4)}
-      {(() => { const c = hl === 'arms' ? 'ht-seg hl' : 'ht-seg'; return <>{L(j.shL, j.elL, c)}{L(j.elL, j.wrL, c)}{L(j.shR, j.elR, c)}{L(j.elR, j.wrR, c)}</> })()}
-      {hl === 'hips' && L(j.hipL, j.hipR, 'ht-seg hl', 5)}
+      <Body parts={parts} head={j.head} neck={cap(j.neck, j.head, 2.8, 2.5)} />
       <circle cx={j.wrL[0]} cy={-j.wrL[1]} r={4.4} className="ht-eq fill" /><circle cx={j.wrR[0]} cy={-j.wrR[1]} r={4.4} className="ht-eq fill" />
-      <circle cx={j.head[0]} cy={-j.head[1]} r={6.2} className="ht-head" />
     </>
   )
 }

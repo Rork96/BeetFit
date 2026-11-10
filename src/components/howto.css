@@ -39,3 +39,12 @@
 
 .ex-row .ht-thumb { width: 60px; height: 60px; }
 .ex-row .ht-thumb .ht-anim { height: 50px; }
+
+/* Filled figure: a dark cut-out pass, then the body fills. */
+.ht-out path, .ht-out circle { fill: var(--card-2); stroke: var(--card-2); stroke-width: 2.2; stroke-linejoin: round; }
+.ht-body path, .ht-body circle { fill: rgba(241, 242, 246, .94); stroke: none; }
+.ht-body path.hl { fill: var(--accent); }
+.ht-body path.dim { fill: rgba(241, 242, 246, .28); }
+.ht-out-s { fill: none; stroke: var(--card-2); stroke-width: 15; stroke-linecap: round; }
+.ht-torso-s { fill: none; stroke: rgba(241, 242, 246, .94); stroke-width: 10.8; stroke-linecap: round; }
+.ht-torso-s.hl { stroke: var(--accent); }
