@@ -6,6 +6,7 @@ import { useBackClose } from '../lib/hooks.js'
 import { haptic } from '../lib/platform.js'
 import Session, { setsOf } from './Session.jsx'
 import Library from './Library.jsx'
+import HowToSheet, { HowToThumb } from './HowTo.jsx'
 import PlanReview from './PlanReview.jsx'
 import { liveSession, setLiveSession } from '../lib/store.js'
 
@@ -18,6 +19,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const [dayIdx, setDayIdx] = useState(() => intent?.dayIdx ?? resume?.dayIdx ?? nextDayIndex(state))
   const [session, setSession] = useState(() => (resume && !intent?.start ? { cam: null } : null)) // { cam: {ei, si} | null }
   const [lib, setLib] = useState(false)
+  const [how, setHow] = useState(null) // exercise id whose how-to sheet is open
   const [toast, setToast] = useState(null)
   const d = dayKey()
   const todayLog = workoutLog?.[d] || {}
@@ -25,6 +27,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const before = useRef(0)
   useBackClose(!!session, () => setSession(null))
   useBackClose(lib, () => setLib(false))
+  useBackClose(!!how, () => setHow(null))
 
   const done = ex => setsOf(todayLog[ex.name]).filter(s => s && (s.reps != null || s.secs != null)).length
   const doneCount = day.exercises.filter(ex => done(ex) >= ex.sets || todayLog[ex.name]?.skipped).length
@@ -92,6 +95,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
               <span className={'ex-mark' + (finished ? ' on' : '')}>
                 {finished && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}
               </span>
+              <HowToThumb id={ex.id || ex.name} onOpen={setHow} />
               <div className="ex-main">
                 <div className="ex-name">{ex.name}{tid && <span className="ex-cam">▣ cam</span>}</div>
                 <div className="ex-meta num">
@@ -121,6 +125,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
         <PlanReview profile={state.profile} intake={state.intake} program={state.program} onChange={p => update({ program: p })} />
       )}
       {toast && <div className="toast">{toast}</div>}
+      {how && <HowToSheet id={how} onClose={() => history.back()} onOpen={setHow} />}
     </div>
   )
 }

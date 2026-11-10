@@ -36,3 +36,6 @@
 .ht-lib .btn { position: absolute; right: 10px; bottom: 10px; width: auto; }
 
 .ht-anim.md { flex: none; height: 150px; background: radial-gradient(120% 90% at 50% 100%, rgba(207,255,98,.07), transparent 70%), var(--card-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 6px 10px; }
+
+.ex-row .ht-thumb { width: 60px; height: 60px; }
+.ex-row .ht-thumb .ht-anim { height: 50px; }
