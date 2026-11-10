@@ -26,6 +26,14 @@ export function setsOf(entry) {
   return entry.sets || []
 }
 
+// Camera form report → { s: overall 0-100, d: depth 0-100 }. Stored on the set so a coach can see it.
+export function compactForm(form) {
+  const bars = (form?.bars || []).filter(b => b && Number.isFinite(b.v))
+  if (!bars.length) return null
+  const d = bars.find(b => b.label === 'Depth')?.v
+  return { s: Math.round(bars.reduce((a, b) => a + b.v, 0) / bars.length), ...(d != null && { d }) }
+}
+
 // Best set from the most recent earlier session with this exercise.
 export function lastTime(workoutLog, name, before = dayKey()) {
   const dates = Object.keys(workoutLog || {}).filter(d => d < before).sort().reverse()
@@ -121,7 +129,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
   if (cam) {
     return (
       <RepTracker exercises={day.exercises} startAt={cam.ei} startSet={cam.si}
-        onLog={({ name, si, reps, secs, rpe, auto }) => writeSet(name, si, { ...(reps != null && { reps }), ...(secs != null && { secs }), ...(rpe != null && { rpe }), auto: !!auto })}
+        onLog={({ name, si, reps, secs, rpe, auto, form }) => writeSet(name, si, { ...(reps != null && { reps }), ...(secs != null && { secs }), ...(rpe != null && { rpe }), auto: !!auto, ...(auto && compactForm(form) && { form: compactForm(form) }) })}
         onClose={() => history.back()} />
     )
   }

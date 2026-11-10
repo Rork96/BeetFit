@@ -25,7 +25,7 @@ export function StreakPill({ state, onOpen }) {
       : `${days}-day streak${s.need === 0 ? ' · today ✓' : ''}`
   return (
     <button className={'td-streak' + (days >= 7 ? ' hot' : '') + (risk ? ' risk' : '') + (pause ? ' paused' : '')} onClick={() => { haptic(); onOpen() }}>
-      <span className="td-mark" /><span className="num">{text}</span>
+      <Ic n="flame" className="solid td-flame" /><span className="num">{text}</span>
     </button>
   )
 }

@@ -9,6 +9,7 @@ import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote, CoachStrip } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
+import { YourCoachCard } from './Coach.jsx'
 import { loadChat } from '../lib/beet.js'
 import BeetMascot from './BeetMascot.jsx'
 import Ic from './Icons.jsx'
@@ -73,6 +74,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         <div>
           <div className="td-date"><span className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>{sync && <SyncBadge sync={sync} onOpen={openSettings} />}</div>
           <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
+          {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
         </div>
         <div className="td-top-r">
           <BeetMascot size={52} mood={mascotMood} bubble="left" />
@@ -85,10 +87,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       <div className="stk td-stack">
         <NextUp up={up} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
-        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
-        <CoachStrip openClients={openClients} />
-        {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
         {/* Calories */}
         <div className="card td-kcal">
           <div className="td-ring">
@@ -104,7 +103,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </div>
           <div className="td-kcal-side">
             <div className="td-kv" aria-label={`Eaten ${e.kcal} kcal`}><Ic n="flame" className="solid" /><span className="td-kv-l">eaten</span><b className="num">{e.kcal}</b></div>
-            <div className="td-kv" aria-label={`Target ${t.kcal} kcal`}>{t.coach ? <span className="ch-tag">Coach</span> : t.dayType ? <span className={'td-dt ' + t.dayType}><Ic n={t.dayType === 'train' ? 'train' : 'timer'} /></span> : null}<Ic n="target" /><span className="td-kv-l">goal</span><b className="num">{t.kcal}</b></div>
+            <div className="td-kv" aria-label={`Target ${t.kcal} kcal`}><Ic n="target" /><span className="td-kv-l">goal</span><b className="num">{t.kcal}</b></div>
+            {(t.coach || t.dayType) && <div className="td-kv-tag">{t.coach ? <span className="ch-tag">Set by your coach</span> : <span className={'td-dt ' + t.dayType}>{t.dayType === 'train' ? `Training day +${t.delta}` : `Rest day ${t.delta}`}</span>}</div>}
             <Macro icon="protein" label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
             <Macro icon="carbs" label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
             <Macro icon="fat" label="Fat" v={e.f} max={t.fat} color="var(--water)" />
@@ -112,6 +112,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           <button className="td-link" onClick={() => go('meals')}>Log food →</button>
         </div>
 
+        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
         {todayPlans.length > 0 && (
           <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
@@ -148,6 +149,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
 
         {askBeet && <BeetCard state={state} onAsk={askBeet} />}
+        <CoachStrip openClients={openClients} />
+        {coach && !coach.link?.coach && <AddTrainer coach={coach} />}
 
         {/* Week + today's tasks */}
         <div className="card td-wk">
@@ -287,6 +290,28 @@ function FirstSteps({ state, go, onGlass, askBeet, onStart }) {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// "Add your trainer": the coach link is BeetFit's edge, so it gets a front-door entry, not a Settings row.
+const AT_OFF = 'beetfit_addtrainer_off'
+function AddTrainer({ coach }) {
+  const [off, setOff] = useState(() => { try { return localStorage.getItem(AT_OFF) === '1' } catch { return false } })
+  const [open, setOpen] = useState(false)
+  if (off) return null
+  if (open) return <YourCoachCard coach={coach} syncOn onChat={() => {}} />
+  return (
+    <div className="card at">
+      <div className="at-h">
+        <span className="at-ic"><Ic n="people" className="solid" /></span>
+        <div><b>Train with a coach?</b><span className="hint">They see sets your camera counted and a form score, not just what you typed.</span></div>
+        <button className="td-x" aria-label="Hide" onClick={() => { haptic(); try { localStorage.setItem(AT_OFF, '1') } catch { /* ignore */ } setOff(true) }}>✕</button>
+      </div>
+      <div className="at-pts">
+        <span><Ic n="cam" className="solid" />Verified reps</span><span><Ic n="target" />Targets they set</span><span><Ic n="beet" className="solid" />Messages on Today</span>
+      </div>
+      <button className="btn secondary btn-ic" onClick={() => { haptic(); setOpen(true) }}><Ic n="plus" />Add your trainer</button>
     </div>
   )
 }

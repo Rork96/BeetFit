@@ -457,3 +457,18 @@ input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -
 .wk-warn span { flex: 1; } .wk-warn b { text-transform: capitalize; }
 .ex-chips span.up { color: var(--accent); font-weight: 700; }
 .ex-chips span.up .ic { color: var(--accent); transform: scaleY(-1); }
+
+/* ---- Overflow guards (iOS zooms out / scrolls sideways when anything is wider than the screen) ---- */
+#root { overflow-x: clip; }
+.page > *, .card > *, .stk > * { min-width: 0; }
+.fs-results, .fs-row { min-width: 0; }
+.fs-item { width: 100%; min-width: 0; }
+.fs-item > div b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-item .fs-kcal { margin-left: auto; }
+.mq-again > span:first-child { flex: none; }
+.mq-again > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mq-again > span:nth-child(2) b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mq-again .mq-k { flex: none; }
+.meal, .meal-b, .ml-n { min-width: 0; }
+.ml-n span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-name, .ex-name { overflow-wrap: anywhere; }

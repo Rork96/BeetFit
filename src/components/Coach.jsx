@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import Ic from './Icons.jsx'
 import { BeetEmpty } from './BeetMascot.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
@@ -329,12 +330,12 @@ export function CoachHome({ onClose, onUpgrade }) {
           )
         })}
       </div>
-      {open && <ClientView id={open} onClose={() => history.back()} />}
+      {open && <ClientView id={open} onClose={() => history.back()} onUpgrade={onUpgrade} />}
     </div>
   )
 }
 
-function ClientView({ id, onClose }) {
+function ClientView({ id, onClose, onUpgrade }) {
   const [res, setRes] = useState(null)
   const [err, setErr] = useState('')
   const [ovr, setOvr] = useState({ kcal: '', protein: '', note: '' })
@@ -397,6 +398,8 @@ function ClientView({ id, onClose }) {
               <div><b className="num">{ov.week.sessions}/{ov.week.planned}</b><span>sessions 7d</span></div>
               <div><b className="num">{ov.week.kcal ?? '—'}</b><span>kcal avg / {ov.targets.kcal}</span></div>
             </div>
+
+            <Verified sessions={ov.sessions} week={ov.week} locked={!!onUpgrade} onUpgrade={() => onUpgrade?.('coach_form')} />
 
             <section className="card">
               <span className="label">Needs attention</span>
@@ -487,5 +490,38 @@ function ClientView({ id, onClose }) {
         )}
       </div>
     </div>
+  )
+}
+
+// What the client actually did, set by set, and what the camera confirmed. No other tracker gives a coach this:
+// reps counted on the client's phone (video never leaves it) plus a form score per set.
+function Verified({ sessions = [], week, locked, onUpgrade }) {
+  const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const share = week?.sets ? Math.round((week.camSets / week.sets) * 100) : null
+  return (
+    <section className="card ch-ver">
+      <div className="row">
+        <span className="label">Verified training</span>
+        {share != null && <span className="ch-ver-share num"><Ic n="cam" className="solid" />{week.camSets}/{week.sets} sets · 7d</span>}
+      </div>
+      {!sessions.length && <p className="hint">No sessions yet. Sets the camera counts show up here with a form score.</p>}
+      {sessions.map(ss => (
+        <div key={ss.date} className="ch-ver-day">
+          <div className="ch-ver-h"><b>{fmtD(ss.date)}</b><span className="hint num">{ss.cam}/{ss.sets} camera-counted</span></div>
+          {ss.ex.map(x => (
+            <div key={x.name} className="ch-ver-ex">
+              <span className="ch-ver-n">{x.name}</span>
+              <span className="ch-ver-sets num">{x.skipped && !x.sets.length ? <i className="bad">skipped</i> : x.sets.map((st, i) => (
+                <i key={i} className={st.auto ? 'cam' : ''} title={st.auto ? 'Counted by the camera' : 'Entered by hand'}>{st.w ? `${st.w}×` : ''}{st.reps ?? `${st.secs}s`}</i>
+              ))}</span>
+              {x.form != null && (locked
+                ? <button className="ch-ver-form lock" onClick={onUpgrade} aria-label="Form score is a PRO feature"><Ic n="lock" className="solid" />PRO</button>
+                : <span className={'ch-ver-form ' + (x.form >= 80 ? 'ok' : x.form >= 60 ? 'mid' : 'low')} title="Camera form score">{x.form}%</span>)}
+            </div>
+          ))}
+        </div>
+      ))}
+      <p className="ch-ver-key"><i className="cam" /> counted by camera on their phone <i /> typed in</p>
+    </section>
   )
 }

@@ -186,3 +186,30 @@
 .fs1-row.done { opacity: .55; }
 .fs1-row.done .fs1-ic { background: var(--accent-soft); color: var(--accent); }
 .fs1-row.done b { text-decoration: line-through; text-decoration-color: var(--line-2); }
+
+/* v4: kcal side, cleaner rows */
+.td-kcal-side { gap: 10px; }
+.td-kcal-side > .td-kv { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 8px; }
+.td-kv > .ic { width: 18px; height: 18px; color: var(--hint); }
+.td-kv b { font-size: 20px; }
+.td-kv-tag { margin-top: -4px; display: flex; justify-content: flex-end; }
+.td-kv-tag .td-dt, .td-kv-tag .ch-tag { font-size: 10.5px; }
+.td-mi > span { color: var(--text); }
+.td-flame { width: 18px; height: 18px; color: #ffb36b; }
+.td-streak.hot .td-flame { color: #ff8a3d; filter: drop-shadow(0 0 6px rgba(255,138,61,.6)); }
+.td-streak.risk .td-flame { color: var(--warn); }
+
+.at { gap: 12px; }
+.at-h { display: flex; align-items: flex-start; gap: 12px; }
+.at-h > div { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.at-h b { font: 600 16px var(--f-display); }
+.at-h .hint { font-size: 12.5px; line-height: 1.4; }
+.at-ic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 11px; background: var(--accent-soft); color: var(--accent); }
+.at-ic .ic { width: 22px; height: 22px; }
+.at-pts { display: flex; flex-wrap: wrap; gap: 6px; }
+.at-pts span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; font-size: 12px; border: 1px solid var(--line-2); border-radius: var(--r-pill); color: var(--hint); }
+.at-pts .ic { width: 14px; height: 14px; color: var(--accent); }
+/* v5: streak pill lives under the greeting */
+.td-top > div:first-child { min-width: 0; flex: 1; }
+.td-top .td-streak { margin-top: 10px; min-height: 34px; padding: 6px 12px; font-size: 13px; max-width: 100%; }
+.td-top .td-streak .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

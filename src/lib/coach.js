@@ -47,7 +47,41 @@ function weekStats(state, end) {
   const adh = Math.round((100 * days.reduce((n, k) => n + dayScore(state, k), 0)) / (days.length * 3))
   const w = weightSeries(state, 1, end)[0]?.avg
   const sleep = avg(days.map(k => state.checkins?.[k]?.sleep).filter(v => v != null))
-  return { end, sessions, planned, logDays: logged.length, kcal: kcal && Math.round(kcal), protein: prot && Math.round(prot), adh, weight: r1(w), sleep: r1(sleep) }
+  const sets = days.flatMap(k => allSets(state, k))
+  return { end, sessions, planned, logDays: logged.length, kcal: kcal && Math.round(kcal), protein: prot && Math.round(prot), adh, weight: r1(w), sleep: r1(sleep),
+    sets: sets.length, camSets: sets.filter(x => x.auto).length }
+}
+
+const setOk = x => x && (x.reps != null || x.secs != null)
+function allSets(state, k) {
+  return Object.entries(state.workoutLog?.[k] || {}).filter(([n]) => !n.startsWith('__'))
+    .flatMap(([, e]) => (typeof e === 'number' ? [{ reps: e }] : e?.sets || [])).filter(setOk)
+}
+
+// Recent sessions, exercise by exercise, with what the camera saw. The coach's proof the work happened.
+export function verifiedSessions(state, today = dayKey(), n = 3) {
+  return Object.keys(state.workoutLog || {}).filter(k => k <= today && setsLogged(state, k) > 0).sort().reverse().slice(0, n).map(date => {
+    const ex = Object.entries(state.workoutLog[date]).filter(([name]) => !name.startsWith('__')).map(([name, e]) => {
+      const sets = (typeof e === 'number' ? [{ reps: e }] : e?.sets || []).filter(setOk)
+      const forms = sets.map(x => x.form?.s).filter(v => v != null)
+      return { name, sets, cam: sets.filter(x => x.auto).length, form: forms.length ? Math.round(forms.reduce((a, b) => a + b, 0) / forms.length) : null, skipped: !!e?.skipped }
+    }).filter(x => x.sets.length || x.skipped)
+    const sets = ex.reduce((a, x) => a + x.sets.length, 0), cam = ex.reduce((a, x) => a + x.cam, 0)
+    return { date, ex, sets, cam }
+  })
+}
+
+// Form trend per exercise over the last two weeks (camera sets only).
+export function formAlerts(state, today = dayKey()) {
+  const by = {}
+  for (let i = 0; i < 14; i++) {
+    const k = addDays(today, -i)
+    for (const [name, e] of Object.entries(state.workoutLog?.[k] || {})) {
+      if (name.startsWith('__')) continue
+      for (const x of e?.sets || []) if (x?.form?.s != null) (by[name] ||= []).push(x.form.s)
+    }
+  }
+  return Object.entries(by).filter(([, v]) => v.length >= 2).map(([name, v]) => ({ name, form: Math.round(v.reduce((a, b) => a + b, 0) / v.length) })).filter(x => x.form < 60)
 }
 
 function lastActive(state) {
@@ -97,12 +131,14 @@ export function overview(state, today = dayKey()) {
   if (rate != null && goal === 'gain' && rate < -0.1) alerts.push({ kind: 'warn', t: 'Weight trending down', sub: `${r1(rate)} kg a week on a muscle-gain goal.` })
   if (w.kcal && Math.abs(w.kcal - t.kcal) > t.kcal * 0.2 && w.logDays >= 3) alerts.push({ kind: 'warn', t: `Eating ${w.kcal > t.kcal ? 'over' : 'under'} target`, sub: `${w.kcal} kcal average vs ${t.kcal} target.` })
   if (w.sleep != null && w.sleep < 6) alerts.push({ kind: 'warn', t: 'Short sleep', sub: `${w.sleep} h average this week.` })
+  for (const f of formAlerts(state, today)) alerts.push({ kind: 'warn', t: `Form check: ${f.name}`, sub: `${f.form}% form score on camera sets in the last 14 days.` })
   const ciKey = Object.keys(state.checkins || {}).sort().pop()
   return {
     name: state.settings?.name || 'Client', goal, targets: t,
     weight: r1(currentWeight(state)), rate: r1(rate), start: state.profile.weightKg, targetKg: state.profile.targetKg,
     week: w, weeks, alerts, last,
     checkin: ciKey ? { date: ciKey, ...state.checkins[ciKey] } : null,
-    plan: program(state)
+    plan: program(state),
+    sessions: verifiedSessions(state, today)
   }
 }

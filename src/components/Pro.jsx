@@ -201,7 +201,9 @@ export default function ProSheet({ pro, account, reason, onClose }) {
             ['cam', 'Meal photos a day', cfg.free?.snaps ?? 3, 30],
             ['beet', 'Beet questions a day', cfg.free?.chats ?? 5, 60],
             ['progress', 'Strength trends', 'Top lift', 'All lifts'],
-            ['people', 'Coaching clients', cfg.free?.clients ?? 3, 200],
+            ['people', 'Add your trainer', '✓', '✓'],
+            ['people', 'Coach: clients', cfg.free?.clients ?? 3, 200],
+            ['cam', 'Coach: camera form scores', '—', '✓'],
           ].map(([ic, l, f, p]) => (
             <div className="pr-cmp-r" role="row" key={l}>
               <span role="cell"><Ic n={ic} className="solid" />{l}</span>

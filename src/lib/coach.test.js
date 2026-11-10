@@ -58,3 +58,24 @@ describe('coach numbers', () => {
     expect(CODE_RE.test('K7PQ0X')).toBe(false)
   })
 })
+
+import { verifiedSessions, formAlerts } from './coach.js'
+describe('verified training', () => {
+  const D = '2026-10-28'
+  const base = { profile: { sex: 'male', age: 30, heightCm: 180, weightKg: 80, targetKg: 75, goal: 'lose', activity: 'moderate' }, settings: {}, foodLog: {}, water: {}, weightLog: [] }
+  const st = { ...base, workoutLog: {
+    [D]: { 'Goblet squat': { sets: [{ reps: 10, w: 16, auto: true, form: { s: 82, d: 90 } }, { reps: 9, w: 16 }] }, __warmup: 'done' },
+    '2026-10-26': { 'Goblet squat': { sets: [{ reps: 8, w: 16, auto: true, form: { s: 50 } }, { reps: 8, w: 16, auto: true, form: { s: 55 } }] } },
+  } }
+  it('lists recent sessions with camera-counted sets and form', () => {
+    const v = verifiedSessions(st, D)
+    expect(v[0]).toMatchObject({ date: D, sets: 2, cam: 1 })
+    expect(v[0].ex[0]).toMatchObject({ name: 'Goblet squat', cam: 1, form: 82 })
+    expect(v.map(x => x.date)).toEqual([D, '2026-10-26'])
+  })
+  it('flags weak form over two weeks', () => {
+    expect(formAlerts(st, D)).toEqual([{ name: 'Goblet squat', form: 62 }].filter(x => x.form < 60))
+    const bad = { ...st, workoutLog: { '2026-10-26': st.workoutLog['2026-10-26'] } }
+    expect(formAlerts(bad, D)).toEqual([{ name: 'Goblet squat', form: 53 }])
+  })
+})
