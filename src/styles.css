@@ -380,3 +380,56 @@ input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -
 .pips { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
 .pips i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.18); }
 .pips i.on { background: var(--accent); box-shadow: 0 0 6px rgba(224,253,144,.5); }
+
+/* ---- Food tab v2 ---- */
+.mf-sum { gap: 12px; }
+.mf-left { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.mf-left > div { display: flex; align-items: baseline; gap: 8px; }
+.mf-left b { font: 700 34px var(--f-num); letter-spacing: -.03em; line-height: 1; }
+.mf-left > div span { font: 300 11px var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--hint); }
+.mf-left .td-dt { margin-left: 6px; }
+.mf-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mf-ml { font-size: 12px; color: var(--hint); display: flex; flex-direction: column; gap: 5px; }
+.mf-ml .row { gap: 4px; flex-wrap: wrap; }
+.mf-ml-l { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.mf-ml-l .ic { width: 15px; height: 15px; }
+.mf-ml .num { color: var(--text); } .mf-ml small { color: var(--dim); }
+
+.mf-add { gap: 12px; border-color: var(--accent-line); }
+.mf-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mf-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px; border: 1.5px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--hint);
+  font: 500 11px var(--f-body); text-transform: capitalize; transition: background var(--dur-2), border-color var(--dur-2), color var(--dur-2); }
+.mf-slot .ic { width: 20px; height: 20px; }
+.mf-slot.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.fs-row-in { display: flex; gap: 6px; align-items: stretch; }
+.fs-row-in .fs-input { flex: 1; min-width: 0; }
+.mf-act { flex: none; width: 48px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: var(--r-1); background: var(--card-2); color: var(--text); }
+.mf-act .ic { width: 22px; height: 22px; }
+.mf-act.hot { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.fs-bare .fs-results { margin-top: 8px; }
+.mf-sub { margin-bottom: -4px; }
+.mq-again { gap: 10px; }
+.mq-again-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: var(--accent-soft); color: var(--accent); }
+.mq-again-ic .ic { width: 18px; height: 18px; }
+.qk-open { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; }
+.qk-open .ic { width: 15px; height: 15px; }
+.mf-add .qk { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+.mf-diary .ml-slot { padding: 6px 0; }
+.ml-h { display: flex; align-items: center; gap: 10px; }
+.ml-hn { flex: 1; display: inline-flex; align-items: center; gap: 8px; text-transform: capitalize; }
+.ml-hn .ic { width: 18px; height: 18px; color: var(--accent); }
+.ml-plus { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; color: var(--text); }
+.ml-plus .ic { width: 16px; height: 16px; }
+.ml-slot.empty .ml-h { opacity: .9; }
+.ml-add { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 6px; padding: 10px 12px; border: 1.5px dashed var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--hint); font-size: 13px; text-transform: none; }
+.ml-add .ic { width: 15px; height: 15px; }
+.meal { flex-wrap: wrap; align-items: center; }
+.meal-b { flex: 1; min-width: 0; text-align: left; padding: 0; border: 0; background: none; color: inherit; }
+.ml-g { display: inline-flex; align-items: center; gap: 3px; }
+.ml-g .ic { width: 11px; height: 11px; }
+.ml-edit { flex-basis: 100%; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 0 4px; animation: riseIn var(--dur-2) var(--ease-out) backwards; }
+.ml-edit .chip { min-height: 36px; padding: 6px 10px; }
+.ml-step { margin-left: auto; }
+.mf-ml .row { flex-direction: column; align-items: flex-start; gap: 1px; }
+.mf-ml .num { font-size: 13px; font-weight: 600; }

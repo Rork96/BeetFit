@@ -156,3 +156,33 @@
 .td-sub-ic .cam .ic { color: var(--accent); }
 .td-review-g > div { align-items: center; }
 .td-review-g .ic { width: 20px; height: 20px; color: var(--accent); margin-bottom: 2px; }
+/* v3: labels where icons alone were unclear */
+.td-mi { gap: 5px; align-items: center; font-size: 12px; font-weight: 600; }
+.td-kv-l { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.td-task-l { font-size: 12.5px; font-weight: 600; }
+.td-task > .ic { width: 20px; height: 20px; }
+.td-tasks-cap { margin: 8px 0 0; font-size: 12px; color: var(--hint); text-align: center; }
+.td-tasks-cap b { color: var(--text); }
+
+/* Getting started */
+.fs1 { gap: 10px; border-color: var(--accent-line); background: linear-gradient(160deg, rgba(125,112,246,.12), var(--card) 55%); }
+.fs1-h { display: flex; align-items: center; gap: 12px; }
+.fs1-h > div { flex: 1; display: flex; flex-direction: column; }
+.fs1-h b { font: 600 16px var(--f-display); }
+.fs1-h .hint { font-size: 12px; }
+.fs1-bar { height: 4px; background: rgba(255,255,255,.08); }
+.fs1-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-3) var(--ease-out); }
+.fs1-list { display: flex; flex-direction: column; }
+.fs1-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); text-align: left; }
+.fs1-row:first-child { border-top: 0; }
+.fs1-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,.05); color: var(--hint); }
+.fs1-ic .ic { width: 19px; height: 19px; }
+.fs1-t { flex: 1; display: flex; flex-direction: column; }
+.fs1-t b { font-size: 14.5px; font-weight: 600; }
+.fs1-t small { font-size: 12px; color: var(--hint); }
+.fs1-row > .ic { width: 16px; height: 16px; color: var(--hint); }
+.fs1-row.next .fs1-ic { background: var(--accent); color: var(--on-accent); }
+.fs1-row.next > .ic { color: var(--accent); }
+.fs1-row.done { opacity: .55; }
+.fs1-row.done .fs1-ic { background: var(--accent-soft); color: var(--accent); }
+.fs1-row.done b { text-decoration: line-through; text-decoration-color: var(--line-2); }

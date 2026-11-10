@@ -61,10 +61,16 @@ describe('streakInfo', () => {
 describe('weekReview', () => {
   it('only on Sunday and Monday', () => {
     expect(weekday(SUN)).toBe(6)
-    expect(weekReview(stateWith([]), addDays(SUN, -1))).toBeNull()
-    expect(weekReview(stateWith([]), SUN)).not.toBeNull()
-    expect(weekReview(stateWith([]), MON)).not.toBeNull()
-    expect(weekReview(stateWith([]), addDays(MON, 1))).toBeNull()
+    const one = stateWith([addDays(SUN, -2)])
+    expect(weekReview(one, addDays(SUN, -1))).toBeNull()
+    expect(weekReview(one, SUN)).not.toBeNull()
+    expect(weekReview(one, MON)).not.toBeNull()
+    expect(weekReview(one, addDays(MON, 1))).toBeNull()
+  })
+
+  it('nothing for a week with no activity at all (new install)', () => {
+    expect(weekReview(stateWith([]), SUN)).toBeNull()
+    expect(weekReview(stateWith([]), MON)).toBeNull()
   })
 
   it('Monday reviews the previous Mon–Sun', () => {
@@ -81,7 +87,7 @@ describe('weekReview', () => {
   })
 
   it('no weight change without weigh-ins', () => {
-    expect(weekReview(stateWith([]), MON).weightChange).toBeNull()
+    expect(weekReview(stateWith([addDays(SUN, -2)]), MON).weightChange).toBeNull()
   })
 })
 

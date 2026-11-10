@@ -205,6 +205,8 @@ export function weekReview(state, key = dayKey()) {
   const series = weightSeries(state, 15, end <= key ? end : key)
   const a = series.find(p => p.key === addDays(start, -1))?.avg, b = series[series.length - 1]?.avg
   const weightChange = a != null && b != null && (state.weightLog || []).filter(w => w.date >= addDays(start, -7)).length >= 2 ? +(b - a).toFixed(1) : null
+  // Nothing at all that week (e.g. a brand-new install): no review, it would only scold.
+  if (!sessions && !logged.length && !(state.weightLog || []).some(w => w.date >= start && w.date <= end)) return null
   return { id: start, final: dow === 0, start, end, sessions, planned, kept: sessions >= planned, foodDays: logged.length, protein, proteinTarget: targets(state).protein, weightChange, goal: state.profile.goal }
 }
 

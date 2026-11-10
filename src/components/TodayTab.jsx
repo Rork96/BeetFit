@@ -8,6 +8,7 @@ import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote, CoachStrip } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
+import { loadChat } from '../lib/beet.js'
 import BeetMascot from './BeetMascot.jsx'
 import Ic from './Icons.jsx'
 import { ReadCard } from './Read.jsx'
@@ -82,6 +83,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       <div className="stk td-stack">
         <NextUp up={up} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
+        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
         <CoachStrip openClients={openClients} />
         {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
@@ -99,8 +101,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
             </div>
           </div>
           <div className="td-kcal-side">
-            <div className="td-kv" aria-label={`Eaten ${e.kcal} kcal`}><Ic n="flame" className="solid" /><b className="num">{e.kcal}</b></div>
-            <div className="td-kv" aria-label={`Target ${t.kcal} kcal`}>{t.coach ? <span className="ch-tag">Coach</span> : t.dayType ? <span className={'td-dt ' + t.dayType}><Ic n={t.dayType === 'train' ? 'train' : 'timer'} /></span> : null}<Ic n="target" /><b className="num">{t.kcal}</b></div>
+            <div className="td-kv" aria-label={`Eaten ${e.kcal} kcal`}><Ic n="flame" className="solid" /><span className="td-kv-l">eaten</span><b className="num">{e.kcal}</b></div>
+            <div className="td-kv" aria-label={`Target ${t.kcal} kcal`}>{t.coach ? <span className="ch-tag">Coach</span> : t.dayType ? <span className={'td-dt ' + t.dayType}><Ic n={t.dayType === 'train' ? 'train' : 'timer'} /></span> : null}<Ic n="target" /><span className="td-kv-l">goal</span><b className="num">{t.kcal}</b></div>
             <Macro icon="protein" label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
             <Macro icon="carbs" label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
             <Macro icon="fat" label="Fat" v={e.f} max={t.fat} color="var(--water)" />
@@ -210,7 +212,7 @@ function WeekReview({ state, today, streak, units, onPlan }) {
 function Macro({ icon, label, v, max, color }) {
   return (
     <div className="td-macro" aria-label={`${label} ${v} of ${max} g`}>
-      <div className="row"><span className="td-mi" style={{ color }}><Ic n={icon} className="solid" label={label} /></span><span className="num">{v}<small>/{max}g</small></span></div>
+      <div className="row"><span className="td-mi" style={{ color }}><Ic n={icon} className="solid" /><span>{label}</span></span><span className="num">{v}<small>/{max}g</small></span></div>
       <div className="td-bar"><i style={{ transform: `scaleX(${Math.min(1, v / max)})`, background: color }} /></div>
     </div>
   )
@@ -240,9 +242,46 @@ function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, u
         {tasks.map(tk => (
           <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')} title={tk.label} aria-label={tk.label + (tk.done ? ', done' : '')}>
             <Ic n={{ food: 'food', water: 'water', train: 'train' }[tk.id] || 'check'} />
-            {tk.id === 'water' && <span className="num">{water}/{t.water}</span>}
+            <span className="td-task-l">{tk.id === 'water' ? <span className="num">{water}/{t.water}</span> : { food: 'Food', train: 'Train' }[tk.id] || tk.short}</span>
             {tk.done && <i><Ic n="check" /></i>}
           </span>
+        ))}
+      </div>
+      <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · any 2 keep your streak</p>
+    </div>
+  )
+}
+
+// First days: five small wins, in order, each one tap away. Hides itself when done or dismissed.
+const FS_OFF = 'beetfit_firststeps_off'
+function FirstSteps({ state, go, onGlass, askBeet, onStart }) {
+  const [off, setOff] = useState(() => { try { return localStorage.getItem(FS_OFF) === '1' } catch { return false } })
+  const steps = [
+    { id: 'food', icon: 'food', t: 'Log your first meal', s: 'Photo, barcode or search', done: Object.values(state.foodLog || {}).some(d => d?.length), act: () => go('meals') },
+    { id: 'water', icon: 'water', t: 'Add a glass of water', s: 'One tap on Today', done: Object.values(state.water || {}).some(n => n > 0), act: onGlass },
+    { id: 'train', icon: 'train', t: 'Do Day 1', s: 'The camera counts your reps', done: Object.values(state.workoutLog || {}).some(d => Object.keys(d || {}).some(k => !k.startsWith('__'))), act: onStart },
+    { id: 'weigh', icon: 'scale', t: 'Log your weight', s: 'Once a week is enough', done: (state.weightLog || []).length > 0, act: () => go('progress') },
+    ...(askBeet ? [{ id: 'beet', icon: 'beet', t: 'Ask Beet a question', s: 'It knows your plan and food', done: (loadChat() || []).length > 0, act: () => askBeet() }] : []),
+  ]
+  const n = steps.filter(x => x.done).length
+  if (off || n === steps.length) return null
+  const next = steps.find(x => !x.done)
+  const hide = () => { haptic(); try { localStorage.setItem(FS_OFF, '1') } catch { /* ignore */ } setOff(true) }
+  return (
+    <div className="card fs1">
+      <div className="fs1-h">
+        <BeetMascot size={46} mood={n ? 'happy' : 'idle'} bubble="right" lines={['One small thing at a time.', 'Tap the next step.', n ? 'Nice, keep going!' : 'Start with a meal.']} />
+        <div><b>Getting started</b><span className="hint num">{n} of {steps.length} done</span></div>
+        <button className="td-x" onClick={hide} aria-label="Hide getting started">✕</button>
+      </div>
+      <div className="fs1-bar"><i style={{ transform: `scaleX(${n / steps.length})` }} /></div>
+      <div className="fs1-list">
+        {steps.map(x => (
+          <button key={x.id} className={'fs1-row' + (x.done ? ' done' : '') + (x === next ? ' next' : '')} disabled={x.done} onClick={() => { haptic(); x.act() }}>
+            <span className="fs1-ic">{x.done ? <Ic n="check" /> : <Ic n={x.icon} className="solid" />}</span>
+            <span className="fs1-t"><b>{x.t}</b>{!x.done && <small>{x.s}</small>}</span>
+            {!x.done && <Ic n="chevron" />}
+          </button>
         ))}
       </div>
     </div>
