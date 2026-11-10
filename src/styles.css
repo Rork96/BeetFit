@@ -433,3 +433,27 @@ input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -
 .ml-step { margin-left: auto; }
 .mf-ml .row { flex-direction: column; align-items: flex-start; gap: 1px; }
 .mf-ml .num { font-size: 13px; font-weight: 600; }
+
+/* Train state */
+.wk-state { flex-direction: row; align-items: center; gap: 12px; }
+.wk-state-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wk-state-t b { font: 600 16px var(--f-display); }
+.wk-state-t .hint { margin: 0; font-size: 12.5px; line-height: 1.45; }
+.wk-state-t .hint b { font: inherit; font-weight: 700; color: var(--text); }
+.wk-state.done { border-color: var(--accent-line); background: linear-gradient(150deg, rgba(224,253,144,.10), var(--card) 60%); }
+.wk-state.rest { border-color: rgba(125,112,246,.4); background: linear-gradient(150deg, rgba(125,112,246,.14), var(--card) 60%); }
+.wk-state > .chip { align-self: center; flex: none; }
+.wk-dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
+.wk-dots i { width: 14px; height: 6px; background: rgba(255,255,255,.12); }
+.wk-dots i.on { background: var(--accent); }
+.wk-dots small { margin-left: 6px; font-size: 11px; color: var(--hint); }
+.wk-days .chip { display: inline-flex; align-items: center; gap: 5px; position: relative; }
+.wk-days .chip .ic { width: 14px; height: 14px; stroke-width: 2.6; }
+.wk-days .chip.did:not(.on) { color: var(--accent); border-color: var(--accent-line); }
+.wk-next { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px rgba(224,253,144,.7); }
+.wk-days .chip.on .wk-next { background: var(--on-accent); box-shadow: none; }
+.wk-warn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.4; color: var(--text); background: rgba(244,201,93,.10); border: 1px solid rgba(244,201,93,.35); border-radius: var(--r-2); }
+.wk-warn > .ic { width: 18px; height: 18px; flex: none; color: var(--warn); }
+.wk-warn span { flex: 1; } .wk-warn b { text-transform: capitalize; }
+.ex-chips span.up { color: var(--accent); font-weight: 700; }
+.ex-chips span.up .ic { color: var(--accent); transform: scaleY(-1); }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { suggestLoad } from '../lib/train.js'
 import Ic from './Icons.jsx'
 import BeetMascot from './BeetMascot.jsx'
 import { createPortal } from 'react-dom'
@@ -143,7 +144,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
 
         {day.exercises.map((ex, ei) => (
           <ExerciseCard key={ex.name + ei} ex={ex} ei={ei} entry={log[ex.name]} locked={warm === 'todo'}
-            last={lastTime(state.workoutLog, ex.name)} prev={prevSets(state.workoutLog, ex.name)}
+            last={lastTime(state.workoutLog, ex.name)} prev={prevSets(state.workoutLog, ex.name)} sug={suggestLoad(state.workoutLog, ex)}
             note={state.exNotes?.[ex.name] || ''}
             onNote={text => update(prev => ({ exNotes: { ...(prev.exNotes || {}), [ex.name]: text.slice(0, 120) } }))}
             onSet={(si, patch, rested) => { writeSet(ex.name, si, patch); if (rested) setRest({ left: ex.rest || 75, total: ex.rest || 75, label: ex.name }) }}
@@ -294,7 +295,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
 // Work done: kg × reps when there's weight, otherwise reps (or seconds held).
 const work = sets => sets.filter(s => s && (s.reps != null || s.secs != null)).reduce((a, s) => a + (s.w ? s.w * (s.reps || 0) : (s.reps || 0) + (s.secs || 0)), 0)
 
-function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locked, onSet, onCamera, onHow, onSwap, onPain }) {
+function ExerciseCard({ ex, ei, entry, last, prev = [], sug, note = '', onNote, locked, onSet, onCamera, onHow, onSwap, onPain }) {
   const goal = parseTarget(ex.reps)
   const sets = setsOf(entry)
   const [editNote, setEditNote] = useState(false)
@@ -331,6 +332,7 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
       {ex.cue && <p className="ss-cue">{ex.cue}</p>}
       {pct != null && <p className={'ss-vs num' + (pct > 100 ? ' up' : '')}>{pct > 100 ? `+${pct - 100}% vs last time` : `${pct}% of last time`}<i style={{ transform: `scaleX(${Math.min(1, pct / 100)})` }} /></p>}
       {last && <p className="td-small num">Last time: {last.sets} sets · best {last.best.w ? `${last.best.w} kg × ` : ''}{last.best.reps ?? `${last.best.secs}s`}{last.best.rpe ? ` @${last.best.rpe}` : ''}</p>}
+      {sug?.up && <p className="ss-up"><Ic n="trend" />Try <b className="num">{sug.w} kg</b> today: every set hit {sug.top} last time</p>}
       {ex.progression && <p className="td-small">Next step: {ex.progression}</p>}
       {open && (
         <div className="ss-actions">
@@ -343,7 +345,7 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
         <>
           <div className="ss-sets">
             {Array.from({ length: ex.sets || 1 }).map((_, si) => (
-              <SetRow key={si} si={si} goal={goal} ex={ex} set={sets[si]} prev={prev[si] || prev[prev.length - 1]} active={si === nextSi}
+              <SetRow key={si} si={si} goal={goal} ex={ex} set={sets[si]} prev={prev[si] || prev[prev.length - 1]} sug={sug} active={si === nextSi}
                 onDone={patch => onSet(si, patch, si < (ex.sets || 1) - 1)} />
             ))}
           </div>
@@ -356,9 +358,9 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
   )
 }
 
-function SetRow({ si, goal, ex, set, prev, active, onDone }) {
+function SetRow({ si, goal, ex, set, prev, sug, active, onDone }) {
   const done = set && (set.reps != null || set.secs != null)
-  const [w, setW] = useState(set?.w ?? prev?.w ?? ex.weight ?? 0)
+  const [w, setW] = useState(set?.w ?? (sug?.up ? sug.w : prev?.w) ?? ex.weight ?? 0)
   const [r, setR] = useState(set?.reps ?? set?.secs ?? goal.value)
   const [rpe, setRpe] = useState(set?.rpe ?? null)
   const hold = goal.kind === 'hold'

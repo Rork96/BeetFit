@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { trainStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp, useBackClose } from '../lib/hooks.js'
@@ -48,7 +49,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const trainedToday = setsLogged(state, key) > 0
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
   const wPlan = todayPlans.find(x => x.kind === 'workout' && x.time && !planDone(state, x, key))
-  const up = nextUp(state, key, { workoutTime: wPlan?.time || null })
+  const ts = trainStatus(state, key)
+  const up = nextUp(state, key, { workoutTime: wPlan?.time || null, restDay: !wPlan && (ts.kind === 'rest' || ts.kind === 'week') })
   const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
 
   const wNow = currentWeight(state)
@@ -227,9 +229,10 @@ function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, u
     food: { label: 'Next up', title: 'Log what you eat', sub: `Target ${t.kcal} kcal · ${t.protein} g protein. Photo, barcode or search.`, cta: 'Log food', act: () => { haptic(); go('meals') } },
     weigh: last && { label: 'Next up · weekly check', title: 'Weigh in', sub: `Last: ${fmtWeight(last.kg, units)}, ${new Date(last.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. One number a week keeps the plan honest.`, cta: 'Log weight', act: () => { haptic(); go('progress') } },
     water: { label: 'Next up', title: `Water: ${water} of ${t.water}`, sub: 'Last task for today.', cta: '+ glass', act: onGlass },
-    done: { label: 'Today is done', title: 'Nothing left for today', sub: `${streak ? `${streak}-day streak. ` : ''}Next session: ${dayName(tomorrow.name)}.`, cta: null }
+    done: { label: 'Today is done', title: 'Nothing left for today', sub: `${streak ? `${streak}-day streak. ` : ''}Next session: ${dayName(tomorrow.name)}.`, cta: null },
+    rest: { label: 'Next up · rest day', title: 'Recover today', sub: `Muscles rebuild today. Next session: ${dayName(tomorrow.name)}. A walk still counts.`, cta: null }
   }[up.id]
-  const done = up.id === 'done'
+  const done = up.id === 'done' || up.id === 'rest'
   return (
     <div className={'card td-next' + (done ? ' done' : '')}>
       <span className="label">{h.label}</span>

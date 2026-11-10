@@ -122,3 +122,6 @@
 .rc-tiles .rc-ic { width: 22px; height: 22px; color: var(--accent); margin-bottom: 4px; }
 .rc-tiles b small { font-size: .5em; color: var(--dim); margin-left: 2px; }
 .rc-tiles > div { align-items: center; }
+.ss-up { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; font-size: 12.5px; color: var(--accent); background: var(--accent-soft); border-radius: var(--r-1); }
+.ss-up .ic { width: 15px; height: 15px; transform: scaleY(-1); }
+.ss-up b { color: var(--text); }
