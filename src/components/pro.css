@@ -75,3 +75,44 @@
 .pr-beet { position: relative; align-self: flex-start; display: inline-flex; filter: drop-shadow(0 8px 24px rgba(125,112,246,.35)); }
 .pr-beet .pr-crown { position: absolute; right: -10px; top: 6px; font: 700 10px var(--f-display); letter-spacing: .08em; font-style: normal;
   padding: 3px 6px; background: var(--accent); color: var(--on-accent); transform: rotate(8deg); }
+
+/* ---- v2: compare table, plans, timeline ---- */
+.pr-cmp { display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: var(--r-2); overflow: hidden; }
+.pr-cmp-h, .pr-cmp-r { display: grid; grid-template-columns: 1fr 64px 72px; align-items: center; }
+.pr-cmp-h { background: var(--card-2); }
+.pr-cmp-h span { padding: 8px 0; text-align: center; font: 700 10.5px var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--hint); }
+.pr-cmp-h .pro { color: var(--on-accent); background: var(--accent); }
+.pr-cmp-r { border-top: 1px solid var(--line); font-size: 13px; }
+.pr-cmp-r > span { padding: 10px 0; text-align: center; }
+.pr-cmp-r > span:first-child { display: flex; align-items: center; gap: 9px; padding-left: 12px; text-align: left; color: var(--text); }
+.pr-cmp-r > span:first-child .ic { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.pr-cmp-r > span:nth-child(2) { color: var(--hint); font-weight: 600; }
+.pr-cmp-r .pro { background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 14px; }
+.pr-cmp-r .yes { color: var(--ok); }
+
+.pr-tl li { border-top: 0; padding-top: 0; align-items: flex-start; }
+.pr-tl li::before { content: ''; position: absolute; left: 30px; right: -8px; top: 15px; height: 2px; background: var(--accent); }
+.pr-tl li:last-child::before { display: none; }
+.pr-tl li:nth-child(2)::before { background: repeating-linear-gradient(90deg, var(--line-2) 0 5px, transparent 5px 9px); }
+.pr-tl i { position: relative; z-index: 1; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--on-accent); margin-bottom: 6px; }
+.pr-tl i .ic { width: 16px; height: 16px; stroke-width: 2.4; }
+.pr-tl i.opt { background: var(--card-2); color: var(--accent); border: 1.5px solid var(--accent-line); }
+.pr-tl li:nth-child(2) i { background: var(--card-2); color: var(--text); border: 1.5px solid var(--line-2); }
+.pr-cta-sub { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 8px 0 0; font-size: 12px; color: var(--hint); }
+.pr-cta-sub .ic { width: 14px; height: 14px; color: var(--accent); }
+
+.pr-plan { position: relative; padding: 14px 12px 12px; gap: 2px; }
+.pr-plan.best { border-color: var(--accent-line); }
+.pr-plan.on { box-shadow: 0 0 0 1px var(--accent), 0 8px 28px rgba(224,253,144,.12); }
+.pr-ribbon { position: absolute; top: -10px; right: 10px; padding: 3px 8px; font: 800 10.5px var(--f-display); letter-spacing: .04em; background: var(--accent); color: var(--on-accent); border-radius: 4px; }
+.pr-radio { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-2); display: inline-block; position: relative; }
+.pr-plan.on .pr-radio { border-color: var(--accent); }
+.pr-plan.on .pr-radio::after { content: ''; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--accent); }
+.pr-plan b { font-size: 26px; margin-top: 6px; }
+
+.pr-card.sell { border-color: var(--accent-line); background: linear-gradient(135deg, rgba(125,112,246,.14), rgba(224,253,144,.06)); }
+.pr-card-ic { display: inline-flex; gap: 8px; margin-top: 6px; color: var(--accent); }
+.pr-card-ic .ic { width: 16px; height: 16px; }
+.pd-ring { display: flex; align-items: center; gap: 12px; }
+.pd-ring .pd-items { flex: 1; }
+.pd-ring .nu-mid b { font-size: 18px; }

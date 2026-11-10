@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import BeetMascot from './BeetMascot.jsx'
+import Ic from './Icons.jsx'
+import { MacroRing } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion } from 'motion/react'
 import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR } from '../lib/billing.js'
@@ -40,12 +42,14 @@ function DemoSnap() {
           <rect x="63" y="44" width="50" height="36" className="pd-box" /><rect x="102" y="52" width="52" height="38" className="pd-box" /><rect x="106" y="31" width="40" height="30" className="pd-box blue" />
         </svg>
       </div>
-      <ul className="pd-items">
-        <li><span>Chicken breast</span><b className="num">150 g · 248</b></li>
-        <li><span>Rice</span><b className="num">180 g · 234</b></li>
-        <li><span>Broccoli</span><b className="num">100 g · 34</b></li>
-      </ul>
-      <div className="pd-total"><span>Meal</span><b className="num">516 kcal</b></div>
+      <div className="pd-ring">
+        <MacroRing kcal={516} p={53} c={57} f={6} size={84} />
+        <ul className="pd-items">
+          <li><span>Chicken breast</span><b className="num">248</b></li>
+          <li><span>Rice</span><b className="num">234</b></li>
+          <li><span>Broccoli</span><b className="num">34</b></li>
+        </ul>
+      </div>
     </div>
   )
 }
@@ -114,11 +118,11 @@ export default function ProSheet({ pro, account, reason, onClose }) {
   const planPicker = (
     <div className="pr-plans" role="radiogroup" aria-label="Plan">
       {[['year', pr?.year], ['month', pr?.month]].map(([id, p]) => (
-        <button key={id} role="radio" aria-checked={plan === id} className={'pr-plan' + (plan === id ? ' on' : '')} onClick={() => { haptic(); setPlan(id) }}>
-          <span className="pr-plan-n">{id === 'year' ? 'Yearly' : 'Monthly'}{id === 'year' && save > 0 && <em>−{save}%</em>}</span>
-          {p ? <b className="num">{fmtMoney(p)}<small>/{id === 'year' ? 'year' : 'month'}</small></b> : <b className="num">—</b>}
-          {p && (id === 'year' ? <span className="num pr-per">{fmtMoney(p, 12)} a month</span>
-            : <span className="num pr-per">{fmtMoney(p, 1 / 12)} a year</span>)}
+        <button key={id} role="radio" aria-checked={plan === id} className={'pr-plan' + (plan === id ? ' on' : '') + (id === 'year' ? ' best' : '')} onClick={() => { haptic(); setPlan(id) }}>
+          {id === 'year' && save > 0 && <span className="pr-ribbon">Save {save}%</span>}
+          <span className="pr-plan-n"><i className="pr-radio" />{id === 'year' ? 'Yearly' : 'Monthly'}</span>
+          {p ? <b className="num">{fmtMoney(p, id === 'year' ? 12 : undefined)}<small>/mo</small></b> : <b className="num">—</b>}
+          {p && <span className="num pr-per">{id === 'year' ? `${fmtMoney(p)} billed yearly` : 'billed monthly'}</span>}
         </button>
       ))}
     </div>
@@ -190,27 +194,38 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         </div>
         <p className="pr-eg">App screens with sample data; the photo card is an illustration. Swipe →</p>
 
-        <ul className="pr-lim">
-          <li><b className="num">{cfg.free?.snaps ?? 3} → 30</b> meal photo estimates a day</li>
-          <li><b className="num">{cfg.free?.chats ?? 5} → 60</b> Beet questions a day</li>
-          <li><b>All lifts</b> in strength trends, not only the top one</li>
-          <li><b className="num">{cfg.free?.clients ?? 3} → 200</b> coaching clients</li>
-        </ul>
+        <div className="pr-cmp" role="table" aria-label="Free and PRO compared">
+          <div className="pr-cmp-h" role="row"><span role="columnheader" /><span role="columnheader">Free</span><span role="columnheader" className="pro">PRO</span></div>
+          {[
+            ['train', 'Plan, logging, camera reps', '✓', '✓'],
+            ['cam', 'Meal photos a day', cfg.free?.snaps ?? 3, 30],
+            ['beet', 'Beet questions a day', cfg.free?.chats ?? 5, 60],
+            ['progress', 'Strength trends', 'Top lift', 'All lifts'],
+            ['people', 'Coaching clients', cfg.free?.clients ?? 3, 200],
+          ].map(([ic, l, f, p]) => (
+            <div className="pr-cmp-r" role="row" key={l}>
+              <span role="cell"><Ic n={ic} className="solid" />{l}</span>
+              <span role="cell" className={'num' + (f === '✓' ? ' yes' : '')}>{f}</span>
+              <span role="cell" className={'num pro' + (p === '✓' ? ' yes' : '')}>{p}</span>
+            </div>
+          ))}
+        </div>
 
         {isNative() ? (
           <p className="hint pr-fine">In-app purchase arrives with the App Store and Google Play release.</p>
         ) : trial ? (
           <>
             <ol className="pr-tl" aria-label="How the trial works">
-              <li><i /><b>Today</b><span>PRO unlocks. No account, no card.</span></li>
-              <li><i /><b>Day {cfg.trialDays}</b><span>It stops by itself. Nothing is charged.</span></li>
-              <li><i className="opt" /><b>Your call</b><span>Subscribe to keep it. Or stay free: your logs, plan and camera counting stay.</span></li>
+              <li><i><Ic n="check" /></i><b>Today</b><span>PRO unlocks. No account, no card.</span></li>
+              <li><i><Ic n="timer" /></i><b>Day {cfg.trialDays}</b><span>It stops by itself. Nothing is charged.</span></li>
+              <li><i className="opt"><Ic n="target" /></i><b>Your call</b><span>Keep it, or stay free. Your logs and plan stay.</span></li>
             </ol>
             <p className="hint pr-fine">
               {pr ? `Keeping PRO later: ${fmtMoney(pr.year)} a year or ${fmtMoney(pr.month)} a month` : 'Keeping PRO later is yearly or monthly'}, renewing until you cancel. Cancel any time in Settings → PRO.
             </p>
             <div className="pr-cta-bar">
               <button className="btn pr-cta" disabled={busy} onClick={beginTrial}>{busy ? 'Starting…' : `Start ${cfg.trialDays} days free`}</button>
+              <p className="pr-cta-sub"><Ic n="lock" className="solid" />No card · stops by itself</p>
             </div>
           </>
         ) : !canBuyHere(cfg) ? (
@@ -251,9 +266,11 @@ export function ProCard({ pro, onOpen }) {
       : st.cancelAtEnd ? `Ends ${fmtDate(st.periodEnd)}`
         : `${st.plan === 'year' ? 'Yearly' : 'Monthly'} · renews ${st.periodEnd ? fmtDate(st.periodEnd) : ''}`
   return (
-    <section className="card pr-card">
+    <section className={'card pr-card' + (st?.pro ? '' : ' sell')}>
       <div className="row">
-        <div><span className="label">BeetFit PRO</span><p className="pr-card-l">{line}</p></div>
+        <BeetMascot size={46} mood={st?.pro ? 'cheer' : 'happy'} bubble="right" />
+        <div style={{ flex: 1, minWidth: 0 }}><span className="label">BeetFit PRO</span><p className="pr-card-l">{line}</p>
+          {!st?.pro && <span className="pr-card-ic"><Ic n="cam" className="solid" /><Ic n="beet" className="solid" /><Ic n="progress" className="solid" /></span>}</div>
         <button className={'btn small' + (st?.pro ? ' secondary' : '')} onClick={() => { haptic(); onOpen() }}>{st?.pro ? 'Manage' : 'See PRO'}</button>
       </div>
     </section>

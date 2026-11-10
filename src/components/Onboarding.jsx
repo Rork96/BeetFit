@@ -1,8 +1,10 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import BeetMascot from './BeetMascot.jsx'
+import Ic from './Icons.jsx'
+import { MacroRing, MacroChips } from './Nutri.jsx'
 import { macros, bmr, tdee } from '../lib/calories.js'
 import { track } from '../lib/track.js'
 
-const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activityFrom, exPool, stepsTarget } from '../lib/program.js'
 import { EQLABEL } from '../data/library.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -80,7 +82,11 @@ export default function Onboarding({ onDone, onRestore, account }) {
       {id !== 'welcome' && id !== 'building' && (
         <header className="ob-top">
           <button className="ob-back" onClick={() => go(-1)} aria-label="Back">←</button>
-          <div className="ob-bar"><i style={{ transform: `scaleX(${Math.min(1, progress / 100)})` }} /></div>
+          <div className="ob-track">
+            <div className="ob-bar"><i style={{ transform: `scaleX(${Math.min(1, progress / 100)})` }} /></div>
+            <span className="ob-rider" style={{ left: `${Math.min(94, Math.max(4, progress))}%` }}><BeetMascot size={30} mood={id === 'ready' ? 'cheer' : 'happy'} bubble="bottom"
+              lines={{ goal: ['Pick one. You can change it.'], body: ['Numbers stay on your phone.'], days: ['No judging. Promise.'], training: ['Almost there.'], ready: ['We did it!'] }[id]} /></span>
+          </div>
           <span className="label num">{Math.min(step, 5)}/5</span>
         </header>
       )}
@@ -90,9 +96,10 @@ export default function Onboarding({ onDone, onRestore, account }) {
         {id === 'goal' && (
           <Step title="What's your goal?" sub="Your program, calories and pace are built around it.">
             <div className="ob-cards stk">
-              {[['lose', 'Lose fat', 'Calorie deficit, strength kept'], ['maintain', 'Get fit & stay', 'Same weight, more muscle, more energy'], ['gain', 'Build muscle', 'Small surplus, 4 lifting days']].map(([g, t, s]) => (
+              {[['lose', 'Lose fat', 'Calorie deficit, strength kept', 'trend'], ['maintain', 'Get fit & stay', 'Same weight, more muscle, more energy', 'target'], ['gain', 'Build muscle', 'Small surplus, 4 lifting days', 'train']].map(([g, t, s, ic]) => (
                 <button key={g} className={'ob-card' + (p.goal === g ? ' on' : '')} onClick={() => { haptic(); setPf('goal', g); if (g === 'maintain') setPf('targetKg', p.weightKg) }}>
-                  <span className="ob-sq" /><span><b>{t}</b><small>{s}</small></span>
+                  <span className={'ob-ic g-' + g}><Ic n={ic} className="solid" /></span><span><b>{t}</b><small>{s}</small></span>
+                  <span className="ob-sq" />
                 </button>
               ))}
             </div>
@@ -158,7 +165,15 @@ export default function Onboarding({ onDone, onRestore, account }) {
         {id === 'training' && (
           <Step title="Training & you" sub="This decides which exercises you get.">
             <Field label="Experience"><Chips value={it.exp} options={['beginner', 'irregular', 'regular']} onChange={v => setI('exp', v)} /></Field>
-            <Field label="Where you'll train"><Chips value={it.loc} options={['home, no equipment', 'home, basic', 'gym']} onChange={v => setI('loc', v)} /></Field>
+            <Field label="Where you'll train">
+              <div className="ob-tiles">
+                {[['home, no equipment', 'Home', 'no kit', 'today'], ['home, basic', 'Home', 'some kit', 'weight'], ['gym', 'Gym', 'full kit', 'train']].map(([v, t, s, ic]) => (
+                  <button key={v} className={'ob-tile' + (it.loc === v ? ' on' : '')} onClick={() => setI('loc', v)} aria-pressed={it.loc === v}>
+                    <Ic n={ic} className="solid" /><b>{t}</b><small>{s}</small>
+                  </button>
+                ))}
+              </div>
+            </Field>
             {it.loc === 'home, basic' && (
               <Field label="Your kit">
                 <div className="chips wrap">
@@ -169,7 +184,16 @@ export default function Onboarding({ onDone, onRestore, account }) {
                 </div>
               </Field>
             )}
-            <Field label="Days per week"><Stepper value={it.daysWk} min={2} max={5} onChange={v => setIt(s => ({ ...s, daysWk: v }))} /></Field>
+            <Field label="Days per week">
+              <div className="ob-days" role="radiogroup" aria-label="Training days per week">
+                {[1, 2, 3, 4, 5, 6, 7].map((d, i) => {
+                  const n = i + 1, ok = n >= 2 && n <= 5
+                  return <button key={i} role="radio" aria-checked={it.daysWk === n} disabled={!ok} className={(n <= it.daysWk ? 'on' : '') + (it.daysWk === n ? ' cur' : '')}
+                    onClick={() => { haptic(); setIt(s => ({ ...s, daysWk: n })) }} aria-label={`${n} days`}><b className="num">{n}</b></button>
+                })}
+              </div>
+              <span className="hint" style={{ fontSize: 12 }}><b className="num" style={{ color: 'var(--accent)' }}>{it.daysWk}</b> days a week · rest days in between</span>
+            </Field>
             <Field label="Injuries or pain" hint="Movements that load what you name are left out.">
               <input value={it.injuries} placeholder="e.g. left knee, lower back" onChange={e => setIt(s => ({ ...s, injuries: e.target.value.slice(0, 80) }))} />
             </Field>
@@ -241,10 +265,21 @@ function Welcome({ onStart, onRestore, account }) {
     <div className="ob-welcome">
       <div className="ob-logo"><span /><b>BeetFit</b></div>
       <div className="ob-hero stk">
-        <div className="ob-glow" />
-        <Suspense fallback={<div className="ob-gem-ph" />}><Gem3D size={170} className="ob-gem" /></Suspense>
+        <div className="ob-stage">
+          <div className="ob-glow" />
+          <span className="ob-orbit o1"><Ic n="cam" className="solid" /></span>
+          <span className="ob-orbit o2"><Ic n="food" className="solid" /></span>
+          <span className="ob-orbit o3"><Ic n="flame" className="solid" /></span>
+          <span className="ob-orbit o4"><Ic n="train" className="solid" /></span>
+          <BeetMascot size={150} mood="happy" bubble="right" lines={['Hi, I’m Beet.', 'Two minutes. Promise.', 'Tap “Build my plan”.']} />
+        </div>
         <h1>Your week,<br />planned. Then<br />watched.</h1>
-        <p>Two minutes of questions. You get your daily calories, a training plan for your kit and days, and Beet, an assistant that knows your plan, food and weigh-ins. The camera counts your reps.</p>
+        <ul className="ob-feats">
+          <li><span><Ic n="flame" className="solid" /></span>Daily calories and protein</li>
+          <li><span><Ic n="train" className="solid" /></span>A plan for your kit and days</li>
+          <li><span><Ic n="cam" className="solid" /></span>The camera counts your reps</li>
+          <li><span><Ic n="beet" className="solid" /></span>Beet knows your plan and food</li>
+        </ul>
       </div>
       <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Build my plan</button>
       <p className="hint ob-free">2 minutes · free to start · no card</p>
@@ -290,15 +325,17 @@ function Welcome({ onStart, onRestore, account }) {
           {err && <p className="sy-err">{err}</p>}
         </div>
       )}
-      <ul className="ob-privacy stk sm">
-        <li>Camera tracking runs on your phone and is never uploaded.</li>
-        <li>Your data stays on this device unless you sign in or turn on sync. Export or erase it any time.</li>
-        <li>Meal photos go to Google Gemini only when you tap the shutter.</li>
+      <ul className="ob-trust">
+        <li><Ic n="phone" /><span>Camera tracking runs on your phone, never uploaded</span></li>
+        <li><Ic n="lock" className="solid" /><span>Data stays on this device unless you sign in. Export or erase any time</span></li>
+        <li><Ic n="cam" /><span>Meal photos go to Google Gemini only when you tap the shutter</span></li>
       </ul>
       <p className="hint" style={{ textAlign: 'center', fontSize: 11.5 }}>Not medical advice. Check with a physician before starting a new program.</p>
     </div>
   )
 }
+
+const ROW_IC = ['check', 'weight', 'target', 'today', 'cam', 'flame']
 
 function Building({ it, profile, program, onDone }) {
   const kcal = macros(profile).kcal
@@ -319,10 +356,11 @@ function Building({ it, profile, program, onDone }) {
   }, [n]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="ob-build">
-      <div className="ob-build-mark"><span /></div>
-      <h2>Building your program</h2>
+      <BeetMascot size={110} mood={n >= rows.length ? 'cheer' : 'think'} tap={false} />
+      <h2>{n >= rows.length ? 'Done.' : 'Building your program'}</h2>
+      <div className="ob-build-bar"><i style={{ transform: `scaleX(${n / rows.length})` }} /></div>
       <ul>
-        {rows.slice(0, n).map(r => <li key={r}><i /> {r}</li>)}
+        {rows.slice(0, n).map((r, k) => <li key={r}><i><Ic n={ROW_IC[k]} /></i> {r}</li>)}
       </ul>
     </div>
   )
@@ -334,13 +372,12 @@ function Ready({ profile, it, program, name, onStart, onProgram }) {
   const why = planWhy(it, program)
   return (
     <Step title={`${name ? name + ', y' : 'Y'}our plan is ready`} sub={`${program.length} training days · ${it.timeframe} months to target`}>
+      <div className="ob-ready-beet"><BeetMascot size={96} mood="cheer" bubble="right" lines={['Day 1 is the hard one.', 'I’ll be on Today.', 'Let’s go!']} /></div>
       <div className="card ob-kcal">
         <span className="label">Daily target</span>
-        <div className="ob-kcal-n"><span className="ob-glow sm" /><b className="num">{kcal}</b><small>kcal</small></div>
-        <div className="ob-macros">
-          <span><b className="num">{m.protein}g</b> protein</span>
-          <span><b className="num">{m.carbs}g</b> carbs</span>
-          <span><b className="num">{m.fat}g</b> fat</span>
+        <div className="ob-kcal-row">
+          <MacroRing kcal={kcal} p={m.protein} c={m.carbs} f={m.fat} size={120} label="kcal / day" />
+          <div className="ob-kcal-r"><MacroChips p={m.protein} c={m.carbs} f={m.fat} /><small className="hint">grams a day</small></div>
         </div>
         <p className="hint num">BMR {bmr(profile)} · TDEE {tdee(profile)} · activity: {profile.activity}</p>
       </div>
@@ -365,7 +402,7 @@ function Ready({ profile, it, program, name, onStart, onProgram }) {
             <span className="ob-day num">{i + 1}</span>
             <div className="ex-main">
               <div className="ex-name">{d.name}</div>
-              <div className="ex-meta">{d.exercises.map(e => e.name).join(' · ')}</div>
+              <div className="ex-meta ob-week-m"><span><Ic n="train" />{d.exercises.length}</span>{d.exercises.some(e => e.trackerId) && <span className="cam"><Ic n="cam" className="solid" />{d.exercises.filter(e => e.trackerId).length}</span>}<span className="ob-week-n">{d.exercises.map(e => e.name).join(' · ')}</span></div>
             </div>
           </div>
         ))}

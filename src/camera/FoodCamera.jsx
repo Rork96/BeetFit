@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Ic from '../components/Icons.jsx'
+import Ic, { Pips } from '../components/Icons.jsx'
 import { MacroRing, MacroTiles, MacroChips, MacroBar, KcalRange } from '../components/Nutri.jsx'
 import BeetMascot from '../components/BeetMascot.jsx'
 import { useCamera } from './useCamera.js'
@@ -237,7 +237,8 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
   const [moreSauces, setMoreSauces] = useState(false)
   const [fat, setFat] = useState(null) // id from FAT_OPTIONS; asked every time because photos can't see oil
   useEffect(() => { warmApi(); if (onUpgrade) fetchStatus() }, [onUpgrade])
-  const left = usageLeft(useUsage(), 'snaps')
+  const usage = useUsage()
+  const left = usageLeft(usage, 'snaps')
 
   async function take() {
     haptic('heavy')
@@ -287,7 +288,7 @@ function SnapFlow({ cam, slotLabel, onAdd, onUpgrade }) {
             <p className="ct-p center">{cam.status === 'live' ? 'Get the whole plate in frame' : 'Camera is off — upload a photo of your meal instead'}</p>
             {onUpgrade && left != null && (
               <button className={'fc-meter' + (left === 0 ? ' out' : '')} onClick={() => { haptic(); onUpgrade('snap') }}>
-                <span className="num">{left}</span> free photo {left === 1 ? 'estimate' : 'estimates'} left today
+                <Pips left={left} limit={usage?.snaps?.limit} /><span className="num">{left}</span> free photo {left === 1 ? 'estimate' : 'estimates'} left today
               </button>
             )}
             <div className="fc-shoot">

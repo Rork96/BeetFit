@@ -377,3 +377,6 @@ input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -
 .lib-lvl i:nth-child(1) { height: 8px } .lib-lvl i:nth-child(2) { height: 14px } .lib-lvl i:nth-child(3) { height: 20px }
 .lib-lvl i.on { background: var(--accent); }
 .ex-meta.ex-chips .ic { width: 14px; height: 14px; }
+.pips { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+.pips i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.18); }
+.pips i.on { background: var(--accent); box-shadow: 0 0 6px rgba(224,253,144,.5); }

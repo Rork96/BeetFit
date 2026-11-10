@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Pips } from './Icons.jsx'
 import { haptic } from '../lib/platform.js'
 import { fetchStatus, useUsage, usageLeft } from '../lib/billing.js'
 import { askBeet, loadChat, saveChat, suggestions, BEET_ERR } from '../lib/beet.js'
@@ -32,7 +33,8 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
   const [busy, setBusy] = useState(false)
   const end = useRef(null)
   const sentFirst = useRef(false)
-  const left = usageLeft(useUsage(), 'chats')
+  const usage = useUsage()
+  const left = usageLeft(usage, 'chats')
 
   useEffect(() => { saveChat(msgs); end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs, busy])
 
@@ -84,7 +86,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
       <div className="bt-foot">
       {onUpgrade && left != null && (
         <button className={'bt-meter' + (left <= 1 ? ' low' : '')} onClick={() => { haptic(); onUpgrade() }}>
-          <span className="num">{left}</span> free {left === 1 ? 'question' : 'questions'} left today · <u>PRO has 60</u>
+          <Pips left={left} limit={usage?.chats?.limit} /><span className="num">{left}</span> free {left === 1 ? 'question' : 'questions'} left · <u>PRO has 60</u>
         </button>
       )}
       <div className="bt-input">
