@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { BeetEmpty } from './BeetMascot.jsx'
+import Ic from './Icons.jsx'
 import { LIB, CUEX, EQLABEL, PATLABEL } from '../data/library.js'
 import HowToSheet, { ExerciseAnim, howtoFor } from './HowTo.jsx'
 import { availOf, DEFAULT_INTAKE } from '../lib/program.js'
@@ -40,14 +42,14 @@ export default function Library({ state, onClose }) {
         <div className="card stk" key={cat + onlyFit}>
           {rows.map(({ L, a, cam }) => (
             <button key={L.id} className={'lib-item' + (a.ok ? '' : ' off')} onClick={() => { haptic(); setOpen(L) }}>
-              <span className="lib-pat">{ABBR[L.pat] || L.pat.slice(0, 3)}</span>
+              <span className="lib-thumb">{howtoFor(L.id) ? <ExerciseAnim H={howtoFor(L.id).H} size="sm" play={false} pin={Math.min(1, howtoFor(L.id).H.f.length - 1)} /> : <i className="lib-pat">{ABBR[L.pat] || L.pat.slice(0, 3)}</i>}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <b>{L.n}{cam && <span className="ex-cam">▣ cam</span>}</b>
+                <b>{L.n}{cam && <span className="ex-cam i"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</b>
                 <span className="sub">{L.pri}{L.sec ? ` · ${L.sec}` : ''}{a.ok ? '' : ` — ${a.why}`}</span>
               </div>
             </button>
           ))}
-          {rows.length === 0 && <p className="hint">Nothing here fits your setup. Turn off the filter to see everything.</p>}
+          {rows.length === 0 && <BeetEmpty mood="tired" title="Nothing fits your setup" hint="Turn off the filter to see every exercise." />}
         </div>
       </div>
 

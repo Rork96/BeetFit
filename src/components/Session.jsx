@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import Ic from './Icons.jsx'
+import BeetMascot from './BeetMascot.jsx'
 import { createPortal } from 'react-dom'
 import RepTracker, { trackerFor, parseTarget } from '../camera/RepTracker.jsx'
 import { alternativesFor, DEFAULT_INTAKE } from '../lib/program.js'
@@ -213,10 +215,10 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
   const secs = sets.reduce((a, s) => a + (s.secs || 0), 0)
   const kg = Math.round(sets.reduce((a, s) => a + (s.w || 0) * (s.reps || 0), 0))
   const tiles = [
-    { v: doneSets, l: doneSets === 1 ? 'set' : 'sets' },
-    kg > 0 ? { v: kg.toLocaleString('en-US'), l: 'kg moved' } : { v: reps, l: 'reps' },
-    ...(secs > 0 ? [{ v: fmt(secs), l: 'held' }] : []),
-    { v: fmt(elapsed), l: 'time' }
+    { v: doneSets, l: doneSets === 1 ? 'set' : 'sets', i: 'sets' },
+    kg > 0 ? { v: kg.toLocaleString('en-US'), l: 'kg moved', i: 'weight', u: 'kg' } : { v: reps, l: 'reps', i: 'reps' },
+    ...(secs > 0 ? [{ v: fmt(secs), l: 'held', i: 'timer' }] : []),
+    { v: fmt(elapsed), l: 'time', i: 'timer' }
   ]
   const { better, firsts } = improvements(state.workoutLog, day.exercises, today)
   const planned = program(state).days.length
@@ -231,7 +233,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
       <div className="rc-in">
         {empty ? (
           <>
-            <div className="rc-mark idle" />
+            <BeetMascot mood="tired" size={110} className="rc-beet" />
             <h1 className="rc-h">Nothing logged yet</h1>
             <p className="rc-sub">End now and this session won’t count. Your plan stays where it is.</p>
             <div className="rc-actions">
@@ -241,13 +243,13 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
           </>
         ) : (
           <>
-            <div className="ct-check rc-check"><svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg></div>
+            <div className="rc-beet-wrap"><BeetMascot mood={better.length ? 'cheer' : 'happy'} size={120} className="rc-beet" />{better.length > 0 && <i className="rc-pr-tag">PR</i>}</div>
             <h1 className="rc-h">Session done</h1>
             <p className="rc-sub">{day.name} · {doneSets < allSets ? `${doneSets} of ${allSets} sets` : 'every set logged'}</p>
 
             <div className={'rc-tiles n' + tiles.length}>
               {tiles.map((t, i) => (
-                <div key={t.l} style={{ animationDelay: `${120 + i * 60}ms` }}><b className="num">{t.v}</b><span>{t.l}</span></div>
+                <div key={t.l} style={{ animationDelay: `${120 + i * 60}ms` }} aria-label={`${t.v} ${t.l}`} title={t.l}><Ic n={t.i} className="solid rc-ic" /><b className="num">{t.v}{t.u && <small>{t.u}</small>}</b></div>
               ))}
             </div>
 
@@ -275,7 +277,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
               </p>
             </div>
 
-            {nextDay && <p className="rc-next">Next: <b>{nextDay.name}</b> · {nextDay.exercises.length} exercises</p>}
+            {nextDay && <p className="rc-next">Next: <b>{nextDay.name}</b> · {nextDay.exercises.length} {nextDay.exercises.length === 1 ? 'exercise' : 'exercises'}</p>}
 
             <div className="rc-actions">
               <button className="btn" onClick={onDone}>Done</button>
@@ -309,7 +311,7 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], note = '', onNote, locke
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <HowToThumb id={ex.id || ex.name} onOpen={onHow} />
         <div className="ex-main">
-          <div className="ex-name">{ex.name}{tid && <span className="ex-cam">▣ cam</span>}</div>
+          <div className="ex-name">{ex.name}{tid && <span className="ex-cam i"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
           <div className="ex-meta num">{ex.sets} × {ex.reps}{ex.weight ? ` · ${ex.weight} kg` : ''}{ex.rest ? ` · rest ${ex.rest}s` : ''}</div>
         </div>
         <button className="ss-more" onClick={() => setOpen(o => !o)} aria-label="More">⋯</button>
@@ -400,7 +402,7 @@ function SwapSheet({ ex, intake, onPick }) {
       {alts.map(a => (
         <button key={a.id} className="fs-item" onClick={() => onPick(a)}>
           <span className="ss-alt-mark" />
-          <div><b>{a.name}{a.trackerId && <span className="ex-cam">▣ cam</span>}</b><span className="num">{a.sets} × {a.reps}{a.weight ? ` · ${a.weight} kg` : ''}</span></div>
+          <div><b>{a.name}{a.trackerId && <span className="ex-cam i"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</b><span className="num">{a.sets} × {a.reps}{a.weight ? ` · ${a.weight} kg` : ''}</span></div>
         </button>
       ))}
       <button className="ct-link" style={{ color: 'var(--hint)' }} onClick={() => history.back()}>Cancel</button>

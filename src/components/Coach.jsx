@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { BeetEmpty } from './BeetMascot.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { migrate } from '../lib/store.js'
@@ -311,10 +312,7 @@ export function CoachHome({ onClose, onUpgrade }) {
         {err && <p className="sy-err">{err}</p>}
         {!data && !err && <div className="card ch-skel" />}
         {data && !clients.length && (
-          <div className="card stk">
-            <b>No clients yet</b>
-            <p className="hint">Share your code <b className="num">{data.coach?.code}</b>. Clients show up here as soon as they connect.</p>
-          </div>
+          <div className="card"><BeetEmpty mood="idle" title="No clients yet" hint="Share your code. Clients appear here once they connect."><b className="num ch-code-big">{data.coach?.code}</b></BeetEmpty></div>
         )}
         {clients.map((c, i) => {
           const s = c.summary

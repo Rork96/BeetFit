@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Stat } from './Icons.jsx'
+import Ic, { Stat } from './Icons.jsx'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
@@ -120,7 +120,7 @@ export default function MealsTab({ state, update, onUpgrade }) {
             <div className="mq-chips">
               {recent.map(it => (
                 <motion.button key={it.name} whileTap={{ scale: 0.94 }} className="mq-chip" onClick={() => quick(it)}>
-                  <b>{it.name.split(' · ')[0]}</b><span className="num">{it.source === 'plan' ? '1 serving' : `${it.grams} g`} · {it.kcal}</span>
+                  <b>{it.name.split(' · ')[0]}</b><span className="num">{it.source === 'plan' ? '1 serving · ' : it.grams ? `${it.grams} g · ` : ''}<Ic n="flame" />{it.kcal}</span>
                 </motion.button>
               ))}
             </div>
@@ -133,8 +133,8 @@ export default function MealsTab({ state, update, onUpgrade }) {
       <QuickKcal onAdd={x => { hapticSuccess(); addFoods([x]) }} />
 
       <div className="grid2">
-        <button className="btn secondary" onClick={() => { haptic(); setCam('barcode') }}>▥ Barcode</button>
-        <button className="btn secondary" onClick={() => { haptic(); setCam('snap') }}>◰ Photo</button>
+        <button className="btn secondary btn-ic" onClick={() => { haptic(); setCam('barcode') }}><Ic n="barcode" />Barcode</button>
+        <button className="btn secondary btn-ic" onClick={() => { haptic(); setCam('snap') }}><Ic n="cam" className="solid" />Photo</button>
       </div>
 
       {logged.length > 0 && (

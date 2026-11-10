@@ -24,3 +24,12 @@
 .td-top .bm { margin-right: 6px; }
 .td-top-r { display: flex; align-items: center; gap: 4px; }
 .bt-msg.typing { display: flex; align-items: center; padding: 6px 12px; }
+.bm-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 18px 8px 8px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.bm-empty b { font: 600 17px var(--f-display); }
+.bm-empty .hint { margin: 4px 0 0; max-width: 30ch; }
+.bm-empty-t { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.bm-empty-t .btn { margin-top: 10px; width: auto; padding-inline: 20px; }
+.bm-empty.compact { flex-direction: row; text-align: left; align-items: center; padding: 6px 0; gap: 14px; }
+.bm-empty.compact .bm-empty-t { align-items: flex-start; }
+.bm-empty.compact b { font-size: 15px; }
+.bm-empty.compact .hint { margin-top: 2px; }

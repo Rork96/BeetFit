@@ -71,3 +71,7 @@
 .pr-cta-bar .btn { width: 100%; min-height: 52px; font-size: 16px; }
 
 .pd-box { fill: none; stroke: var(--accent); stroke-width: 1.5; } .pd-box.blue { stroke: #6fb6ff; }
+
+.pr-beet { position: relative; align-self: flex-start; display: inline-flex; filter: drop-shadow(0 8px 24px rgba(125,112,246,.35)); }
+.pr-beet .pr-crown { position: absolute; right: -10px; top: 6px; font: 700 10px var(--f-display); letter-spacing: .08em; font-style: normal;
+  padding: 3px 6px; background: var(--accent); color: var(--on-accent); transform: rotate(8deg); }

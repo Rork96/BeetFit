@@ -1,6 +1,7 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import Ic from './Icons.jsx'
+import BeetMascot from './BeetMascot.jsx'
 
-const Gem3D = lazy(() => import('./Gem3D.jsx'))
 import { createPortal } from 'react-dom'
 import { dayKey, addDays, mondayOf, dayScore, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES, isPaused, activePause } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -9,6 +10,7 @@ import './streak.css'
 
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const TASK = { food: 'Log food', water: 'Finish water', train: 'Train' }
+const IC = { food: 'food', water: 'water', train: 'train' }
 
 // The pill on Today. Evening + streak + today not counted yet = "at risk".
 export function StreakPill({ state, onOpen }) {
@@ -61,7 +63,7 @@ export function StreakSheet({ state, update, onClose, onCalendar }) {
       <div className="sheet-back" onClick={onClose} />
       <div className="sheet sk" role="dialog" aria-label="Streak">
         <div className="sk-top">
-          <div className="sk-big"><span className="sk-mark" /><b className="num">{info.days}</b></div>
+          <div className="sk-big"><BeetMascot size={56} mood={info.days >= 7 ? 'cheer' : s.need === 0 && info.days > 0 ? 'happy' : s.need > 0 && new Date().getHours() >= 17 ? 'tired' : 'idle'} /><b className="num">{info.days}</b></div>
           <div>
             <div className="sk-h">{info.days === 1 ? 'day' : 'days'} in a row</div>
             <div className="hint num">Best {best} · next milestone {next}</div>
@@ -76,8 +78,8 @@ export function StreakSheet({ state, update, onClose, onCalendar }) {
         <div className="sk-card">
           <span className="label">Today</span>
           <div className="sk-tasks">
-            {s.todo.length < 3 && ['food', 'water', 'train'].filter(id => !s.todo.some(t => t.id === id)).map(id => <span key={id} className="chip on">✓ {TASK[id]}</span>)}
-            {s.todo.map(t => <span key={t.id} className="chip">{TASK[t.id]}</span>)}
+            {s.todo.length < 3 && ['food', 'water', 'train'].filter(id => !s.todo.some(t => t.id === id)).map(id => <span key={id} className="chip on sk-ic" aria-label={TASK[id] + ', done'}><Ic n={IC[id]} /><Ic n="check" /></span>)}
+            {s.todo.map(t => <span key={t.id} className="chip sk-ic" aria-label={TASK[t.id]}><Ic n={IC[t.id]} /></span>)}
           </div>
           <p className="hint">{pause && s.need > 0 ? 'Paused. Today needs nothing from you; anything you log still counts.' : s.need === 0 ? 'Today counts. Anything else is a bonus.' : `${s.need} more and today counts. Any ${s.need === 1 ? 'one' : 'two'} of the open tasks.`}</p>
         </div>
@@ -158,9 +160,10 @@ export function Milestone({ days, onClose }) {
   return createPortal(
     <div className="ms" onClick={() => history.back()} role="status">
       <div className="ms-in">
-        <Suspense fallback={<div className="ms-burst">{Array.from({ length: 8 }).map((_, i) => <i key={i} style={{ '--a': `${i * 45}deg` }} />)}</div>}>
-          <Gem3D size={240} burst loop={false} seconds={4.2} className="ms-gem" />
-        </Suspense>
+        <div className="ms-stage">
+          <div className="ms-burst">{Array.from({ length: 12 }).map((_, i) => <i key={i} style={{ '--a': `${i * 30}deg` }} />)}</div>
+          <BeetMascot mood="cheer" size={150} title="Beet celebrates" />
+        </div>
         <b className="num ms-n">{days}</b>
         <div className="ms-h">day streak</div>
         <p className="hint">{days >= 30 ? 'This is a habit now.' : days >= 7 ? 'A full week. Keep the same rhythm.' : 'Good start. Next stop: ' + nextMilestone(days) + '.'}</p>

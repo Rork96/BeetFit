@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { BeetEmpty } from './BeetMascot.jsx'
 import BodyFigure from './BodyFigure.jsx'
 import { bmi, bmiCategory, macros, bmr, tdee } from '../lib/calories.js'
 import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
@@ -168,7 +169,7 @@ function Scale({ label, value, words, onPick }) {
 
 function WeightChart({ series, target, toU }) {
   const pts = series.filter(p => p.kg != null || p.avg != null)
-  if (pts.length < 2) return <p className="hint">Log your weight a few mornings in a row to see the trend.</p>
+  if (pts.length < 2) return <BeetEmpty compact mood="think" size={60} title="No trend yet" hint="Weigh in 2–3 mornings and the line appears." />
   const w = 340, h = 150, px = 8, py = 12
   const vals = series.flatMap(p => [p.kg, p.avg]).filter(v => v != null).concat(target)
   const min = Math.min(...vals) - 0.5, max = Math.max(...vals) + 0.5

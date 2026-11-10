@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import BeetMascot from './BeetMascot.jsx'
 import { createPortal } from 'react-dom'
 import { motion } from 'motion/react'
 import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR } from '../lib/billing.js'
@@ -128,7 +129,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
     const store = st?.source === 'appstore' ? 'App Store' : st?.source === 'play' ? 'Google Play' : null
     body = (
       <>
-        <motion.div className="pr-badge" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}><i /></motion.div>
+        <motion.div className="pr-beet" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}><BeetMascot mood={st?.pro ? 'cheer' : 'think'} size={96} /></motion.div>
         <h2 className="pr-h">{st?.pro ? 'You have PRO' : 'Finishing up…'}</h2>
         {st?.pro && (
           <div className="pr-state">
@@ -175,7 +176,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
     body = (
       <>
         <div className="pr-hero">
-          <span className="pr-mark"><i /></span>
+          <span className="pr-beet sm"><BeetMascot mood="happy" size={72} /><i className="pr-crown">PRO</i></span>
           <h2 className="pr-h">{HEAD[reason] || HEAD.default}</h2>
           <p className="pr-sub">Logging, your plan and camera rep counting stay free. PRO adds the parts that do the thinking for you.</p>
         </div>

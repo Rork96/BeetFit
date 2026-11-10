@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import Ic from './Icons.jsx'
+import { BeetEmpty } from './BeetMascot.jsx'
 import { historyDays, reloggable } from '../lib/foods.js'
 import { addDays } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -34,7 +36,7 @@ export default function FoodHistory({ state, today, onClose, onAdd }) {
       </div>
 
       {days.length === 0 ? (
-        <div className="card"><p className="hint">Nothing logged on earlier days yet. Once you log food it shows up here.</p></div>
+        <div className="card"><BeetEmpty mood="think" title="No past days yet" hint="Log a meal today. Tomorrow it shows up here." /></div>
       ) : (
         days.map(d => {
           const isOpen = open === d.key
@@ -44,7 +46,10 @@ export default function FoodHistory({ state, today, onClose, onAdd }) {
                 <span><b>{label(d.key, today)}</b><span className="td-small"> · {d.items.length} item{d.items.length === 1 ? '' : 's'}</span></span>
                 <span className="num fh-k">{d.kcal}<small>kcal</small></span>
               </button>
-              <div className="td-small num fh-m">P {d.p} · C {d.c} · F {d.f}</div>
+              <div className="fh-m num" aria-label={`Protein ${d.p} g, carbs ${d.c} g, fat ${d.f} g`}>
+                <span className="fh-split" aria-hidden="true">{(() => { const k = d.p * 4 + d.c * 4 + d.f * 9 || 1; return <><i style={{ flexGrow: d.p * 4 / k, background: 'var(--accent)' }} /><i style={{ flexGrow: d.c * 4 / k, background: 'var(--data-2)' }} /><i style={{ flexGrow: d.f * 9 / k, background: 'var(--water)' }} /></> })()}</span>
+                <span style={{ color: 'var(--accent)' }}><Ic n="protein" className="solid" />{d.p}</span><span style={{ color: 'var(--data-2)' }}><Ic n="carbs" className="solid" />{d.c}</span><span style={{ color: 'var(--water)' }}><Ic n="fat" className="solid" />{d.f}</span>
+              </div>
               {isOpen && (
                 <div className="fh-body">
                   {d.slots.map(s => (

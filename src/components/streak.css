@@ -49,3 +49,7 @@
 .td-streak.paused { border-color: rgba(125,112,246,.4); background: rgba(125,112,246,.12); color: #b9b1ff; }
 .td-streak.paused .td-mark { border-color: #b9b1ff; }
 .sk-grid i.pz, .td-day i.pz { background: repeating-linear-gradient(45deg, rgba(125,112,246,.55) 0 3px, transparent 3px 6px); border-color: rgba(125,112,246,.6); }
+.ms-stage { position: relative; display: grid; place-items: center; width: 220px; height: 190px; margin-bottom: -6px; }
+.ms-stage .ms-burst { top: 50%; }
+.ms-stage .ms-burst i:nth-child(even) { background: var(--rork-violet); width: 8px; height: 8px; }
+.ms-stage .bm { position: relative; filter: drop-shadow(0 10px 30px rgba(125,112,246,.45)); }

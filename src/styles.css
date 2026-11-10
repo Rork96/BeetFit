@@ -128,8 +128,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ex-main { flex: 1; min-width: 0; }
 .ex-name { font-weight: 600; font-size: 15px; }
 .ex-meta { font-size: 12.5px; color: var(--hint); margin-top: 2px; }
-.ex-cam { display: inline-flex; align-items: center; color: var(--accent); margin-left: 8px; vertical-align: -2px; }
-.ex-cam .ic { width: 17px; height: 17px; }
+.ex-cam { display: inline-flex; align-items: center; gap: 4px; font: 200 10.5px var(--f-display); text-transform: uppercase;
+  letter-spacing: .08em; color: var(--accent); margin-left: 6px; }
+.ex-cam.i { margin-left: 8px; vertical-align: -2px; font: inherit; letter-spacing: 0; }
+.ex-cam.i .ic { width: 17px; height: 17px; }
 .ex-chips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; }
 .ex-chips > span { display: inline-flex; align-items: center; gap: 4px; }
 .ex-chips .ic { width: 15px; height: 15px; color: var(--dim); }
@@ -329,3 +331,19 @@ input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -
 .stat.ist .ist-i { display: inline-flex; color: var(--hint); }
 .stat.ist .ist-i .ic { width: 20px; height: 20px; }
 .stat.ist .v small { font: 500 11px var(--f-num); color: var(--dim); margin-left: 1px; }
+.lib-thumb { flex: none; width: 52px; height: 52px; padding: 3px; display: grid; place-items: center; background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-1); }
+.lib-thumb .ht-anim { height: 44px; }
+.lib-thumb .lib-pat { font-style: normal; }
+.ch-code-big { margin-top: 8px; font-size: 22px; letter-spacing: .12em; color: var(--accent); }
+
+.btn-ic { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-ic .ic { width: 20px; height: 20px; }
+.mq-chip .num .ic { width: 13px; height: 13px; margin-right: 2px; vertical-align: -2px; color: var(--dim); }
+.fh-m { display: flex; align-items: center; gap: 10px; font-size: 12.5px; margin-top: 6px; }
+.fh-m > span:not(.fh-split) { display: inline-flex; align-items: center; gap: 3px; }
+.fh-m .ic { width: 14px; height: 14px; }
+.fh-split { display: flex; width: 64px; height: 6px; gap: 2px; overflow: hidden; }
+.fh-split i { display: block; height: 100%; min-width: 2px; }
+.sk-ic { display: inline-flex; align-items: center; gap: 4px; min-width: 52px; justify-content: center; }
+.sk-ic .ic { width: 20px; height: 20px; }
+.sk-ic .ic + .ic { width: 14px; height: 14px; stroke-width: 3; }

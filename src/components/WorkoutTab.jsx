@@ -97,7 +97,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
               </span>
               <HowToThumb id={ex.id || ex.name} onOpen={setHow} />
               <div className="ex-main">
-                <div className="ex-name">{ex.name}{tid && <span className="ex-cam" title="Counted by the camera"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
+                <div className="ex-name">{ex.name}{tid && <span className="ex-cam i" title="Counted by the camera"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
                 <div className="ex-meta num">
                   {entry?.skipped ? <span style={{ color: 'var(--danger)' }}>skipped · {entry.pain}</span>
                     : <span className="ex-chips" aria-label={`${n} of ${ex.sets} sets, ${ex.reps} reps${ex.weight ? `, ${ex.weight} kg` : ''}`}>

@@ -43,3 +43,17 @@ export default function BeetMascot({ mood = 'idle', size = 96, className = '', t
     </svg>
   )
 }
+
+// Empty state with Beet: one mood, one line, an optional action. Replaces bare "nothing here" text.
+export function BeetEmpty({ mood = 'idle', title, hint, size = 84, children, compact }) {
+  return (
+    <div className={'bm-empty' + (compact ? ' compact' : '')}>
+      <BeetMascot mood={mood} size={size} />
+      <div className="bm-empty-t">
+        {title && <b>{title}</b>}
+        {hint && <p className="hint">{hint}</p>}
+        {children}
+      </div>
+    </div>
+  )
+}

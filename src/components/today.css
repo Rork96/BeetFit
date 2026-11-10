@@ -154,3 +154,5 @@
 .td-sub-ic > span { display: inline-flex; align-items: center; gap: 6px; }
 .td-sub-ic .ic { width: 20px; height: 20px; color: var(--hint); }
 .td-sub-ic .cam .ic { color: var(--accent); }
+.td-review-g > div { align-items: center; }
+.td-review-g .ic { width: 20px; height: 20px; color: var(--accent); margin-bottom: 2px; }

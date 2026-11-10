@@ -197,10 +197,10 @@ function WeekReview({ state, today, streak, units, onPlan }) {
         <p className="hint" style={{ margin: '4px 0 0' }}>{sub}</p>
       </div>
       <div className="td-review-g">
-        <div><b className="num">{r.sessions}/{r.planned}</b><span>sessions</span></div>
-        <div><b className="num">{r.foodDays}/7</b><span>days logged</span></div>
-        <div><b className="num">{r.protein ?? '—'}{r.protein != null && <small>g</small>}</b><span>protein avg{r.protein != null ? ` / ${r.proteinTarget}` : ''}</span></div>
-        <div><b className="num">{wcText}{wc != null && <small>{units}</small>}</b><span>weight trend</span></div>
+        <div aria-label={`${r.sessions} of ${r.planned} sessions`}><Ic n="train" /><b className="num">{r.sessions}/{r.planned}</b></div>
+        <div aria-label={`${r.foodDays} of 7 days food logged`}><Ic n="food" /><b className="num">{r.foodDays}/7</b></div>
+        <div aria-label={`Protein average ${r.protein ?? 'none'}${r.protein != null ? ` of ${r.proteinTarget} g` : ''}`}><Ic n="protein" className="solid" /><b className="num">{r.protein ?? '—'}{r.protein != null && <small>g</small>}</b></div>
+        <div aria-label="Weight trend"><Ic n="trend" /><b className="num">{wcText}{wc != null && <small>{units}</small>}</b></div>
       </div>
       {!r.kept && onPlan && <button className="btn secondary small" onClick={onPlan}>Plan my training days</button>}
     </div>

@@ -11,7 +11,7 @@ export function BeetCard({ state, onAsk }) {
   return (
     <div className="card bt-card">
       <div className="bt-head">
-        <BeetMark />
+        <BeetMascot size={44} mood="happy" />
         <div><b>Ask Beet</b><span className="hint">Knows your plan, targets and today’s log</span></div>
       </div>
       <div className="bt-sugg">
@@ -56,7 +56,7 @@ export default function BeetChat({ state, first, onClose, onUpgrade, embedded })
     <div className={embedded ? 'bt-screen bt-tab' : 'screen bt-screen'}>
       <header className="screen-top">
         {embedded ? <span style={{ width: 44 }} /> : <button className="td-icon" onClick={onClose} aria-label="Back">←</button>}
-        <div className="bt-title"><BeetMark busy={busy} /><h2>Beet</h2></div>
+        <div className="bt-title"><BeetMascot size={30} mood={busy ? 'think' : 'idle'} /><h2>Beet</h2></div>
         {msgs.length ? <button className="td-icon" aria-label="Clear chat" onClick={() => { haptic('medium'); setMsgs([]) }}>⌫</button> : <span style={{ width: 44 }} />}
       </header>
       <div className="page bt-page">

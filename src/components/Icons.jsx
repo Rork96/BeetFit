@@ -22,6 +22,7 @@ const P = {
   weight: <><circle className="f" cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.6" /></>,
   lock: <><rect className="f" x="5" y="10.5" width="14" height="10" rx="2.5" /><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" /></>,
   phone: <><rect className="f" x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></>,
+  barcode: <><path d="M3.5 7.5v-3h3M17.5 4.5h3v3M20.5 16.5v3h-3M6.5 19.5h-3v-3" /><path d="M7.5 8v8M10 8v8M13 8v8M16.5 8v8" /></>,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   timer: <><circle className="f" cx="12" cy="13.5" r="7.5" /><path d="M12 13.5V10M10 2.5h4" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
