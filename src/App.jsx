@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import Ic from './components/Icons.jsx'
 import { motion, MotionConfig } from 'motion/react'
 import { getMotionLevel } from './lib/motion.js'
 import { loadState, saveState, loadNativeBackup, liveSession, persistStorage } from './lib/store.js'
@@ -31,13 +32,7 @@ const REM_SENT = 'beetfit_rem_sent'
 const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans', 'pauses', 'exNotes']
 
 // 2px geometric line icons, square-based.
-const Icon = {
-  today: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><rect x="9" y="9" width="6" height="6" /></svg>,
-  workout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="9" width="4" height="6" /><rect x="18" y="9" width="4" height="6" /><path d="M6 12h12" /><rect x="6" y="6" width="3" height="12" /><rect x="15" y="6" width="3" height="12" /></svg>,
-  meals: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" /><path d="M3 12h18M12 12v9" /></svg>,
-  beet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4h18v12H11l-5 4v-4H3z" /><path d="M8 10h8" /></svg>,
-  progress: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18" /><rect x="5" y="12" width="3" height="6" /><rect x="10.5" y="8" width="3" height="10" /><rect x="16" y="4" width="3" height="14" /></svg>
-}
+const ICON_OF = { today: 'today', workout: 'train', meals: 'food', beet: 'beet', progress: 'progress' }
 
 const TABS = [
   { id: 'today', label: 'Today' },
@@ -165,10 +160,10 @@ export default function App() {
       </div>
       <nav className="tabbar">
         {TABS.map(t => (
-          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => go(t.id)}>
+          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => go(t.id)} aria-label={t.label} aria-current={tab === t.id ? 'page' : undefined}>
             {tab === t.id && <motion.span layoutId="tab-ind" className="tab-ind" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
-            {Icon[t.id]}
-            {t.label}
+            <Ic n={ICON_OF[t.id]} />
+            <span className="tab-l">{t.label}</span>
           </button>
         ))}
       </nav>

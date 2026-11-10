@@ -42,3 +42,5 @@
 .st-ch.up { color: var(--accent); } .st-ch.down { color: var(--warn); }
 .st-row.locked { filter: blur(5px); opacity: .6; pointer-events: none; user-select: none; }
 .st-unlock { align-self: flex-start; }
+.pg-kpis span { display: inline-flex; align-items: center; gap: 5px; }
+.pg-kpis span .ic { width: 16px; height: 16px; color: var(--accent); }

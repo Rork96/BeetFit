@@ -4,6 +4,7 @@ import { bmi, bmiCategory, macros, bmr, tdee } from '../lib/calories.js'
 import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { strengthTrends } from '../lib/strength.js'
+import Ic, { Stat } from './Icons.jsx'
 import './progress.css'
 
 const RANGES = [['2W', 14], ['1M', 30], ['3M', 90], ['6M', 180]]
@@ -66,9 +67,9 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
         <BodyFigure sex={profile.sex} heightCm={profile.heightCm} startKg={start} currentKg={now} targetKg={profile.targetKg} goal={profile.goal} height={280} />
         <div className="bf-legend"><span><i className="st" />start</span><span><i className="now" />now</span><span><i className="tgt" />target</span></div>
         <div className="pg-kpis">
-          <div><b className="num">{toU(now).toFixed(1)}</b><span>{units} now</span></div>
-          <div><b className="num">{toU(Math.abs(now - profile.targetKg)).toFixed(1)}</b><span>{units} to go</span></div>
-          <div><b className="num">{rate == null ? '—' : `${rate > 0 ? '+' : '−'}${toU(Math.abs(rate)).toFixed(2)}`}</b><span>{units}/week</span></div>
+          <div aria-label={`${toU(now).toFixed(1)} ${units} now`}><b className="num">{toU(now).toFixed(1)}</b><span><Ic n="scale" className="solid" />{units}</span></div>
+          <div aria-label={`${toU(Math.abs(now - profile.targetKg)).toFixed(1)} ${units} to go`}><b className="num">{toU(Math.abs(now - profile.targetKg)).toFixed(1)}</b><span><Ic n="target" />{units}</span></div>
+          <div aria-label={`${units} per week`}><b className="num">{rate == null ? '—' : `${rate > 0 ? '+' : '−'}${toU(Math.abs(rate)).toFixed(2)}`}</b><span><Ic n="trend" />{units}/wk</span></div>
         </div>
         <div className="progressbar"><div style={{ width: `${Math.max(0, pct)}%` }} /></div>
         <p className="hint num" style={{ textAlign: 'center' }}>{Math.max(0, pct)}% to target · BMI {curBmi} · {bmiCategory(curBmi)}</p>
@@ -141,10 +142,10 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
       <div className="card">
         <span className="label">Daily targets</span>
         <div className="grid4">
-          <div className="stat"><div className="v">{m.kcal}</div><div className="l">kcal</div></div>
-          <div className="stat"><div className="v">{m.protein}g</div><div className="l">protein</div></div>
-          <div className="stat"><div className="v">{m.fat}g</div><div className="l">fat</div></div>
-          <div className="stat"><div className="v">{m.carbs}g</div><div className="l">carbs</div></div>
+          <Stat icon="flame" v={m.kcal} label="kcal per day" color="var(--text)" />
+          <Stat icon="protein" v={m.protein} unit="g" label="Protein" color="var(--accent)" />
+          <Stat icon="fat" v={m.fat} unit="g" label="Fat" color="var(--water)" />
+          <Stat icon="carbs" v={m.carbs} unit="g" label="Carbs" color="var(--data-2)" />
         </div>
         <p className="hint num">BMR {bmr({ ...profile, weightKg: now })} kcal · TDEE {tdee({ ...profile, weightKg: now })} kcal</p>
       </div>

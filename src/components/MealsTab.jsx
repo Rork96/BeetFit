@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Stat } from './Icons.jsx'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
@@ -92,10 +93,10 @@ export default function MealsTab({ state, update, onUpgrade }) {
         </div>
         <div className="progressbar"><div style={{ width: `${Math.min(100, pct)}%`, background: pct > 110 ? 'var(--warn)' : undefined }} /></div>
         <div className="grid4">
-          <div className="stat"><div className="v">{Math.max(0, t.kcal - totals.kcal)}</div><div className="l">kcal left</div></div>
-          <div className="stat"><div className="v">{totals.p}g</div><div className="l">protein</div></div>
-          <div className="stat"><div className="v">{totals.c}g</div><div className="l">carbs</div></div>
-          <div className="stat"><div className="v">{totals.f}g</div><div className="l">fat</div></div>
+          <Stat icon="flame" v={Math.max(0, t.kcal - totals.kcal)} label="kcal left" color="var(--text)" />
+          <Stat icon="protein" v={totals.p} unit="g" label="Protein" color="var(--accent)" />
+          <Stat icon="carbs" v={totals.c} unit="g" label="Carbs" color="var(--data-2)" />
+          <Stat icon="fat" v={totals.f} unit="g" label="Fat" color="var(--water)" />
         </div>
         <WeekBars state={state} today={today} />
       </div>

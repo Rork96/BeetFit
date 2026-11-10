@@ -137,3 +137,20 @@
 .td-next .btn { margin-top: 4px; }
 .td-next .td-tasks { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .td-next.done { border-color: var(--line-2); background: var(--card); }
+
+/* Icon-led task chips and kcal side */
+.td-task { gap: 6px; min-height: 40px; }
+.td-task > .ic { width: 22px; height: 22px; }
+.td-task i { width: 16px; height: 16px; border: 0; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.td-task i .ic { width: 12px; height: 12px; stroke-width: 3.2; }
+.td-kcal-side > .td-kv, .td-kv { display: flex; align-items: center; gap: 8px; color: var(--hint); }
+.td-kv > .ic { width: 20px; height: 20px; }
+.td-kv b { margin-left: auto; color: var(--text); }
+.td-kv .ch-tag, .td-kv .td-dt { display: inline-flex; align-items: center; }
+.td-macro .row { align-items: center; }
+.td-macro .row .ic { width: 18px; height: 18px; }
+.td-mi { display: inline-flex; }
+.td-sub-ic { display: flex; gap: 16px; font: 600 15px var(--f-num); color: var(--text); }
+.td-sub-ic > span { display: inline-flex; align-items: center; gap: 6px; }
+.td-sub-ic .ic { width: 20px; height: 20px; color: var(--hint); }
+.td-sub-ic .cam .ic { color: var(--accent); }

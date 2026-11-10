@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { trackerFor } from '../camera/RepTracker.jsx'
-import { EXERCISES } from '../camera/pose/exercises.js'
 import { dayKey, nextDayIndex, program as programOf } from '../lib/day.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic } from '../lib/platform.js'
 import Session, { setsOf } from './Session.jsx'
 import Library from './Library.jsx'
 import HowToSheet, { HowToThumb } from './HowTo.jsx'
+import Ic from './Icons.jsx'
 import PlanReview from './PlanReview.jsx'
 import { liveSession, setLiveSession } from '../lib/store.js'
 
@@ -97,10 +97,14 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
               </span>
               <HowToThumb id={ex.id || ex.name} onOpen={setHow} />
               <div className="ex-main">
-                <div className="ex-name">{ex.name}{tid && <span className="ex-cam">▣ cam</span>}</div>
+                <div className="ex-name">{ex.name}{tid && <span className="ex-cam" title="Counted by the camera"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
                 <div className="ex-meta num">
                   {entry?.skipped ? <span style={{ color: 'var(--danger)' }}>skipped · {entry.pain}</span>
-                    : `${n}/${ex.sets} sets · ${ex.reps}${ex.weight ? ` · ${ex.weight} kg` : ''}`}
+                    : <span className="ex-chips" aria-label={`${n} of ${ex.sets} sets, ${ex.reps} reps${ex.weight ? `, ${ex.weight} kg` : ''}`}>
+                      <span className="ex-pips" aria-hidden="true">{Array.from({ length: ex.sets }, (_, k) => <i key={k} className={k < n ? 'on' : ''} />)}</span>
+                      <span><Ic n="reps" />{ex.reps}</span>
+                      {ex.weight ? <span><Ic n="weight" />{ex.weight}<small>kg</small></span> : null}
+                    </span>}
                 </div>
               </div>
               {tid && !finished && !entry?.skipped && (
@@ -113,13 +117,10 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
 
       <button className="btn" onClick={() => open()}>{running || doneCount ? 'Continue session' : 'Start session'}{running && <span className="num wk-live"> · {Math.floor((Date.now() - running.startedAt) / 60000)} min</span>}</button>
 
-      <div className="card">
-        <span className="label">Camera coach</span>
-        <p className="hint">
-          {camCount} of {day.exercises.length} exercises today are counted by the camera
-          {camCount > 0 && ` (${[...new Set(day.exercises.map(trackerFor).filter(Boolean))].map(t => EXERCISES[t].name).join(', ')})`}.
-          Pose detection runs on your phone — no video leaves the device.
-        </p>
+      <div className="wk-cam" aria-label={`${camCount} of ${day.exercises.length} exercises counted by the camera. Pose detection runs on your phone, no video leaves the device.`}>
+        <span><Ic n="cam" className="solid" /><b className="num">{camCount}/{day.exercises.length}</b></span>
+        <span className="wk-cam-sep" />
+        <span><Ic n="phone" /><Ic n="lock" className="solid" /><small>video stays on phone</small></span>
       </div>
       {state.intake && state.program?.length > 0 && !running && (
         <PlanReview profile={state.profile} intake={state.intake} program={state.program} onChange={p => update({ program: p })} />

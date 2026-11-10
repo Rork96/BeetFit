@@ -187,7 +187,7 @@ export function ExerciseAnim({ H, size = 'lg', pin = null, onFrame, play = true 
     return () => cancelAnimationFrame(raf)
   }, [spec, seq, pin, reduce, play]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pad = 7
+  const pad = isFront(spec) ? 7 : 3
   const vb = `${box.x0 - pad} ${-box.y1 - pad} ${box.x1 - box.x0 + pad * 2} ${box.y1 - box.y0 + pad * 2}`
   return (
     <div ref={host} className={'ht-anim ' + size}>

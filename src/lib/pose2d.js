@@ -140,7 +140,7 @@ export function bounds(spec) {
   for (const [a, b] of legs(spec)) {
     for (let s = 0; s <= 4; s++) {
       const j = poseBetween(spec, a, b, s / 4)
-      for (const k of Object.keys(j)) grow(j[k][0], j[k][1], k === 'head' ? 7 : 1)
+      for (const k of Object.keys(j)) if (Array.isArray(j[k]) && k !== 'arch') grow(j[k][0], j[k][1], k === 'head' ? 9 : 6)
     }
   }
   return { x0, x1, y0, y1 }

@@ -9,6 +9,7 @@ import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote, CoachStrip } from './Coach.jsx'
 import { BeetCard } from './Beet.jsx'
 import BeetMascot from './BeetMascot.jsx'
+import Ic from './Icons.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
 import InstallCard from './InstallCard.jsx'
@@ -98,11 +99,11 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
             </div>
           </div>
           <div className="td-kcal-side">
-            <div><span className="label">Eaten</span><b className="num">{e.kcal}</b></div>
-            <div><span className="label">{t.coach ? <span className="ch-tag">Coach target</span> : t.dayType ? <span className={'td-dt ' + t.dayType}>{t.dayType === 'train' ? 'Training day' : 'Rest day'}</span> : 'Target'}</span><b className="num">{t.kcal}</b></div>
-            <Macro label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
-            <Macro label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
-            <Macro label="Fat" v={e.f} max={t.fat} color="var(--water)" />
+            <div className="td-kv" aria-label={`Eaten ${e.kcal} kcal`}><Ic n="flame" className="solid" /><b className="num">{e.kcal}</b></div>
+            <div className="td-kv" aria-label={`Target ${t.kcal} kcal`}>{t.coach ? <span className="ch-tag">Coach</span> : t.dayType ? <span className={'td-dt ' + t.dayType}><Ic n={t.dayType === 'train' ? 'train' : 'timer'} /></span> : null}<Ic n="target" /><b className="num">{t.kcal}</b></div>
+            <Macro icon="protein" label="Protein" v={e.p} max={t.protein} color="var(--accent)" />
+            <Macro icon="carbs" label="Carbs" v={e.c} max={t.carbs} color="var(--data-2)" />
+            <Macro icon="fat" label="Fat" v={e.f} max={t.fat} color="var(--water)" />
           </div>
           <button className="td-link" onClick={() => go('meals')}>Log food →</button>
         </div>
@@ -206,10 +207,10 @@ function WeekReview({ state, today, streak, units, onPlan }) {
   )
 }
 
-function Macro({ label, v, max, color }) {
+function Macro({ icon, label, v, max, color }) {
   return (
-    <div className="td-macro">
-      <div className="row"><span>{label}</span><span className="num">{v}<small>/{max}g</small></span></div>
+    <div className="td-macro" aria-label={`${label} ${v} of ${max} g`}>
+      <div className="row"><span className="td-mi" style={{ color }}><Ic n={icon} className="solid" label={label} /></span><span className="num">{v}<small>/{max}g</small></span></div>
       <div className="td-bar"><i style={{ transform: `scaleX(${Math.min(1, v / max)})`, background: color }} /></div>
     </div>
   )
@@ -231,12 +232,16 @@ function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, u
     <div className={'card td-next' + (done ? ' done' : '')}>
       <span className="label">{h.label}</span>
       <h2>{h.title}</h2>
-      <p className="hint">{h.sub}</p>
+      {up.id === 'train'
+        ? <p className="hint td-sub-ic" aria-label={h.sub}><span><Ic n="train" />{day.exercises.length}</span>{camCount > 0 && <span className="cam"><Ic n="cam" className="solid" />{camCount}</span>}</p>
+        : <p className="hint">{h.sub}</p>}
       {h.cta && <button className="btn" onClick={h.act}>{h.cta}</button>}
       <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
         {tasks.map(tk => (
-          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')}>
-            <i>{tk.done && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}</i>{tk.short || tk.label}
+          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')} title={tk.label} aria-label={tk.label + (tk.done ? ', done' : '')}>
+            <Ic n={{ food: 'food', water: 'water', train: 'train' }[tk.id] || 'check'} />
+            {tk.id === 'water' && <span className="num">{water}/{t.water}</span>}
+            {tk.done && <i><Ic n="check" /></i>}
           </span>
         ))}
       </div>

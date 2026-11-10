@@ -99,7 +99,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   transition: color var(--dur-2) var(--ease-inout);
 }
-.tabbar button svg { width: 22px; height: 22px; transition: transform var(--dur-2) var(--ease-spring); }
+.tabbar button svg { width: 25px; height: 25px; transition: transform var(--dur-2) var(--ease-spring); }
+.tabbar .tab-l { max-height: 0; opacity: 0; overflow: hidden; transition: max-height var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out); }
+.tabbar button.active .tab-l { max-height: 14px; opacity: 1; }
+.tabbar button { justify-content: center; }
 .tabbar button.active { color: var(--accent); }
 .tabbar button.active svg { transform: translateY(-1px) scale(1.08); }
 .tabbar .tab-ind { position: absolute; top: -1px; left: 26%; right: 26%; height: 2px; background: var(--accent);
@@ -125,8 +128,21 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ex-main { flex: 1; min-width: 0; }
 .ex-name { font-weight: 600; font-size: 15px; }
 .ex-meta { font-size: 12.5px; color: var(--hint); margin-top: 2px; }
-.ex-cam { display: inline-flex; align-items: center; gap: 4px; font: 200 10.5px var(--f-display); text-transform: uppercase;
-  letter-spacing: .08em; color: var(--accent); margin-left: 6px; }
+.ex-cam { display: inline-flex; align-items: center; color: var(--accent); margin-left: 8px; vertical-align: -2px; }
+.ex-cam .ic { width: 17px; height: 17px; }
+.ex-chips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; }
+.ex-chips > span { display: inline-flex; align-items: center; gap: 4px; }
+.ex-chips .ic { width: 15px; height: 15px; color: var(--dim); }
+.ex-chips small { margin-left: 2px; color: var(--dim); }
+.ex-pips { display: inline-flex; gap: 2px; }
+.ex-pips i { width: 8px; height: 8px; border: 1.5px solid var(--line-2); }
+.ex-pips i.on { background: var(--accent); border-color: var(--accent); }
+.wk-cam { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--r-2); color: var(--hint); font-size: 12.5px; }
+.wk-cam > span { display: inline-flex; align-items: center; gap: 6px; }
+.wk-cam .ic { width: 20px; height: 20px; }
+.wk-cam > span:first-child { color: var(--accent); }
+.wk-cam b { font-size: 15px; color: var(--text); }
+.wk-cam-sep { width: 1px; height: 20px; background: var(--line-2); }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 .chip { flex: none; min-height: 40px; padding: 8px 14px; border-radius: var(--r-1); border: 1px solid var(--line-2);
@@ -300,3 +316,16 @@ textarea { font-family: inherit; }
 .qk { display: flex; flex-direction: column; gap: 10px; }
 .qk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .qk-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--hint); }
+
+/* Icon set (components/Icons.jsx) */
+.ic { display: inline-block; flex: none; width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+.ic .f { fill: currentColor; fill-opacity: .16; }
+.active > .ic .f, .on > .ic .f, .ic.solid .f { fill-opacity: .35; }
+
+/* App chrome is not a document: long-press shouldn't select labels and buttons. Reading surfaces opt back in. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable], .bt-msg, .rd-art, .ht-steps, .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.stat.ist { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 9px; }
+.stat.ist .ist-i { display: inline-flex; color: var(--hint); }
+.stat.ist .ist-i .ic { width: 20px; height: 20px; }
+.stat.ist .v small { font: 500 11px var(--f-num); color: var(--dim); margin-left: 1px; }

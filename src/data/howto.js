@@ -442,9 +442,9 @@ export const HOWTO = {
 
   // ---------------------------------------------------------------- cardio
   burpee: {
-    f: [STAND, [32, -85, 70, 90, 90], [71.6, 71.6, 71.6, 180, 180, 150], [32, -85, 70, 90, 90], [0, 0, 0, 0, 0]],
-    pin: 'ankle', at: [[0, 0], [0, 0], [-53.9, 0], [0, 0], [0, 12]], y: ['floor', 'floor', 'floor', 'floor', 'pin'],
-    hand: [null, { to: [22, 0], side: -1 }, { to: [22, 0], side: -1 }, { to: [22, 0], side: -1 }, null], loop: 'wrap', ms: 520, hold: 120,
+    f: [STAND, [32, -85, 70, 90, 90], [71.6, 71.6, 71.6, 180, 180, 150], [32, -85, 70, 90, 90], [0, 0, 0, 35, 30, 150]],
+    pin: 'ankle', at: [[0, 0], [0, 0], [-53.9, 0], [0, 0], [0, 7]], y: ['floor', 'floor', 'floor', 'floor', 'pin'],
+    hand: [null, { to: [22, 0], side: -1 }, { to: [22, 0], side: -1 }, { to: [22, 0], side: -1 }, null], loop: 'wrap', ms: 520, hold: 120, hl: ['thigh', 'torso'],
     steps: [
       { f: 0, t: 'Stand with your feet shoulder-width apart.' },
       { f: 1, t: 'Drop into a squat and put your hands on the floor.' },
