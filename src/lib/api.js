@@ -72,7 +72,7 @@ export async function searchFood(q) {
 }
 
 async function searchOffDirect(q) {
-  const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=12&fields=code,product_name,brands,nutriments,serving_size,image_front_small_url`)
+  const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=20&sort_by=unique_scans_n&fields=code,product_name,brands,nutriments,serving_size,image_front_small_url`)
   const d = await res.json()
   return (d.products || []).map(p => {
     const n = p.nutriments || {}

@@ -28,6 +28,18 @@ describe('mkProg', () => {
     expect(names(prog)).not.toContain('Back squat')
     expect(prog[0].exercises.find(e => !e.reps.endsWith('s')).reps).toMatch(/^\d+-\d+/)
   })
+  it('gym beginners get loaded lifts and machines, not bodyweight', () => {
+    for (const daysWk of [2, 3, 4, 5]) {
+      const all = mkProg('lose', it_({ loc: 'gym', daysWk })).flatMap(d => d.exercises)
+      const loaded = all.filter(e => !/Bodyweight|Push-up|Glute bridge|Jump rope|Plank|Reverse lunge/.test(e.name))
+      expect(loaded.length).toBeGreaterThan(all.length / 2)
+      expect(all.map(e => e.name)).toContain('Chest press machine')
+    }
+  })
+  it('a 5-minute row is one block, not three sets', () => {
+    const row = mkProg('lose', it_({ loc: 'gym', daysWk: 3 })).flatMap(d => d.exercises).find(e => e.name === 'Rowing machine')
+    expect(row.sets).toBe(1)
+  })
   it('knee injury removes squats and lunges', () => {
     const prog = mkProg('lose', it_({ injuries: 'left knee pain' }))
     expect(prog.flatMap(d => d.exercises).some(e => e.pattern === 'squat' || e.pattern === 'lunge')).toBe(false)

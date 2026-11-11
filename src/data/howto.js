@@ -492,3 +492,37 @@ export const HOWTO = {
     breath: 'Out on the drive, in on the recovery.'
   }
 }
+
+// Same body positions as the barbell version, different tool.
+HOWTO.chest_press = {
+  ...HOWTO.bench, eq: ['bench@torso'],
+  steps: [
+    { f: 1, t: 'Sit with your back flat on the pad. Adjust the seat so the handles are level with the middle of your chest.' },
+    { f: 1, t: 'Grip the handles, shoulder blades pinched back and down.' },
+    { f: 0, t: 'Press forward until the arms are straight, without locking the elbows hard.' },
+    { f: 1, t: 'Let the handles come back slowly until your hands are at chest level.' }
+  ],
+  feel: 'Chest, front of the shoulders, triceps.',
+  err: [['Shoulders rolling forward', 'Keep the blades pinned to the pad the whole set.'], ['Letting the weight stack slam', 'Control the way back, stop just before the plates touch.'], ['Seat too low', 'Handles at mid-chest height, not at the shoulders.']],
+  breath: 'Out as you press, in as you return.', easy: 'pushup'
+}
+HOWTO.db_rdl = {
+  ...HOWTO.rdl, eq: ['bar@wrist'],
+  steps: [
+    { f: 0, t: 'Stand tall with a dumbbell in each hand, in front of the thighs. Knees slightly soft.' },
+    { f: 1, t: 'Push your hips straight back. The dumbbells slide down your legs.' },
+    { f: 1, t: 'Stop when you feel a stretch in the back of the thighs. Back stays flat.' },
+    { f: 0, t: 'Drive the hips forward to stand. Squeeze the glutes at the top.' }
+  ],
+  err: [['Rounding the back', 'Chest proud, stop higher.'], ['Squatting it', 'Soft knee only. The hips move back, not down.'], ['Dumbbells drifting forward', 'Keep them brushing the legs.']],
+  easy: 'glute_bridge'
+}
+HOWTO.db_row = {
+  ...HOWTO.bb_row, eq: ['bar@wrist'],
+  steps: [
+    { f: 0, t: 'Put one hand and the same-side knee on a bench. Back flat, dumbbell hanging under your shoulder.' },
+    { f: 1, t: 'Pull the dumbbell to your hip, elbow going back past the torso.' },
+    { f: 0, t: 'Lower slowly until the arm is straight. Do all reps, then switch sides.' }
+  ],
+  err: [['Twisting the torso', 'Keep the shoulders square to the floor.'], ['Pulling with the arm only', 'Lead with the elbow and squeeze the shoulder blade.'], ['Rounding the back', 'Look at the floor a little ahead of your hand.']]
+}

@@ -76,8 +76,9 @@ export function applySwap(program, swap, it) {
 }
 
 export function mkEx(L, it) {
+  const longHold = L.type === 'hold' && L.dr >= 120 // a 5-minute row is one block, not 3 sets
   const ex = {
-    id: L.id, name: L.n, sets: 3, rest: L.pat === 'cardio' ? 45 : 75,
+    id: L.id, name: L.n, sets: longHold ? 1 : 3, rest: L.pat === 'cardio' ? 45 : 75,
     cue: CUEX[L.n] || '', progression: PROGX[L.n] || '', weight: L.dw, pattern: L.pat
   }
   const tracker = TRACKER_BY_NAME[L.n]
@@ -91,11 +92,12 @@ export function mkEx(L, it) {
 // One exercise per movement pattern, the best fit for the user's level, never repeated inside a session.
 export function mkProg(goal, it = DEFAULT_INTAKE) {
   const pool = exPool(it)
+  const loadRank = L => (it.loc === 'gym' && L.eq.includes('none') ? 1 : 0)
   const want = it.exp === 'regular' ? 1 : 0
   const byPat = (pat, used) => pool
     .filter(L => L.pat === pat && !used.includes(L))
-    // Stable sort: ties keep library order, which lists the main compound lift of each pattern first.
-    .sort((a, b) => Math.abs(LVL[a.lvl] - want) - Math.abs(LVL[b.lvl] - want))[0] || null
+    // Level first; at a gym, loaded lifts and machines beat bodyweight. Stable sort: remaining ties keep library order (main compound first).
+    .sort((a, b) => Math.abs(LVL[a.lvl] - want) - Math.abs(LVL[b.lvl] - want) || loadRank(a) - loadRank(b))[0] || null
   const pick = pats => { const used = []; pats.forEach(p => { const L = byPat(p, used); if (L) used.push(L) }); return used }
   const days = goal === 'gain' ? Math.max(3, Math.min(4, it.daysWk)) : Math.max(2, Math.min(5, it.daysWk))
 

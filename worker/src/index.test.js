@@ -56,3 +56,14 @@ describe('normalizers', () => {
     expect(f.per100).toEqual({ kcal: 143, p: 12.6, c: 0.7, f: 9.5 })
   })
 })
+
+describe('food search ranking', () => {
+  it('puts names that contain every typed word first, drops duplicates', async () => {
+    const { rankFoods } = await import('./index.js')
+    const mk = (name, brand = null) => ({ name, brand, code: name })
+    const out = rankFoods([mk('Chicken noodle soup', 'Campbell'), mk('Wrap'), mk('Chicken wrap', 'Tim Hortons'), mk('Chicken wrap', 'Tim Hortons'), mk('Tortilla wraps')], 'chicken wrap')
+    expect(out[0].name).toBe('Chicken wrap')
+    expect(out.filter(x => x.name === 'Chicken wrap')).toHaveLength(1)
+    expect(out.map(x => x.name).indexOf('Chicken noodle soup')).toBeGreaterThan(out.map(x => x.name).indexOf('Chicken wrap'))
+  })
+})

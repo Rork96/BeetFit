@@ -240,20 +240,43 @@ async function barcode(code) {
   return item ? json({ found: true, item }) : json({ found: false, code }, 404)
 }
 
+// Popular products first (unique_scans_n), Canadian shelf first, then ranked by how well the name matches every word typed.
+const OFF_FIELDS = 'code,product_name,brands,nutriments,serving_size,image_front_small_url'
+const offUrl = (host, q, extra = '') => `https://${host}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=20&sort_by=unique_scans_n&fields=${OFF_FIELDS}${extra}`
+
+export function rankFoods(items, q) {
+  const toks = q.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  const score = it => {
+    const hay = `${it.brand || ''} ${it.name}`.toLowerCase()
+    const name = it.name.toLowerCase()
+    const hit = toks.filter(t => hay.includes(t)).length
+    if (!toks.length) return 0
+    return hit * 10 + (hit === toks.length ? 20 : 0) + (name.startsWith(toks[0]) ? 6 : 0) - Math.min(8, name.length / 12)
+  }
+  const seen = new Set()
+  return items
+    .filter(it => { const k = (it.brand || '') + '|' + it.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
+    .map((it, i) => ({ it, s: score(it), i }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map(x => x.it)
+}
+
 async function search(q, env) {
-  const offP = fetch(`${OFF}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=12&fields=code,product_name,brands,nutriments,serving_size,image_front_small_url`,
-    { headers: { 'User-Agent': UA } })
+  const offGet = url => fetch(url, { headers: { 'User-Agent': UA } })
     .then(r => (r.ok ? r.json() : { products: [] }))
     .then(d => (d.products || []).map(p => normalizeOff(p)).filter(Boolean))
     .catch(() => [])
+  const caP = offGet(offUrl('ca.openfoodfacts.org', q))
+  const worldP = offGet(offUrl('world.openfoodfacts.org', q))
   const usdaP = env.USDA_API_KEY
     ? fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${env.USDA_API_KEY}&query=${encodeURIComponent(q)}&pageSize=8&dataType=Foundation,SR%20Legacy`)
         .then(r => (r.ok ? r.json() : { foods: [] }))
         .then(d => (d.foods || []).map(normalizeUsda).filter(Boolean))
         .catch(() => [])
     : Promise.resolve([])
-  const [usda, off] = await Promise.all([usdaP, offP])
-  return json({ items: [...usda, ...off].slice(0, 16) })
+  const [usda, ca, world] = await Promise.all([usdaP, caP, worldP])
+  const all = rankFoods([...usda, ...ca, ...world], q)
+  return json({ items: all.slice(0, 20) })
 }
 
 function normalizeUsda(f) {
