@@ -8,6 +8,7 @@ import { plansOn, planTitle, planDone } from '../lib/plans.js'
 import BodyFigure from './BodyFigure.jsx'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { CoachNote, CoachStrip } from './Coach.jsx'
+import { DayDone, useDayDone } from './DayDone.jsx'
 import { BeetCard } from './Beet.jsx'
 import { YourCoachCard } from './Coach.jsx'
 import { loadChat } from '../lib/beet.js'
@@ -41,6 +42,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const [streakOpen, setStreakOpen] = useState(false)
   useBackClose(streakOpen, () => setStreakOpen(false))
   const [milestone, closeMilestone] = useMilestone(state)
+  const [dayDone, closeDayDone, openDayDone, allDone] = useDayDone(state)
   const todayPlans = plansOn(state, key)
   const calendar = o => { if (!openCalendar) return; history.back(); setTimeout(() => openCalendar(o), 60) }
 
@@ -85,7 +87,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       </div>
 
       <div className="stk td-stack">
-        <NextUp up={up} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
+        <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
         {/* Calories */}
@@ -171,6 +173,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       </div>
       {streakOpen && <StreakSheet state={state} update={update} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
       {milestone && <Milestone days={milestone} onClose={closeMilestone} />}
+      {dayDone && <DayDone state={state} coach={coach?.link?.coach?.name} onClose={closeDayDone} />}
     </div>
   )
 }
@@ -224,7 +227,7 @@ function Macro({ icon, label, v, max, color }) {
 }
 
 // One thing to do now. Everything else on Today is context for it.
-function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, units, go, onGlass, onStart }) {
+function NextUp({ up, onSummary, tasks, day, camCount, tomorrow, streak, t, water, state, units, go, onGlass, onStart }) {
   const dayName = n => n.split('—')[1]?.trim() || n
   const last = up.id === 'weigh' ? state.weightLog.reduce((m, w) => (w.date > m.date ? w : m)) : null
   const h = {
@@ -244,6 +247,7 @@ function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, u
         ? <p className="hint td-sub-ic" aria-label={h.sub}><span><Ic n="train" />{day.exercises.length}</span>{camCount > 0 && <span className="cam"><Ic n="cam" className="solid" />{camCount}</span>}</p>
         : <p className="hint">{h.sub}</p>}
       {h.cta && <button className="btn" onClick={h.act}>{h.cta}</button>}
+      {onSummary && done && <button className="td-link td-seeday" onClick={onSummary}>See your day →</button>}
       {up.id === 'rest' && <button className="td-link td-anyway" onClick={() => { haptic(); go('workout') }}>Train anyway →</button>}
       <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
         {tasks.map(tk => (

@@ -9,6 +9,7 @@ import { isNative } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { SignIn } from './Account.jsx'
+import { Verified } from './Coach.jsx'
 import { track } from '../lib/track.js'
 import './pro.css'
 
@@ -50,6 +51,31 @@ function DemoSnap() {
           <li><span>Broccoli</span><b className="num">34</b></li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Coach mode, with the real "Verified training" card and the push a coach gets. Sample data, relative dates.
+function DemoCoach() {
+  const d = n => { const t = new Date(); t.setDate(t.getDate() - n); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` }
+  const S = (reps, w, auto) => ({ reps, w, ...(auto && { auto: true }) })
+  const sessions = [{
+    date: d(0), sets: 6, cam: 5,
+    ex: [
+      { name: 'Goblet squat', cam: 3, form: 84, sets: [S(10, 16, 1), S(10, 16, 1), S(9, 16, 1)] },
+      { name: 'Push-up', cam: 2, form: 61, sets: [S(8, 0, 1), S(6, 0, 1), S(6, 0)] }
+    ]
+  }]
+  return (
+    <div className="pr-demo pr-coach">
+      <span className="label">Coach mode</span>
+      <div className="pc-push" aria-label="Notification: Anna trained, Lower, 9 of 9 sets, 7 camera-verified, form 82%">
+        <i><Ic n="beet" className="solid" /></i>
+        <span><b>Anna trained</b><small className="num">Lower · 9/9 sets · 7 camera-verified · form 82%</small></span>
+        <em>now</em>
+      </div>
+      <Verified sessions={sessions} week={{ sets: 16, camSets: 11 }} />
+      <p className="pc-cap">Your coach sees what the camera counted, not just what you typed.</p>
     </div>
   )
 }
@@ -187,12 +213,14 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         {reason && REASON[reason] && <p className="pr-why">{REASON[reason]}</p>}
 
         <div className="pr-demos" aria-label="What PRO adds">
+          {reason === 'clients' && <DemoCoach />}
           <DemoSnap />
+          {reason !== 'clients' && <DemoCoach />}
           <Shot src="/pro/beet.webp" label="Ask Beet" w={780} h={460} />
           <Shot src="/pro/trend.webp" label="Strength trends" w={780} h={740} />
           <Shot src="/pro/food.webp" label="Every meal, counted" w={780} h={560} />
         </div>
-        <p className="pr-eg">App screens with sample data; the photo card is an illustration. Swipe →</p>
+        <p className="pr-eg">App screens with sample data; the photo and coach cards are illustrations. Swipe →</p>
 
         <div className="pr-cmp" role="table" aria-label="Free and PRO compared">
           <div className="pr-cmp-h" role="row"><span role="columnheader" /><span role="columnheader">Free</span><span role="columnheader" className="pro">PRO</span></div>

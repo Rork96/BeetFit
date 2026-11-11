@@ -496,7 +496,7 @@ function ClientView({ id, onClose, onUpgrade }) {
 
 // What the client actually did, set by set, and what the camera confirmed. No other tracker gives a coach this:
 // reps counted on the client's phone (video never leaves it) plus a form score per set.
-function Verified({ sessions = [], week, locked, onUpgrade }) {
+export function Verified({ sessions = [], week, locked, onUpgrade }) {
   const fmtD = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const share = week?.sets ? Math.round((week.camSets / week.sets) * 100) : null
   return (
