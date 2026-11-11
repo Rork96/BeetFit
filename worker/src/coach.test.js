@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { d1 } from '../test/d1.js'
-import worker, { issueToken } from './index.js'
+import worker, { issueToken, tellCoach } from './index.js'
 
 const SECRET = 'coach-test-secret-0123456789'
 const env = { DEVICE_SECRET: SECRET, DB: d1() }
@@ -51,6 +51,17 @@ describe('coach mode', () => {
     expect(t.msgs[0].seen).toBe(false)
     await call(CLIENT, '/api/coach/seen', 'POST')
     expect((await call(CLIENT, '/api/coach/link')).msgs[0].seen).toBe(true)
+  })
+  it('pings the coach once when a client session turns complete, not before and not again', async () => {
+    const train = (o = {}) => ({ name: 'Max', train: { date: '2026-11-10', name: 'Day A — Lower', sets: 9, planned: 9, cam: 7, form: 82, done: true, ...o } })
+    const me = async () => (await env.DB.prepare('SELECT client_id FROM links').first()).client_id
+    const id = await me()
+    expect(await tellCoach({}, env, env.DB, id, null, train({ sets: 3, done: false }))).toBe(false) // half way
+    expect(await tellCoach({}, env, env.DB, id, JSON.stringify(train({ sets: 3, done: false })), train())).toBe(true) // just completed
+    expect(await tellCoach({}, env, env.DB, id, JSON.stringify(train()), train({ sets: 10 }))).toBe(false) // already told today
+    expect(await tellCoach({}, env, env.DB, id, JSON.stringify(train({ date: '2026-11-09' })), train())).toBe(true) // a new day
+    expect(await tellCoach({}, env, env.DB, 'nobody', null, train())).toBe(false) // no coach linked
+    expect(await tellCoach({}, env, env.DB, id, null, { name: 'Max' })).toBe(false) // no training in summary
   })
   it('target override is clamped and clearable', async () => {
     const o = await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', { kcal: 2100.4, protein: 9999, note: 'Hold calories through the deload' })

@@ -290,7 +290,7 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
             {state.coach?.name && (() => { const cam = sets.filter(x => x.auto).length; return (
               <div className="rc-card rc-coach" style={{ animationDelay: '460ms' }}>
                 <Ic n="people" className="solid" />
-                <p><b>{state.coach.name}</b> sees this session{cam ? <>: <b className="num">{cam} of {sets.length}</b> sets verified by camera</> : '. Use the camera next time and your sets show as verified.'}</p>
+                <p><b>{state.coach.name}</b> gets this session{cam ? <>: <b className="num">{cam} of {sets.length}</b> sets verified by camera</> : '. Use the camera next time and your sets show as verified.'}</p>
               </div>) })()}
 
             {nextDay && <p className="rc-next">Next: <b>{nextDay.name}</b> · {nextDay.exercises.length} {nextDay.exercises.length === 1 ? 'exercise' : 'exercises'}</p>}
@@ -454,7 +454,7 @@ function CoachSees({ name, log }) {
   return (
     <div className="ss-coach">
       <Ic n="people" className="solid" />
-      <span><b>{name}</b> sees this session. Sets the camera counts show as verified, with a form score.</span>
+      <span><b>{name}</b> gets a ping when you finish, with the camera-verified sets and your form score.</span>
       {all.length > 0 && <i className="num" aria-label={`${cam} of ${all.length} sets verified`}><Ic n="cam" className="solid" />{cam}/{all.length}</i>}
     </div>
   )

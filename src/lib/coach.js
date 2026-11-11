@@ -3,6 +3,7 @@
 // client's synced document that the client's phone runs on its own state.
 import { api } from './api.js'
 import { setSyncEnabled } from './sync.js'
+import { dayIndexOf } from './train.js'
 import { dayKey, addDays, targets, eaten, setsLogged, dayScore, program, weeklyRate, weightSeries, currentWeight } from './day.js'
 
 const post = (path, body) => api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) })
@@ -106,7 +107,24 @@ export function summarize(state, today = dayKey()) {
   return {
     name: state.settings?.name || '', goal: state.profile.goal,
     adh: w.adh, sessions: w.sessions, planned: w.planned, logDays: w.logDays,
-    weight: r1(currentWeight(state)), rate: r1(weeklyRate(state, 14, today)), pain, last, day: today
+    weight: r1(currentWeight(state)), rate: r1(weeklyRate(state, 14, today)), pain, last, day: today,
+    ...(todayTrain(state, today) && { train: todayTrain(state, today) })
+  }
+}
+
+// What the coach gets pinged about: today's session, with how much of the plan day is in and what the camera saw.
+// `done` = at least 80% of the planned sets (or 3 sets when the day can't be matched to the plan).
+export function todayTrain(state, today = dayKey()) {
+  const sets = allSets(state, today)
+  if (!sets.length) return null
+  const i = dayIndexOf(state, today)
+  const day = i >= 0 ? program(state).days[i] : null
+  const planned = day ? day.exercises.reduce((n, e) => n + (e.sets || 1), 0) : 0
+  const forms = sets.map(x => x.form?.s).filter(v => v != null)
+  return {
+    date: today, name: day?.name || '', sets: sets.length, planned, cam: sets.filter(x => x.auto).length,
+    form: forms.length ? Math.round(forms.reduce((a, b) => a + b, 0) / forms.length) : null,
+    done: planned ? sets.length >= Math.ceil(planned * 0.8) : sets.length >= 3
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarize, overview, cleanCode, CODE_RE } from './coach.js'
+import { summarize, overview, todayTrain, cleanCode, CODE_RE } from './coach.js'
 import { addDays, targets } from './day.js'
 
 const today = '2026-10-24'
@@ -77,5 +77,19 @@ describe('verified training', () => {
     expect(formAlerts(st, D)).toEqual([{ name: 'Goblet squat', form: 62 }].filter(x => x.form < 60))
     const bad = { ...st, workoutLog: { '2026-10-26': st.workoutLog['2026-10-26'] } }
     expect(formAlerts(bad, D)).toEqual([{ name: 'Goblet squat', form: 53 }])
+  })
+})
+
+describe('todayTrain', () => {
+  it('is null with nothing logged; done at 80% of the planned day; carries camera and form', () => {
+    const s = base()
+    expect(todayTrain(s, today)).toBeNull()
+    const day = s.program?.[0] || null
+    s.workoutLog[today] = { Squat: { sets: [{ reps: 10, auto: true, form: { s: 80, d: 70 } }, { reps: 10, auto: true, form: { s: 90, d: 70 } }, { reps: 8 }] } }
+    const t = todayTrain(s, today)
+    expect(t).toMatchObject({ date: today, sets: 3, cam: 2, form: 85 })
+    expect(typeof t.done).toBe('boolean')
+    expect(summarize(s, today).train.sets).toBe(3)
+    expect(day === null || day).toBeTruthy()
   })
 })

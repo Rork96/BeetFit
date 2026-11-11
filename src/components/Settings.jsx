@@ -16,7 +16,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.23.0'
+const VERSION = '0.24.0'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
@@ -262,7 +262,7 @@ function RemindersCard({ state, update, sync, account }) {
         </div>
       ))}
       {support !== 'native' && (
-        <Row label="Coach messages" hint="Ping me when my coach or a client writes">
+        <Row label="Coach messages" hint="Ping me when my coach or a client writes, or a client finishes a session">
           <Toggle on={prefs.coach !== false} onChange={v => { haptic(); update(prev => ({ settings: { ...(prev.settings || {}), reminders: { ...remindersOf(prev), coach: v } } })) }} />
         </Row>
       )}

@@ -186,7 +186,7 @@ export default {
       }
       if (url.pathname.startsWith('/api/sync') || url.pathname.startsWith('/api/pair')) {
         if (!env.DB) return json({ error: 'sync_not_configured' }, 503, cors)
-        return await syncRoutes(req, url, env, device, ip, cors)
+        return await syncRoutes(req, url, env, device, ip, cors, ctx)
       }
       return json({ error: 'not_found' }, 404, cors)
     } catch (e) {
@@ -425,7 +425,7 @@ async function readDoc(db, userId) {
   return row ? { rev: row.rev, updated: row.updated, data: JSON.parse(row.data), devices } : { rev: 0, updated: 0, data: null, devices }
 }
 
-async function syncRoutes(req, url, env, device, ip, cors) {
+async function syncRoutes(req, url, env, device, ip, cors, ctx) {
   const db = env.DB
   await ensureSchema(db)
   const userId = await userOf(db, device.id)
@@ -441,10 +441,12 @@ async function syncRoutes(req, url, env, device, ip, cors) {
     const cur = await readDoc(db, userId)
     if (cur.rev !== body.baseRev) return json({ error: 'conflict', ...cur }, 409, cors)
     const rev = cur.rev + 1, now = Date.now()
+    const prevSummary = (await db.prepare('SELECT summary FROM docs WHERE user_id = ?').bind(userId).first())?.summary
     const res = await db.prepare(
       'INSERT INTO docs (user_id, data, rev, updated, summary) VALUES (?1, ?2, ?3, ?4, ?6) ON CONFLICT(user_id) DO UPDATE SET data = ?2, rev = ?3, updated = ?4, summary = ?6 WHERE docs.rev = ?5'
     ).bind(userId, JSON.stringify(body.data), rev, now, cur.rev, body.summary && typeof body.summary === 'object' ? JSON.stringify(body.summary).slice(0, 4000) : null).run()
     if (!res.meta.changes) return json({ error: 'conflict', ...(await readDoc(db, userId)) }, 409, cors)
+    await tellCoach(ctx, env, db, userId, prevSummary, body.summary)
     return json({ rev, updated: now, devices: cur.devices }, 200, cors)
   }
 
@@ -792,6 +794,23 @@ async function pushRoutes(req, url, env, device, cors, ctx) {
     return ok({ ok: r.ok, pushStatus: r.status }) // not "status": the client wrapper uses that for the HTTP code
   }
   return json({ error: 'not_found' }, 404, cors)
+}
+
+// A client's session just became complete (first sync where today's training is done): ping their coach once.
+// Proof for both sides that the app did its job: what was done, how much the camera verified, the form score.
+export async function tellCoach(ctx, env, db, clientId, prevSummary, next) {
+  const t = next && typeof next === 'object' ? next.train : null
+  if (!t || !t.done || !Number.isFinite(t.sets)) return false
+  const before = parse(prevSummary)?.train
+  if (before?.done && before.date === t.date) return false
+  const link = await db.prepare('SELECT id, coach_id FROM links WHERE client_id = ?').bind(clientId).first()
+  if (!link) return false
+  const who = String(next.name || 'Your client').slice(0, 40)
+  const bits = [String(t.name || 'Session').split('—').pop().trim().slice(0, 40), `${t.sets}${t.planned ? `/${t.planned}` : ''} sets`]
+  if (t.cam > 0) bits.push(`${t.cam} camera-verified`)
+  if (Number.isFinite(t.form)) bits.push(`form ${t.form}%`)
+  notify(ctx, env, link.coach_id, { title: `${who} trained`, body: bits.join(' · '), url: '/?coach=1', tag: `session-${link.id}` })
+  return true
 }
 
 // Push to every device of a user (coach messages). Runs after the response.
