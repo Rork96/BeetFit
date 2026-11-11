@@ -18,3 +18,8 @@
 .st-ver { text-align: center; margin: 4px 0 12px; }
 .st-page .tw-card > .label:first-child, .st-page .rm-card > .label:first-child { display: none; }
 .st-ver a { color: var(--hint); text-decoration: underline; text-underline-offset: 2px; }
+
+.st-block { display: grid; gap: 8px; margin: 14px 0; }
+.st-block-l { font-weight: 600; }
+.st-block .seg { width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.st-block .seg button { min-height: 44px; padding: 0 4px; }

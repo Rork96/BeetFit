@@ -1,0 +1,17 @@
+/* Tap targets: small controls keep their look, the touch area grows to ~44px with an invisible ::after. */
+.td-glasses i, .tgl, .rm-check, .ml-plus, .ss-more, .bm-tap, .pg-scale button, .fc-step.mini button { position: relative; }
+.td-glasses i::after { content: ''; position: absolute; inset: -2px; }
+.tgl::after, .rm-check::after { content: ''; position: absolute; inset: -8px -6px; }
+.ml-plus::after, .ss-more::after { content: ''; position: absolute; inset: -6px; }
+.pg-scale button::after { content: ''; position: absolute; inset: -7px -3px; }
+.fc-step.mini button::after { content: ''; position: absolute; inset: -4px; }
+.bm-tap::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
+.sb::after { content: ''; position: absolute; inset: -13px -6px; }
+.td-top .td-streak { position: relative; }
+.td-top .td-streak::after { content: ''; position: absolute; inset: -6px 0; }
+.td-link { padding: 14px 0; }
+.rd-all { padding: 12px 0; margin: -8px 0; }
+.qk-open { padding: 12px 0; }
+.ml-add { min-height: 44px; }
+.st-ver a { display: inline-block; padding: 12px 4px; margin: -12px 0; }
+.pr-legal a, .ob-legal a { display: inline-block; padding: 10px 2px; margin: -10px 0; }

@@ -216,3 +216,24 @@
 .td-top .td-streak .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-task.rest { color: var(--data-2); border-color: color-mix(in srgb, var(--data-2) 45%, transparent); background: color-mix(in srgb, var(--data-2) 12%, transparent); }
 .td-task.rest i { background: var(--data-2); border-color: var(--data-2); }
+
+/* Water: tappable glasses, header opens history */
+.td-glasses i { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.td-glasses i:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.td-water-head { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; margin: -8px 0 -2px; padding: 0; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.td-water-vol { display: block; margin: 6px 0 8px; }
+.wt-sheet h2 { margin: 2px 0 12px; } .wt-sheet h2 small { font-size: 14px; color: var(--hint); font-weight: 500; }
+.wt-step { display: grid; grid-template-columns: 56px 1fr 56px; gap: 8px; align-items: center; text-align: center; }
+.wt-step button, .wt-quick button { min-height: 52px; border-radius: var(--r-1); border: 1px solid var(--line-2); background: transparent; color: var(--text); font-size: 22px; font-weight: 700; }
+.wt-step button.add { background: rgba(124,195,255,.12); border-color: rgba(124,195,255,.4); color: var(--water); }
+.wt-step button:disabled, .wt-quick button:disabled { opacity: .35; }
+.wt-step > span { font-size: 28px; font-weight: 700; } .wt-step small { display: block; font-size: 12px; color: var(--hint); font-weight: 500; }
+.wt-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 16px; }
+.wt-quick button { min-height: 44px; font-size: 15px; font-weight: 600; }
+.wt-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 120px; margin-bottom: 8px; }
+.wt-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.wt-col i { display: block; width: 100%; max-width: 28px; border-radius: 6px 6px 3px 3px; background: rgba(124,195,255,.35); min-height: 2px; }
+.wt-col.hit i, .wt-col.today i { background: var(--water); }
+.wt-col span { font-size: 12px; color: var(--hint); min-height: 14px; } .wt-col em { font-style: normal; font-size: 11px; color: var(--hint); }
+.wt-col.today em { color: var(--text); font-weight: 600; }
+.td-body .td-delta { padding-right: 36px; }

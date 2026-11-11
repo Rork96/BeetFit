@@ -5,7 +5,7 @@ import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.
 import { exportState, clearState } from '../lib/store.js'
 import { downloadCSV } from '../lib/foods.js'
 import { haptic } from '../lib/platform.js'
-import { KG_TO_LB } from '../lib/day.js'
+import { KG_TO_LB, GLASS_SIZES, glassMl, fmtWater } from '../lib/day.js'
 import { DEFAULT_INTAKE } from '../lib/program.js'
 import { rebuildKeep } from '../lib/myex.js'
 import { TrainingCard } from './TrainSetup.jsx'
@@ -20,7 +20,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { proLine } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.29.1'
+const VERSION = '0.30.0'
 
 // Settings is a short list of groups (the iOS / Android pattern): each row opens its own page,
 // so the root fits on one screen and the version sits at the bottom of it.
@@ -89,6 +89,11 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
                   <button onClick={() => setS({ waterTarget: Math.min(16, (s.waterTarget || 8) + 1) })} aria-label="More">+</button>
                 </div>
               </Row>
+              <div className="st-block">
+                <span className="st-block-l">Glass size</span>
+                <Seg value={glassMl(state)} options={GLASS_SIZES.map(n => [n, lb ? `${+(n / 29.5735).toFixed(0)} oz` : `${n} ml`])} onChange={v => setS({ glassMl: v })} />
+                <p className="hint" style={{ margin: 0 }}>Daily goal: {fmtWater(s.waterTarget || 8, state)}</p>
+              </div>
               <Row label="Eat to your training days" hint="Training days get a little more food, rest days a little less; the week adds up the same. Uses your training days.">
                 <Toggle on={s.cycleFood !== false} onChange={v => setS({ cycleFood: v })} />
               </Row>
@@ -194,7 +199,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
         <Group title="Your plan">
           <Nav ic="target" label={PAGES.profile} sub={`${goal} · target ${shownTarget} ${lb ? 'lb' : 'kg'}`} onClick={() => open('profile')} />
           <Nav ic="train" label={PAGES.training} sub={`${placeShort(it.loc)} · ${wd.length ? [...wd].sort().map(d => DOW[d]).join(' ') : `${it.daysWk} days a week`}`} onClick={() => open('training')} />
-          <Nav ic="water" label={PAGES.food} sub={`${s.waterTarget || 8} glasses${s.cycleFood !== false ? ' · eat to training days' : ''}`} onClick={() => open('food')} />
+          <Nav ic="water" label={PAGES.food} sub={`${s.waterTarget || 8} glasses · ${fmtWater(s.waterTarget || 8, state)}${s.cycleFood !== false ? ' · eat to training days' : ''}`} onClick={() => open('food')} />
           <Nav ic="people" label={PAGES.coach} sub={coachName ? `Coached by ${coachName}` : me?.code ? `You coach · code ${me.code}` : 'Add your coach, or coach others'} onClick={() => open('coach')} />
         </Group>
 
@@ -289,7 +294,7 @@ function SyncCard({ sync, update }) {
     <section className="card">
       <span className="label">Sync & devices</span>
       <Row label="Back up & sync" hint="Keeps your plan and logs on all your phones. No email or password.">
-        <Toggle on={on} onChange={v => { haptic(); if (v) setOn(true); else { leaveSync(); setOn(false); setMode(null) } }} />
+        <Toggle label="Sync between devices" on={on} onChange={v => { haptic(); if (v) setOn(true); else { leaveSync(); setOn(false); setMode(null) } }} />
       </Row>
       {on && (
         <div className="sy-status">
@@ -348,7 +353,7 @@ function RemindersCard({ state, update, sync, account }) {
     <section className="card rm-card">
       <span className="label">Reminders</span>
       <Row label="Notifications on this phone" hint={support === 'native' ? 'Scheduled on the phone' : 'Smart: skipped when you already did it'}>
-        <Toggle on={on} onChange={v => { if (!busy) toggle(v) }} />
+        <Toggle label="Reminders on this phone" on={on} onChange={v => { if (!busy) toggle(v) }} />
       </Row>
       {support === 'install' && !on && <p className="hint">{PUSH_ERR.install}</p>}
       {REMINDERS.map(r => (
@@ -410,7 +415,7 @@ function Row({ label, hint, children }) {
   return (
     <div className="set-row">
       <div><div className="set-l">{label}</div>{hint && <div className="hint" style={{ fontSize: 12 }}>{hint}</div>}</div>
-      {children}
+      {React.Children.map(children, c => (c && c.type === Toggle && !c.props.label && typeof label === 'string') ? React.cloneElement(c, { label }) : c)}
     </div>
   )
 }
@@ -425,8 +430,8 @@ function Seg({ value, options, onChange }) {
   )
 }
 
-export function Toggle({ on, onChange }) {
+export function Toggle({ on, onChange, label }) {
   return (
-    <button className={'tgl' + (on ? ' on' : '')} role="switch" aria-checked={on} onClick={() => { haptic(); onChange(!on) }}><i /></button>
+    <button className={'tgl' + (on ? ' on' : '')} role="switch" aria-checked={on} aria-label={label} onClick={() => { haptic(); onChange(!on) }}><i /></button>
   )
 }

@@ -51,12 +51,12 @@ export default function Library({ state, update, pro, onClose }) {
             {!mine.length && <p className="hint" style={{ margin: 0 }}>Missing a move? Make it yours: name, cue, demo clip. Then add it to any day from Train → Edit.</p>}
           </div>
         )}
-        <div className="chips">
+        <div className="chips wrap">
           {CATS.map(c => <button key={c} className={'chip' + (cat === c ? ' on' : '')} onClick={() => { haptic(); setCat(c) }}>{c}</button>)}
         </div>
         <div className="set-row">
           <div className="set-l" style={{ fontSize: 14 }}>Only what fits my setup</div>
-          <button className={'tgl' + (onlyFit ? ' on' : '')} role="switch" aria-checked={onlyFit} onClick={() => { haptic(); setOnlyFit(v => !v) }}><i /></button>
+          <button className={'tgl' + (onlyFit ? ' on' : '')} role="switch" aria-label="Only what fits my setup" aria-checked={onlyFit} onClick={() => { haptic(); setOnlyFit(v => !v) }}><i /></button>
         </div>
         <div className="card stk" key={cat + onlyFit}>
           {rows.map(({ L, a, cam }) => (

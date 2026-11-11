@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
+import './tap.css'
 import { applyMotionLevel } from './lib/motion.js'
 import './lib/install.js' // catches beforeinstallprompt early
 import { bindNativeBack, isNative } from './lib/platform.js'

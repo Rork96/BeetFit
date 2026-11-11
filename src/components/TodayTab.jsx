@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { planStatus } from '../lib/train.js'
-import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
+import { nextUp, dayKey, eaten, targets, waterOf, fmtWater, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp, useBackClose } from '../lib/hooks.js'
 import { StreakPill, StreakSheet, useMilestone, Milestone } from './Streak.jsx'
@@ -17,6 +17,7 @@ import Ic from './Icons.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
 import InstallCard from './InstallCard.jsx'
+import { WaterSheet } from './Water.jsx'
 import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
@@ -40,6 +41,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const kcalPct = Math.min(1, e.kcal / t.kcal)
   const [splash, setSplash] = useState(0)
   const [streakOpen, setStreakOpen] = useState(false)
+  const [waterOpen, setWaterOpen] = useState(false)
   useBackClose(streakOpen, () => setStreakOpen(false))
   const [milestone, closeMilestone] = useMilestone(state)
   const [dayDone, closeDayDone, openDayDone, allDone] = useDayDone(state)
@@ -60,6 +62,12 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const wStart = state.weightLog?.[0]?.kg ?? wNow
   const toGo = +(wNow - state.profile.targetKg).toFixed(1)
 
+  const setGlasses = n => {
+    n = Math.max(0, Math.min(40, n))
+    if (n > water) setSplash(x => x + 1)
+    if (n >= t.water && water < t.water) hapticSuccess()
+    update(prev => ({ water: { ...(prev.water || {}), [key]: n } }))
+  }
   const addGlass = delta => {
     haptic(delta > 0 ? 'light' : 'medium')
     const next = Math.max(0, water + delta)
@@ -86,6 +94,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
       </div>
 
+      {waterOpen && <WaterSheet state={state} onSet={setGlasses} onClose={() => setWaterOpen(false)} />}
       <div className="stk td-stack">
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
@@ -130,10 +139,14 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         {/* Water + Body */}
         <div className="grid2">
           <div className="card td-water">
-            <div className="row"><span className="label">Water</span><span className="num td-small">{water}/{t.water}</span></div>
+            <button className="td-water-head" onClick={() => { haptic(); setWaterOpen(true) }} aria-label="Water history">
+              <span className="label">Water</span><span className="num td-small">{water}/{t.water}{water > t.water ? ` +${water - t.water}` : ''} ›</span>
+            </button>
             <div className="td-glasses">
-              {Array.from({ length: t.water }, (_, i) => <i key={i} className={i < water ? 'on' : ''} style={{ transitionDelay: `${i * 29}ms` }} />)}
+              {Array.from({ length: t.water }, (_, i) => <i key={i} role="button" tabIndex={0} aria-label={`Set to ${i + 1} ${i ? 'glasses' : 'glass'}`} className={i < water ? 'on' : ''} style={{ transitionDelay: `${i * 29}ms` }}
+                onClick={() => { haptic(); setGlasses(water === i + 1 ? i : i + 1) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setGlasses(water === i + 1 ? i : i + 1) } }} />)}
             </div>
+            <span className="td-small td-water-vol">{fmtWater(water, state)}</span>
             <div className="td-water-btns">
               <button onClick={() => addGlass(-1)} disabled={!water} aria-label="Remove a glass">−</button>
               <button className="add" onClick={() => addGlass(1)} aria-label="Add a glass">+ glass{splash > 0 && <span className="td-splash" key={splash} />}</button>

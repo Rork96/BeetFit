@@ -384,7 +384,7 @@ function Ideas({ slot, items, budget, left, onSlot, onSuggest, onSwap, onLog }) 
   return (
     <div className="card id">
       <div className="row"><span className="label">What to eat</span><span className="num td-small">{left} kcal left</span></div>
-      <div className="chips">{SLOTS.map(sl => <button key={sl} className={'chip' + (slot === sl ? ' on' : '')} onClick={() => onSlot(sl)}>{sl}</button>)}</div>
+      <div className="chips wrap">{SLOTS.map(sl => <button key={sl} className={'chip' + (slot === sl ? ' on' : '')} onClick={() => onSlot(sl)}>{sl}</button>)}</div>
       {budget === 0 ? (
         <p className="hint">Today’s calories are covered, nothing more is needed. If you’re still hungry, reach for protein and vegetables first.</p>
       ) : !items ? (

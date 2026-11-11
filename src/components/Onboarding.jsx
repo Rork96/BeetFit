@@ -109,7 +109,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
             {p.goal !== 'gain' && (
               <div className="set-row">
                 <div><div className="set-l">Add running?</div><div className="hint" style={{ fontSize: 12 }}>One easy run/walk day per week</div></div>
-                <button className={'tgl' + (it.running ? ' on' : '')} role="switch" aria-checked={it.running} onClick={() => setI('running', !it.running)}><i /></button>
+                <button className={'tgl' + (it.running ? ' on' : '')} role="switch" aria-label="Add running" aria-checked={it.running} onClick={() => setI('running', !it.running)}><i /></button>
               </div>
             )}
             <Next onClick={() => go(1)} />

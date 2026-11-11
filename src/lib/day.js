@@ -56,6 +56,15 @@ export function eaten(state, key = dayKey()) {
 
 export const waterOf = (state, key = dayKey()) => state.water?.[key] || 0
 
+// A glass is state.settings.glassMl (default 250 ml). Volume is shown in ml / L, or fl oz when units are lb.
+export const GLASS_SIZES = [200, 250, 300, 500]
+export const glassMl = state => state.settings?.glassMl || 250
+export function fmtWater(glasses, state) {
+  const ml = glasses * glassMl(state)
+  if (state.settings?.units === 'lb') return `${+(ml / 29.5735).toFixed(ml >= 2000 ? 0 : 1)} fl oz`
+  return ml >= 1000 ? `${+(ml / 1000).toFixed(2)} L` : `${ml} ml`
+}
+
 export function setsLogged(state, key = dayKey()) {
   const day = state.workoutLog?.[key] || {}
   return Object.values(day).reduce((n, e) => n + (e === true || typeof e === 'number' ? 1 : (e?.sets?.length || 0)), 0)

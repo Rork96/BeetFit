@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { dayKey, addDays, weekday, dayScore, dayTasks, eaten, waterOf, setsLogged, streakInfo, program, KG_TO_LB } from '../lib/day.js'
+import { dayKey, addDays, weekday, dayScore, dayTasks, eaten, waterOf, fmtWater, setsLogged, streakInfo, program, KG_TO_LB } from '../lib/day.js'
 import { plansOf, plansOn, planDone, planTitle, dropPlan, movePlan, toggleNote, newId, weekPlanOf, setWeekPlan, exportICS, PLAN_KINDS, DOW, planEvents } from '../lib/plans.js'
 import { pushOn, pushSupport, enablePush, remindersOf, PUSH_ERR } from '../lib/push.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -204,7 +204,7 @@ function History({ state, k, toU, units }) {
       <div className="cl-stats">
         <div><b className="num">{e.kcal}</b><span>kcal</span></div>
         <div><b className="num">{e.p}g</b><span>protein</span></div>
-        <div><b className="num">{waterOf(state, k)}</b><span>glasses</span></div>
+        <div><b className="num">{fmtWater(waterOf(state, k), state)}</b><span>water</span></div>
         <div><b className="num">{wt ? toU(wt.kg).toFixed(1) : '—'}</b><span>{units}</span></div>
       </div>
       {ex.length > 0 && (
@@ -255,7 +255,7 @@ function AddSheet({ state, date, onSave }) {
       </div>
       <div className="set-row">
         <div><span className="set-l">Remind me</span>{!time && <p className="hint" style={{ margin: 0 }}>Pick a time for a reminder.</p>}</div>
-        <Toggle on={remind && !!time} onChange={v => setRemind(v)} />
+        <Toggle label="Remind me" on={remind && !!time} onChange={v => setRemind(v)} />
       </div>
       {needsPush && support === 'install' && <p className="hint">{PUSH_ERR.install}</p>}
       {needsPush && (support === 'web' || support === 'native') && <p className="hint">Saving will ask to turn notifications on for this phone.</p>}
@@ -282,7 +282,7 @@ function WeekSheet({ state, plan, onSave }) {
         {days.length} of {want} picked{days.length > want ? ' · extra days are fine for walks or mobility' : days.length && days.length < want ? ' · the plan will run over more days' : ''}
       </p>
       <div className="set-row"><span className="set-l">Time</span><input type="time" value={time} style={{ maxWidth: 140 }} onChange={e => setTime(e.target.value || '18:00')} /></div>
-      <div className="set-row"><span className="set-l">Remind me</span><Toggle on={remind} onChange={v => setRemind(v)} /></div>
+      <div className="set-row"><span className="set-l">Remind me</span><Toggle label="Remind me" on={remind} onChange={v => setRemind(v)} /></div>
       <button className="btn" onClick={() => onSave(days, time, remind)}>{days.length ? 'Save training days' : 'Clear training days'}</button>
     </div>
   )
