@@ -230,7 +230,7 @@ export function CoachModeCard({ onOpen, onSaved, focus }) {
           <div className="sy-code ch-code">
             <span className="label">Your invite code</span>
             <b className="num">{me.code}</b>
-            <span className="hint">Clients enter it on the first screen (“I have a coach code”) or in Settings → Your coach.</span>
+            <span className="hint">Clients enter it on the first screen (“I have a coach code”) or in Settings → Coach.</span>
           </div>
           <div className="grid2">
             <button className="btn secondary" onClick={share}>{copied ? '✓ Copied' : 'Share invite'}</button>

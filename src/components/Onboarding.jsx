@@ -249,7 +249,7 @@ function Welcome({ onStart, onRestore, account }) {
         <ul className="ob-privacy stk">
           <li>Your coach sees: weight, meals, workouts, water, check-ins and pain reports.</li>
           <li>Camera video never leaves your phone, not even for your coach.</li>
-          <li>Disconnect any time in Settings → Your coach.</li>
+          <li>Disconnect any time in Settings → Coach.</li>
         </ul>
         <button className="btn" onClick={() => onStart(coach)}>Continue with {coach.name.split(' ')[0]}</button>
         <button className="btn ghost" onClick={() => pick('coach')}>Start on my own instead</button>
@@ -279,6 +279,7 @@ function Welcome({ onStart, onRestore, account }) {
       </div>
       <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Build my plan</button>
       <p className="hint ob-free">2 minutes · free to start · no card</p>
+      <p className="hint ob-legal">By continuing you agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>. Not medical advice.</p>
       <div className="ob-alt">
         <button className={'chip' + (open === 'sync' ? ' on' : '')} onClick={() => { pick('sync'); setLinkCode(false); setNote('') }}>I already have an account</button>
         <button className={'chip' + (open === 'coach' ? ' on' : '')} onClick={() => pick('coach')}>I have a coach code</button>

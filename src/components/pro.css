@@ -128,3 +128,5 @@
 .pc-push small { font-size: 11.5px; line-height: 1.3; color: var(--hint); }
 .pc-push em { flex: none; font-style: normal; font-size: 11px; color: var(--hint); }
 .pc-cap { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--hint); }
+.pr-legal { margin: 2px 0 0; text-align: center; font-size: 12px; color: var(--hint); }
+.pr-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

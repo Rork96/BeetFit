@@ -396,6 +396,7 @@ function explain(r) {
   if (r.status === 401 || r.error === 'not_configured') return { title: 'Server setup incomplete', text: 'DEVICE_SECRET is missing on the server. Scan a barcode meanwhile.', code }
   if (r.error === 'snap_not_configured') return { title: 'Photo recognition is off', text: 'GEMINI_API_KEY is missing on the server. Scan a barcode meanwhile.', code }
   if (r.error === 'daily_limit' && r.pro === false) return { title: `That was today's ${r.limit || 3} free photo estimates`, text: 'Barcode, search and quick add are free and unlimited. Photos reset at midnight.', code: '', upgrade: true }
+  if (r.error === 'slow_down') return { title: 'Too many photos in a row', text: 'Wait a minute, then try again. Barcode and search still work.', code: '' }
   if (r.error === 'daily_limit') return { title: "You've hit today's photo limit", text: 'It resets at midnight. Barcode and search still work.', code: '' }
   if (r.error === 'offline' || r.status === 0) return { title: "Can't reach the server", text: 'Check your connection and try again.', code }
   return { title: 'Recognition failed', text: 'The AI service returned an error. Try again in a minute.', code }

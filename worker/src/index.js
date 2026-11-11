@@ -24,10 +24,10 @@ import { reviewProgram } from './review.js'
 import { getMail, setMail, unsubscribe, unsubToken, runMail } from './mailrem.js'
 import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
 import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay, localHour, overdueClients, digestMessage } from './reminders.js'
-import { track, report } from './stats.js'
+import { track, report, pruneStats } from './stats.js'
 import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, startTrial, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
-import { serveMedia, mediaRoutes } from './media.js'
+import { serveMedia, mediaRoutes, deleteClips } from './media.js'
 import { fixSauce } from '../../src/data/sauces.js'
 
 const OFF = 'https://world.openfoodfacts.org'
@@ -43,6 +43,7 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runReminders(env, event.scheduledTime || Date.now()))
     ctx.waitUntil(runCoachDigest(env, event.scheduledTime || Date.now()).catch(() => {}))
+    if (env.DB) ctx.waitUntil(pruneStats(env.DB, event.scheduledTime || Date.now()).catch(() => {}))
     ctx.waitUntil(runMail(env, event.scheduledTime || Date.now(), { origin: env.APP_ORIGIN || 'https://beetfit.wealthifai.xyz', accountOf, getDoc: async (db, id) => parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(id).first())?.data) }).catch(() => {}))
   },
 
@@ -118,6 +119,7 @@ export default {
       if (!device) return json({ error: 'unauthorized' }, 401, cors)
 
       if (url.pathname === '/api/media' || url.pathname.startsWith('/api/media/')) {
+        if (req.method === 'POST' && !(await burstOk(env, `clip:${ip}`))) return json({ error: 'slow_down' }, 429, { ...cors, 'retry-after': '60' })
         let owner = 'd-' + device.id
         if (env.DB) { await ensureSchema(env.DB); owner = await userOf(env.DB, device.id) }
         const pro = req.method === 'POST' ? (await tierOf(env, device)).pro : true
@@ -142,6 +144,7 @@ export default {
 
       if (url.pathname === '/api/snap' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'snap_not_configured' }, 503, cors)
+        if (!(await burstOk(env, `snap:${ip}`))) return json({ error: 'slow_down' }, 429, { ...cors, 'retry-after': '60' })
         const tier = await tierOf(env, device)
         if (!(await underLimit(env, `snapip:${ip}`, SNAP_IP_DAILY_LIMIT)) || !(await underLimit(env, `snap:${device.id}`, tier.snaps))) {
           return json({ error: 'daily_limit', pro: tier.pro, limit: tier.snaps }, 429, cors)
@@ -154,6 +157,7 @@ export default {
       }
       if (url.pathname === '/api/chat' && req.method === 'POST') {
         if (!env.GEMINI_API_KEY) return json({ error: 'chat_not_configured' }, 503, cors)
+        if (!(await burstOk(env, `chat:${ip}`))) return json({ error: 'slow_down' }, 429, { ...cors, 'retry-after': '60' })
         const tier = await tierOf(env, device)
         if (!(await underLimit(env, `chatip:${ip}`, CHAT_IP_DAILY_LIMIT)) || !(await underLimit(env, `chat:${device.id}`, tier.chats))) {
           return json({ error: 'daily_limit', pro: tier.pro, limit: tier.chats }, 429, cors)
@@ -490,8 +494,19 @@ async function syncRoutes(req, url, env, device, ip, cors, ctx) {
   }
 
   if (url.pathname === '/api/sync/leave' && req.method === 'POST') {
-    // Unlink this device: it gets a fresh empty user next time.
+    // Unlink this device: it gets a fresh empty user next time. The last device of a user without an account
+    // takes the server copy with it (nobody could ever reach it again).
+    const row = await db.prepare('SELECT user_id FROM devices WHERE device_id = ?').bind(device.id).first()
     await db.prepare('DELETE FROM devices WHERE device_id = ?').bind(device.id).run()
+    if (row) {
+      await ensureAuthSchema(db)
+      const left = await db.prepare('SELECT COUNT(*) AS n FROM devices WHERE user_id = ?').bind(row.user_id).first()
+      const ids = await db.prepare('SELECT COUNT(*) AS n FROM identities WHERE user_id = ?').bind(row.user_id).first()
+      if (!left?.n && !ids?.n) {
+        await deleteUser(db, row.user_id)
+        await deleteClips(env, row.user_id).catch(() => {})
+      }
+    }
     return json({ ok: true }, 200, cors)
   }
 
@@ -540,6 +555,7 @@ async function authRoutes(req, url, env, device, ip, cors) {
     if (body.confirm !== 'DELETE') return out({ error: 'confirm' }, 400)
     await cancelBilling(env, db, userId) // no charges after the account is gone
     await deleteUser(db, userId)
+    await deleteClips(env, userId).catch(() => {}) // their exercise demo clips in R2
     return out({ ok: true })
   }
   return out({ error: 'not_found' }, 404)
@@ -914,6 +930,12 @@ async function coachFull(env, db, coachId, clientId) {
 async function usedToday(env, key) {
   if (!env.RATE) return 0
   return +(await env.RATE.get(`${key}:${new Date().toISOString().slice(0, 10)}`)) || 0
+}
+
+// Per-minute cap from the Workers rate-limit binding (wrangler.toml → [[ratelimits]] BURST). Not bound → no cap.
+async function burstOk(env, key) {
+  if (!env.BURST?.limit) return true
+  try { return (await env.BURST.limit({ key })).success } catch { return true }
 }
 
 async function underLimit(env, key, max) {

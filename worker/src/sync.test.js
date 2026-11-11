@@ -48,6 +48,16 @@ describe('sync', () => {
     expect((await call(B, '/api/sync/leave', 'POST')).ok).toBe(true)
     expect(await call(B, '/api/sync')).toMatchObject({ rev: 0, data: null })
     expect((await call(A, '/api/sync')).devices).toBe(1)
+    expect((await call(A, '/api/sync')).data.profile.goal).toBe('gain') // A still has the data
+  })
+  it('the last device leaving (no account) deletes the server copy', async () => {
+    const C = await issueToken(SECRET)
+    await call(C, '/api/sync', 'PUT', { data: { profile: { goal: 'lose' } }, baseRev: 0 })
+    const uid = (await env.DB.prepare('SELECT user_id FROM devices').all()).results.length
+    expect(uid).toBeGreaterThan(0)
+    const before = (await env.DB.prepare('SELECT COUNT(*) AS n FROM docs').first()).n
+    await call(C, '/api/sync/leave', 'POST')
+    expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM docs').first()).n).toBe(before - 1)
   })
   it('503 when D1 is not bound', async () => {
     const r = await worker.fetch(new Request('https://x/api/sync', { headers: { authorization: `Bearer ${A}` } }), { DEVICE_SECRET: SECRET }, {})

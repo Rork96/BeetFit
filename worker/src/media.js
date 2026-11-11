@@ -82,3 +82,16 @@ export async function mediaRoutes(req, url, env, { owner, pro, under, json, cors
   }
   return json({ error: 'not_found' }, 404, cors)
 }
+
+// Account deletion: every clip under ex/<owner>/.
+export async function deleteClips(env, owner) {
+  if (!env.MEDIA || !owner) return 0
+  let n = 0, cursor
+  do {
+    const page = await env.MEDIA.list({ prefix: `ex/${owner}/`, cursor })
+    const keys = page.objects.map(o => o.key)
+    if (keys.length) { await env.MEDIA.delete(keys); n += keys.length }
+    cursor = page.truncated ? page.cursor : undefined
+  } while (cursor)
+  return n
+}

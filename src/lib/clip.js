@@ -13,6 +13,7 @@ export const CLIP_ERR = {
   too_big: 'That clip is over 8 MB. Record a shorter one.',
   bad_type: 'That file isn’t a video this app can play.',
   daily_limit: 'That’s 30 clips today. Try again tomorrow.',
+  slow_down: 'Too many uploads in a minute. Wait a moment and try again.',
   offline: 'No connection. Try again.',
   not_video: 'Pick a video file.',
   unreadable: 'Couldn’t open that video. Try recording it again.'

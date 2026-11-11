@@ -17,3 +17,4 @@
 .st-nav.hot b { color: var(--accent); }
 .st-ver { text-align: center; margin: 4px 0 12px; }
 .st-page .tw-card > .label:first-child, .st-page .rm-card > .label:first-child { display: none; }
+.st-ver a { color: var(--hint); text-decoration: underline; text-underline-offset: 2px; }

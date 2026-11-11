@@ -40,7 +40,7 @@ export default defineConfig({
         globIgnores: ['mediapipe/**', '**/Gem3D-*.js'], // 3D mark (three.js) loads on first use only
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/(privacy|terms)/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/mediapipe/') || url.pathname.endsWith('.wasm'),

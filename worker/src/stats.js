@@ -30,3 +30,10 @@ export async function report(db, days = 14, now = Date.now()) {
   const funnel = FUNNEL.map((name, i) => ({ name, people: people[name] || 0, ofPrev: i && people[FUNNEL[i - 1]] ? +((people[name] || 0) / people[FUNNEL[i - 1]]).toFixed(3) : null }))
   return { days: n, since, people, funnel, byDay }
 }
+
+// Usage counts are kept 13 months (privacy policy, section 6).
+export async function pruneStats(db, now = Date.now()) {
+  await ensureStatsSchema(db)
+  const cut = new Date(now - 396 * 864e5).toISOString().slice(0, 10)
+  await db.prepare('DELETE FROM evt WHERE day < ?').bind(cut).run()
+}

@@ -6,3 +6,4 @@ dist
 public/mediapipe
 ios/App/Pods
 *.local
+.stats-key

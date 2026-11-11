@@ -45,6 +45,15 @@ database_name = "beetfit"
 # binding = "MEDIA"
 # bucket_name = "beetfit-media"
 
+# Burst cap on the endpoints that cost money (Gemini photo estimates, Beet chat) and on clip uploads:
+# 10 requests a minute per IP and endpoint, counted at the edge. Free on every plan, nothing to set up.
+[[ratelimits]]
+name = "BURST"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
 # Daily reminders: every 15 minutes, send the ones that came due (in each user's own time zone).
 [triggers]
 crons = ["*/15 * * * *"]

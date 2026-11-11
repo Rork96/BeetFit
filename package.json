@@ -15,7 +15,8 @@
     "native:permissions": "node scripts/native-permissions.mjs",
     "ios": "npm run native:build && cap open ios",
     "android": "npm run native:build && cap open android",
-    "vapid": "node scripts/vapid.mjs"
+    "vapid": "node scripts/vapid.mjs",
+    "stats": "node scripts/stats.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

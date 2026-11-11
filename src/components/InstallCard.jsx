@@ -18,10 +18,10 @@ export default function InstallCard() {
   const copy = async () => { try { await navigator.clipboard.writeText(location.origin); setCopied(true); hapticSuccess() } catch { /* ignore */ } }
 
   return (
-    <div className="card ic">
+    <div className="card inst">
       <div className="row">
-        <span className="ic-mark" aria-hidden="true"><i /></span>
-        <div className="ic-t">
+        <img className="inst-mark" src="/icons/icon-192.png" alt="" aria-hidden="true" />
+        <div className="inst-t">
           <b>{mode === 'inapp' ? 'Open BeetFit in your browser' : 'Put BeetFit on your home screen'}</b>
           <span className="td-small">{mode === 'inapp' ? 'This in-app browser can’t keep your data or send reminders.' : 'Full screen, reminders, and storage the browser won’t clear.'}</span>
         </div>
@@ -34,11 +34,11 @@ export default function InstallCard() {
           <button className="btn small secondary" onClick={() => { haptic(); setOpen(o => !o) }} aria-expanded={open}>{open ? 'Hide steps' : 'Show me how · 3 taps'}</button>
           <AnimatePresence initial={false}>
             {open && (
-              <motion.ol className="ic-steps" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              <motion.ol className="inst-steps" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}>
-                <li><span className="num">1</span>Tap <b className="ic-share"><ShareIcon /> Share</b> in Safari’s toolbar</li>
-                <li><span className="num">2</span>Scroll and tap <b>Add to Home Screen</b></li>
-                <li><span className="num">3</span>Tap <b>Add</b>, then open BeetFit from the icon</li>
+                <li><span className="num">1</span><span className="inst-l">Tap <b className="inst-share"><ShareIcon /> Share</b>. On iOS 26, tap <b>⋯</b> first.</span></li>
+                <li><span className="num">2</span><span className="inst-l">Scroll and tap <b>Add to Home Screen</b></span></li>
+                <li><span className="num">3</span><span className="inst-l">Tap <b>Add</b>, then open BeetFit from the icon</span></li>
               </motion.ol>
             )}
           </AnimatePresence>

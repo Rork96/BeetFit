@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { d1 } from '../test/d1.js'
 import worker, { issueToken } from './index.js'
-import { parseRange, sniff, validKey } from './media.js'
+import { parseRange, sniff, validKey, deleteClips } from './media.js'
 
 // Minimal R2 stand-in: head / get (with range) / put / delete.
 function r2() {
@@ -16,7 +16,8 @@ function r2() {
       return { ...meta(k, v), body: new Uint8Array(b) }
     },
     async put(k, buf, o = {}) { m.set(k, { buf, http: o.httpMetadata }) },
-    async delete(k) { m.delete(k) }
+    async delete(k) { for (const x of [].concat(k)) m.delete(x) },
+    async list({ prefix }) { return { objects: [...m.keys()].filter(k => k.startsWith(prefix)).map(key => ({ key })), truncated: false } }
   }
 }
 
@@ -90,5 +91,27 @@ describe('/api/media', () => {
     const r = await worker.fetch(new Request('https://x/api/media', { method: 'POST', headers: { authorization: `Bearer ${A}`, 'content-type': 'video/mp4' }, body: mp4(100) }), off, {})
     expect(r.status).toBe(503)
     expect((await r.json()).error).toBe('media_not_configured')
+  })
+})
+
+describe('burst cap', () => {
+  it('answers 429 slow_down when the rate-limit binding says no', async () => {
+    let n = 0
+    const capped = { ...env, GEMINI_API_KEY: 'k', BURST: { limit: async () => ({ success: ++n <= 10 }) } }
+    const tok = await issueToken(SECRET)
+    const hit = () => worker.fetch(new Request('https://x/api/snap', { method: 'POST', headers: { authorization: `Bearer ${tok}`, 'content-type': 'image/jpeg', 'cf-connecting-ip': '5.5.5.5' }, body: new Uint8Array(0) }), capped, {})
+    for (let i = 0; i < 10; i++) expect((await hit()).status).not.toBe(429)
+    const r = await hit()
+    expect(r.status).toBe(429)
+    expect((await r.json()).error).toBe('slow_down')
+  })
+})
+
+describe('deleteClips', () => {
+  it('removes every clip of one owner and nobody else', async () => {
+    const b = r2()
+    await b.put('ex/u1/a.mp4', new Uint8Array(1)); await b.put('ex/u1/b.mp4', new Uint8Array(1)); await b.put('ex/u2/c.mp4', new Uint8Array(1))
+    expect(await deleteClips({ MEDIA: b }, 'u1')).toBe(2)
+    expect([...b.m.keys()]).toEqual(['ex/u2/c.mp4'])
   })
 })

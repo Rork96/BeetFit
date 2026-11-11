@@ -113,17 +113,18 @@
 .td-rule { margin: -4px 0 0; }
 
 /* Install card */
-.ic { display: flex; flex-direction: column; gap: 12px; }
-.ic .row { align-items: flex-start; gap: 12px; }
-.ic-mark { flex: none; width: 34px; height: 34px; border: 2px solid var(--accent); display: grid; place-items: center; }
-.ic-mark i { width: 12px; height: 12px; background: var(--accent); }
-.ic-t { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.ic-t b { font: 700 14.5px/1.25 var(--f-display); }
-.ic-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
-.ic-steps li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.ic-steps li > span { flex: none; width: 22px; height: 22px; display: grid; place-items: center; background: var(--card-2); border: 1px solid var(--line-2); font-size: 12px; font-weight: 700; }
-.ic-share { display: inline-flex; align-items: center; gap: 3px; color: var(--water); }
-.ic-share svg { width: 15px; height: 15px; }
+.inst { display: flex; flex-direction: column; gap: 12px; }
+.inst .row { align-items: flex-start; gap: 12px; }
+.inst-mark { flex: none; width: 40px; height: 40px; border-radius: 10px; }
+.inst-t { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.inst-t b { font: 700 14.5px/1.25 var(--f-display); }
+.inst-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.inst-steps li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.inst-steps li > span.num { flex: none; width: 22px; height: 22px; display: grid; place-items: center; background: var(--card-2); border: 1px solid var(--line-2); font-size: 12px; font-weight: 700; }
+.inst-share { display: inline-flex; align-items: center; gap: 3px; color: var(--water); }
+.inst-share svg { width: 15px; height: 15px; }
+.inst-l { flex: 1; min-width: 0; line-height: 1.35; }
+.inst .btn { align-self: stretch; }
 .td-date { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .td-date .sb { padding: 2px 8px; font-size: 10.5px; }
 .td-wk .rd-all { white-space: nowrap; }

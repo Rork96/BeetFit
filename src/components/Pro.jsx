@@ -276,6 +276,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         )}
         {err && <p className="ac-err">{err}</p>}
         <button className="ac-link" onClick={() => history.back()}>{reason === 'welcome' ? 'Continue free' : 'Not now'}</button>
+        <p className="pr-legal"><a href="/terms" target="_blank" rel="noopener">Terms of Use</a> · <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></p>
       </>
     )
   }
