@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { GOALS, ACTIVITY_LEVELS } from '../lib/calories.js'
+import { GOALS, ACTIVITY_LEVELS, minTargetKg, targetNote } from '../lib/calories.js'
 import { applyMotionLevel, getMotionLevel } from '../lib/motion.js'
 import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.js'
 import { exportState, clearState } from '../lib/store.js'
@@ -20,7 +20,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { proLine } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.32.2'
+const VERSION = '0.33.0'
 
 // Settings is a short list of groups (the iOS / Android pattern): each row opens its own page,
 // so the root fits on one screen and the version sits at the bottom of it.
@@ -70,6 +70,8 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
                 <input type="number" inputMode="decimal" value={shownTarget}
                   onChange={e => { const v = +e.target.value; if (v) setP({ targetKg: lb ? Math.round((v / KG_TO_LB) * 2) / 2 : v }) }} />
               </label>
+              {p.goal === 'lose' && p.targetKg < minTargetKg(p.heightCm) && <p className="hint" role="alert" style={{ margin: 0, color: 'var(--warn)' }}>A weight-loss target needs a healthy weight, BMI 18.5 or more: about {lb ? +(minTargetKg(p.heightCm) * KG_TO_LB).toFixed(0) + ' lb' : minTargetKg(p.heightCm) + ' kg'} at your height.</p>}
+              {targetNote(p) && <p className="hint" style={{ margin: 0 }}>{targetNote(p)}</p>}
               <label>Activity
                 <select value={p.activity} onChange={e => setP({ activity: e.target.value })}>
                   {ACTIVITY_LEVELS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import BeetMascot from './BeetMascot.jsx'
 import Ic from './Icons.jsx'
 import { MacroRing, MacroChips } from './Nutri.jsx'
-import { macros, bmr, tdee } from '../lib/calories.js'
+import { macros, bmr, tdee, bmi, MIN_AGE, minTargetKg, targetNote } from '../lib/calories.js'
 import { track } from '../lib/track.js'
 
 import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activityFrom, exPool, stepsTarget } from '../lib/program.js'
@@ -63,7 +63,8 @@ export default function Onboarding({ onDone, onRestore, account }) {
   useEffect(() => { setSwapped(null) }, [built])
   const program = swapped || built
   const pace = paceInfo(profile, it)
-  const valid = p.age >= 14 && p.age <= 100 && p.heightCm >= 120 && p.heightCm <= 230 && p.weightKg >= 35 && p.weightKg <= 250 && p.targetKg >= 35 && p.targetKg <= 250
+  const tooLight = p.goal === 'lose' && (p.targetKg < minTargetKg(p.heightCm) || bmi(p) < 18.5)
+  const valid = !tooLight && p.age >= MIN_AGE && p.age <= 100 && p.heightCm >= 120 && p.heightCm <= 230 && p.weightKg >= 35 && p.weightKg <= 250 && p.targetKg >= 35 && p.targetKg <= 250
 
   // Goal follows the target when the user sets one.
   useEffect(() => {
@@ -123,13 +124,15 @@ export default function Onboarding({ onDone, onRestore, account }) {
               <Field label="Sex"><Seg value={p.sex} options={[['male', 'Male'], ['female', 'Female']]} onChange={v => setPf('sex', v)} /></Field>
             </div>
             <div className="grid2">
-              <Field label="Age"><Stepper value={p.age} min={14} max={100} onChange={v => setPf('age', v)} /></Field>
+              <Field label="Age"><Stepper value={p.age} min={MIN_AGE} max={100} onChange={v => setPf('age', v)} /></Field>
               <Field label={units === 'kg' ? 'Height, cm' : 'Height, ft·in'}><Height cm={p.heightCm} units={units} onChange={v => setPf('heightCm', v)} /></Field>
             </div>
             <div className="grid2">
               <Field label={`Weight, ${units}`}><Weight kg={p.weightKg} units={units} onChange={v => setPf('weightKg', v)} /></Field>
               <Field label={`Target, ${units}`}><Weight kg={p.targetKg} units={units} onChange={v => setPf('targetKg', v)} /></Field>
             </div>
+            {tooLight && <p className="hint ob-warn" role="alert">A weight-loss goal needs a target at a healthy weight (BMI 18.5 or more, about {minTargetKg(p.heightCm)} kg at your height). If you are already below it, pick Maintain or Gain muscle.</p>}
+            {!tooLight && targetNote(profile) && <p className="hint">{targetNote(profile)}</p>}
             <Field label="Reach it in">
               <div className="row">
                 <Stepper value={it.timeframe} min={1} max={18} suffix=" mo" onChange={v => setIt(s => ({ ...s, timeframe: v }))} />
