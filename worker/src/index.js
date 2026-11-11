@@ -770,18 +770,38 @@ async function coachRoutes(req, url, env, device, ip, cors, ctx) {
     }
     if (m[2] === 'override' && req.method === 'PUT') {
       const n = (v, lo, hi) => (Number.isFinite(+v) && +v >= lo && +v <= hi ? Math.round(+v) : null)
+      const prev = (await override(db, link.id)) || {}
       const o = { kcal: n(body.kcal, 900, 6000), protein: n(body.protein, 30, 400), note: cleanText(body.note, 280) || null }
-      if (o.kcal == null && o.protein == null && !o.note) {
+      // The program is its own field: a targets save that doesn't mention it keeps it; null withdraws it.
+      const prog = 'program' in body ? cleanProgram(body.program) : prev.program || null
+      const at = Date.now()
+      if (prog) { o.program = prog; o.progAt = 'program' in body ? at : prev.progAt || at }
+      if (o.kcal == null && o.protein == null && !o.note && !prog) {
         await db.prepare('DELETE FROM overrides WHERE link_id = ?').bind(link.id).run()
         return ok({ override: null })
       }
-      const at = Date.now()
       await db.prepare('INSERT OR REPLACE INTO overrides (link_id, data, at) VALUES (?, ?, ?)').bind(link.id, JSON.stringify(o), at).run()
+      if ('program' in body && prog) notify(ctx, env, link.client_id, { title: `Coach · ${coach.name}`, body: 'Built you a new training program. Open Today to apply it.', url: '/', tag: 'coach-program' })
       return ok({ override: { ...o, at } })
     }
     if (m[2] === 'remove' && req.method === 'POST') { await dropLink(db, link.id); return ok({ ok: true }) }
   }
   return err('not_found', 404)
+}
+
+// A coach-built program: up to 7 days of up to 14 exercises. Ids refer to the app's exercise library; names cover custom ones.
+export function cleanProgram(raw) {
+  if (!Array.isArray(raw)) return null
+  const num = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, Math.round(+v))) : d)
+  const days = raw.slice(0, 7).map((d, i) => ({
+    name: cleanText(d?.name, 40) || `Day ${i + 1}`,
+    ...(d?.run ? { run: true } : {}),
+    exercises: (Array.isArray(d?.exercises) ? d.exercises : []).slice(0, 14).map(e => ({
+      id: cleanText(e?.id, 40), name: cleanText(e?.name, 60),
+      sets: num(e?.sets, 1, 10, 3), reps: cleanText(e?.reps, 16) || '10', rest: num(e?.rest, 0, 600, 75)
+    })).filter(e => e.name)
+  })).filter(d => d.exercises.length)
+  return days.length ? days : null
 }
 
 async function postMsg(env, db, me, linkId, by, raw, ok, err) {

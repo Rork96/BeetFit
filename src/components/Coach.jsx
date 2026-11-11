@@ -11,6 +11,7 @@ import {
   niceDate
 } from '../lib/coach.js'
 import './coach.css'
+import { ProgramCard } from './CoachProgram.jsx'
 
 const GOAL = { lose: 'Lose fat', gain: 'Build muscle', maintain: 'Maintain', recomp: 'Recomp' }
 const ERR = {
@@ -468,6 +469,8 @@ function ClientView({ id, onClose, onUpgrade }) {
             </table>
           </section>
         )}
+
+        {ov && <ProgramCard clientId={id} state={state} plan={ov.plan} override={res.override} onChanged={o => setRes(p => ({ ...p, override: o }))} onError={e => setErr(errText(e))} />}
 
         {ov && (
           <section className="card">

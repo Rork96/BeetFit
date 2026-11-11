@@ -1,3 +1,4 @@
+import { ProgramOffer } from './CoachProgram.jsx'
 import React, { useState } from 'react'
 import { planStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, fmtWater, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
@@ -99,6 +100,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
+        {coach?.link?.coach && <ProgramOffer state={state} update={update} />}
         {/* Calories */}
         <div className="card td-kcal">
           <div className="td-ring">

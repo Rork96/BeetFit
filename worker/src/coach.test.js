@@ -63,6 +63,18 @@ describe('coach mode', () => {
     expect(await tellCoach({}, env, env.DB, 'nobody', null, train())).toBe(false) // no coach linked
     expect(await tellCoach({}, env, env.DB, id, null, { name: 'Max' })).toBe(false) // no training in summary
   })
+  it('a coach program reaches the client and survives a targets save', async () => {
+    const prog = [{ name: 'Push', exercises: [{ id: 'bench', name: 'Bench press', sets: 99, reps: '5', rest: 120 }, { id: '', name: '' }] }, { name: 'Empty', exercises: [] }]
+    const o = await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', { program: prog })
+    expect(o.override.program).toEqual([{ name: 'Push', exercises: [{ id: 'bench', name: 'Bench press', sets: 10, reps: '5', rest: 120 }] }])
+    await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', { kcal: 2000 })
+    const seen = (await call(CLIENT, '/api/coach/link')).override
+    expect(seen.kcal).toBe(2000)
+    expect(seen.program).toHaveLength(1)
+    const gone = await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', { kcal: 2000, program: null })
+    expect(gone.override.program).toBeUndefined()
+    await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', {})
+  })
   it('target override is clamped and clearable', async () => {
     const o = await call(COACH, `/api/coach/client/${linkId}/override`, 'PUT', { kcal: 2100.4, protein: 9999, note: 'Hold calories through the deload' })
     expect(o.override).toMatchObject({ kcal: 2100, protein: null, note: 'Hold calories through the deload' })
