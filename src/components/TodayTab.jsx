@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { trainStatus } from '../lib/train.js'
+import { planStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { useCountUp, useBackClose } from '../lib/hooks.js'
@@ -50,7 +50,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const trainedToday = setsLogged(state, key) > 0
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
   const wPlan = todayPlans.find(x => x.kind === 'workout' && x.time && !planDone(state, x, key))
-  const ts = trainStatus(state, key)
+  const ts = planStatus(state, key)
   const up = nextUp(state, key, { workoutTime: wPlan?.time || null, restDay: !wPlan && (ts.kind === 'rest' || ts.kind === 'week') })
   const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
 
@@ -244,16 +244,17 @@ function NextUp({ up, tasks, day, camCount, tomorrow, streak, t, water, state, u
         ? <p className="hint td-sub-ic" aria-label={h.sub}><span><Ic n="train" />{day.exercises.length}</span>{camCount > 0 && <span className="cam"><Ic n="cam" className="solid" />{camCount}</span>}</p>
         : <p className="hint">{h.sub}</p>}
       {h.cta && <button className="btn" onClick={h.act}>{h.cta}</button>}
+      {up.id === 'rest' && <button className="td-link td-anyway" onClick={() => { haptic(); go('workout') }}>Train anyway →</button>}
       <div className="td-tasks" aria-label="Today: 2 of 3 keeps the streak">
         {tasks.map(tk => (
-          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '')} title={tk.label} aria-label={tk.label + (tk.done ? ', done' : '')}>
-            <Ic n={{ food: 'food', water: 'water', train: 'train' }[tk.id] || 'check'} />
-            <span className="td-task-l">{tk.id === 'water' ? <span className="num">{water}/{t.water}</span> : { food: 'Food', train: 'Train' }[tk.id] || tk.short}</span>
+          <span key={tk.id} className={'td-task' + (tk.done ? ' on' : '') + (tk.rest ? ' rest' : '')} title={tk.label} aria-label={tk.label + (tk.done ? ', done' : '')}>
+            <Ic n={tk.rest ? 'moon' : { food: 'food', water: 'water', train: 'train' }[tk.id] || 'check'} />
+            <span className="td-task-l">{tk.id === 'water' ? <span className="num">{water}/{t.water}</span> : tk.rest ? 'Rest' : { food: 'Food', train: 'Train' }[tk.id] || tk.short}</span>
             {tk.done && <i><Ic n="check" /></i>}
           </span>
         ))}
       </div>
-      <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · any 2 keep your streak</p>
+      <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · {tasks.some(x => x.rest) ? 'rest day counts, one more keeps your streak' : 'any 2 keep your streak'}</p>
     </div>
   )
 }

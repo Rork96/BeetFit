@@ -119,7 +119,7 @@ export function overview(state, today = dayKey()) {
   const goal = state.profile.goal
   const alerts = []
   for (const f of (state.painFlags || []).filter(f => f.date >= addDays(today, -13)).slice(-4)) {
-    alerts.push({ kind: 'bad', t: `Pain: ${f.area}`, sub: `${f.exercise} · ${f.date}${f.note ? ` · “${f.note}”` : ''}` })
+    alerts.push({ kind: 'bad', t: `Pain: ${f.area}`, sub: `${f.exercise} · ${niceDate(f.date)}${f.note ? ` · “${f.note}”` : ''}` })
   }
   const last = lastActive(state)
   const quiet = last ? daysBetween(last, today) : null
@@ -142,3 +142,5 @@ export function overview(state, today = dayKey()) {
     sessions: verifiedSessions(state, today)
   }
 }
+
+export const niceDate = k => new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

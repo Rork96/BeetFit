@@ -213,3 +213,5 @@
 .td-top > div:first-child { min-width: 0; flex: 1; }
 .td-top .td-streak { margin-top: 10px; min-height: 34px; padding: 6px 12px; font-size: 13px; max-width: 100%; }
 .td-top .td-streak .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-task.rest { color: var(--data-2); border-color: color-mix(in srgb, var(--data-2) 45%, transparent); background: color-mix(in srgb, var(--data-2) 12%, transparent); }
+.td-task.rest i { background: var(--data-2); border-color: var(--data-2); }

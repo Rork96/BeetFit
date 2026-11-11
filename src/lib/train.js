@@ -1,7 +1,7 @@
 // What the Train tab should recommend today. Nothing is ever locked: these are suggestions,
 // the person can always start any day (Hevy/Strong let you start any routine; Fitbod suggests
 // the freshest muscles and lets you override).
-import { dayKey, addDays, setsLogged, program, nextDayIndex, mondayOf } from './day.js'
+import { dayKey, addDays, setsLogged, program, nextDayIndex, mondayOf, isRestDay } from './day.js'
 
 // Days between sessions the plan assumes. 2/wk → every 3rd day, 3/wk → every other day, 4+/wk → back-to-back is fine.
 export const minGap = perWeek => (perWeek <= 2 ? 3 : perWeek === 3 ? 2 : 1)
@@ -43,6 +43,20 @@ export function trainStatus(state, key = dayKey()) {
     return { kind: 'rest', nextIdx, nextDate: addDays(last, gap), last, sessions: thisWeek.length, planned, doneIdx }
   }
   return { kind: 'train', nextIdx, sessions: thisWeek.length, planned, doneIdx }
+}
+
+// trainStatus reconciled with the calendar: weekly training days and a workout put on today's date win over the gap rule,
+// so Today and Train always agree on whether today is a rest day.
+export function planStatus(state, key = dayKey()) {
+  const ts = trainStatus(state, key)
+  if (ts.kind === 'done') return ts
+  const rest = isRestDay(state, key)
+  if (rest && ts.kind === 'train') {
+    let i = 1; while (i < 14 && isRestDay(state, addDays(key, i))) i++
+    return { ...ts, kind: 'rest', nextDate: addDays(key, i) }
+  }
+  if (!rest && (ts.kind === 'rest' || ts.kind === 'week')) return { ...ts, kind: 'train' }
+  return ts
 }
 
 // Movement patterns trained on a date (squat, hinge, push, pull, lunge, core…).

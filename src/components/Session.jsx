@@ -148,6 +148,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
       {how && <HowToSheet id={how} onClose={() => setHow(null)} onOpen={setHow} />}
 
       <div className="page stk ss-list">
+        {state.coach?.name && <CoachSees name={state.coach.name} log={log} />}
         <Warmup dayName={day.name} status={warm} onDone={id => markWarm(id)} onSkip={() => markWarm('skipped')} />
 
         {day.exercises.map((ex, ei) => (
@@ -285,6 +286,12 @@ function Recap({ state, day, log, elapsed, doneSets, allSets, onDone, onBack }) 
                 {st > 0 && ` ${st}-day streak.`}
               </p>
             </div>
+
+            {state.coach?.name && (() => { const cam = sets.filter(x => x.auto).length; return (
+              <div className="rc-card rc-coach" style={{ animationDelay: '460ms' }}>
+                <Ic n="people" className="solid" />
+                <p><b>{state.coach.name}</b> sees this session{cam ? <>: <b className="num">{cam} of {sets.length}</b> sets verified by camera</> : '. Use the camera next time and your sets show as verified.'}</p>
+              </div>) })()}
 
             {nextDay && <p className="rc-next">Next: <b>{nextDay.name}</b> · {nextDay.exercises.length} {nextDay.exercises.length === 1 ? 'exercise' : 'exercises'}</p>}
 
@@ -437,5 +444,18 @@ function PainSheet({ ex, onReport }) {
       <input placeholder="What did it feel like? (optional)" value={note} onChange={e => setNote(e.target.value.slice(0, 140))} />
       <button className="btn danger" disabled={!area} onClick={() => onReport(area, note)}>Skip exercise & save</button>
     </>
+  )
+}
+
+// Clients with a coach: say plainly who sees the session and what makes a set "verified".
+function CoachSees({ name, log }) {
+  const all = Object.values(log || {}).flatMap(e => (e?.sets || []).filter(s => s && (s.reps != null || s.secs != null)))
+  const cam = all.filter(x => x.auto).length
+  return (
+    <div className="ss-coach">
+      <Ic n="people" className="solid" />
+      <span><b>{name}</b> sees this session. Sets the camera counts show as verified, with a form score.</span>
+      {all.length > 0 && <i className="num" aria-label={`${cam} of ${all.length} sets verified`}><Ic n="cam" className="solid" />{cam}/{all.length}</i>}
+    </div>
   )
 }

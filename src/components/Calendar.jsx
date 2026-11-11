@@ -197,10 +197,10 @@ function History({ state, k, toU, units }) {
   const ci = state.checkins?.[k]
   const wt = (state.weightLog || []).find(x => x.date === k)
   const food = state.foodLog?.[k] || []
-  if (!tasks.some(t => t.done) && !wt && !ci) return <p className="hint">Nothing logged this day.</p>
+  if (!tasks.some(t => t.done && !t.rest) && !wt && !ci) return <p className="hint">Nothing logged this day.</p>
   return (
     <div className="cl-hist">
-      <div className="chips wrap">{tasks.map(t => <span key={t.id} className={'chip' + (t.done ? ' on' : '')}>{t.done ? '✓ ' : ''}{t.id === 'food' ? 'Food' : t.id === 'water' ? 'Water' : 'Training'}</span>)}</div>
+      <div className="chips wrap">{tasks.map(t => <span key={t.id} className={'chip' + (t.done ? ' on' : '')}>{t.done ? '✓ ' : ''}{t.id === 'food' ? 'Food' : t.id === 'water' ? 'Water' : t.rest ? 'Rest day' : 'Training'}</span>)}</div>
       <div className="cl-stats">
         <div><b className="num">{e.kcal}</b><span>kcal</span></div>
         <div><b className="num">{e.p}g</b><span>protein</span></div>

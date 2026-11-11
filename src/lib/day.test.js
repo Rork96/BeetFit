@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextUp, eaten, dayTasks, streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding } from './day.js'
+import { nextUp, eaten, dayTasks, streakInfo, weekReview, addDays, weekday, nextDayIndex, bestStreak, nextMilestone, prevMilestone, todayStanding, isRestDay } from './day.js'
 
 const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, targetKg: 75, goal: 'lose', activity: 'moderate' }
 const program = [{ name: 'A', exercises: [] }, { name: 'B', exercises: [] }, { name: 'C', exercises: [] }]
@@ -188,11 +188,33 @@ describe('nextUp', () => {
   it('rest day skips the workout', () => {
     expect(nextUp({ ...base, ...rest }, T).id).toBe('food')
     expect(nextUp({ ...base, ...rest, ...food }, T).id).toBe('water')
-    expect(nextUp({ ...base, ...rest, ...food, water: { [T]: 8 } }, T).id).toBe('done')
+    expect(nextUp({ ...base, ...rest, ...food, water: { [T]: 8 } }, T).id).toBe('rest')
   })
   it('asks for a weigh-in when the last one is a week old, before water', () => {
     const s = { ...base, ...rest, ...food, weightLog: [{ date: addDays(T, -8), kg: 90 }] }
     expect(nextUp(s, T)).toEqual({ id: 'weigh', last: addDays(T, -8) })
     expect(nextUp({ ...s, weightLog: [{ date: addDays(T, -6), kg: 90 }] }, T).id).toBe('water')
+  })
+})
+
+describe('rest days', () => {
+  const T = '2026-11-10'
+  const prog = { _t: {}, profile: { goal: 'lose', sex: 'male', age: 30, heightCm: 180, weightKg: 85, targetKg: 80, activity: 'moderate' }, settings: {}, weightLog: [], foodLog: {}, water: {}, plans: [] }
+  it('the day after a session (3/wk plan) is rest: training counts as done, nothing asks for exercises', () => {
+    const s = { ...prog, workoutLog: { [addDays(T, -1)]: { Squat: { sets: [{ reps: 10 }] } } } }
+    const tr = dayTasks(s, T).find(t => t.id === 'train')
+    expect(tr).toMatchObject({ rest: true, done: true })
+    expect(isRestDay(s, T)).toBe(true)
+    expect(nextUp({ ...s, foodLog: { [T]: [{ kcal: 1 }] }, water: { [T]: 99 } }, T, { hour: 14 }).id).toBe('rest')
+  })
+  it('a workout put on the calendar for that day, or a logged set, makes it a training day', () => {
+    const s = { ...prog, workoutLog: { [addDays(T, -1)]: { Squat: { sets: [{ reps: 10 }] } } } }
+    expect(isRestDay({ ...s, plans: [{ id: 'x', kind: 'workout', date: T }] }, T)).toBe(false)
+    const trained = { ...s, workoutLog: { ...s.workoutLog, [T]: { Row: { sets: [{ reps: 8 }] } } } }
+    expect(dayTasks(trained, T).find(t => t.id === 'train')).toMatchObject({ done: true })
+    expect(dayTasks(trained, T).find(t => t.id === 'train').rest).toBeUndefined()
+  })
+  it('first day with no history is a training day', () => {
+    expect(isRestDay({ ...prog, workoutLog: {} }, T)).toBe(false)
   })
 })

@@ -19,7 +19,7 @@ describe('coach numbers', () => {
     s.water[today] = 8
     const sum = summarize(s, today)
     expect(sum).toMatchObject({ name: 'Max', goal: 'lose', sessions: 2, planned: 3, logDays: 1, last: today, pain: 0 })
-    expect(sum.adh).toBe(Math.round(100 * (3 + 1) / 21))
+    expect(sum.adh).toBe(Math.round(100 * (3 + 1 + 1) / 21)) // yesterday was a planned rest day: recovery counts
   })
   it('flags pain, quiet days, missed sessions, weight going the wrong way, short sleep', () => {
     const s = base()

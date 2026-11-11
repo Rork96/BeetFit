@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { trainStatus, overlapYesterday, suggestLoad } from '../lib/train.js'
+import { trainStatus, planStatus, overlapYesterday, suggestLoad } from '../lib/train.js'
 import BeetMascot from './BeetMascot.jsx'
 import { trackerFor } from '../camera/RepTracker.jsx'
 import { dayKey, nextDayIndex, program as programOf } from '../lib/day.js'
@@ -34,7 +34,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const done = ex => setsOf(todayLog[ex.name]).filter(s => s && (s.reps != null || s.secs != null)).length
   const doneCount = day.exercises.filter(ex => done(ex) >= ex.sets || todayLog[ex.name]?.skipped).length
   const camCount = day.exercises.filter(ex => trackerFor(ex)).length
-  const ts = trainStatus(state, d)
+  const ts = planStatus(state, d)
   const overlap = overlapYesterday(state, dayIdx, d)
   const fresher = overlap.length ? program.days.findIndex((_, i) => i !== dayIdx && !overlapYesterday(state, i, d).length) : -1
 

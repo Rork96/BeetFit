@@ -125,3 +125,13 @@
 .ss-up { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; font-size: 12.5px; color: var(--accent); background: var(--accent-soft); border-radius: var(--r-1); }
 .ss-up .ic { width: 15px; height: 15px; transform: scaleY(-1); }
 .ss-up b { color: var(--text); }
+/* Coach can see this session */
+.ss-coach { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--r-2); font-size: 13px; line-height: 1.35; color: var(--hint); }
+.ss-coach > svg { width: 22px; height: 22px; flex: none; color: var(--accent); }
+.ss-coach > span { flex: 1; min-width: 0; }
+.ss-coach b { color: var(--text); font-weight: 600; }
+.ss-coach > i { flex: none; display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-weight: 700; color: var(--accent); }
+.ss-coach > i svg { width: 15px; height: 15px; }
+.rc-coach { display: flex; align-items: center; gap: 12px; }
+.rc-coach > svg { width: 26px; height: 26px; flex: none; color: var(--accent); }
+.rc-coach p { margin: 0; font-size: 14px; line-height: 1.4; }

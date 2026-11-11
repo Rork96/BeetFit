@@ -1,6 +1,8 @@
 // Day-level derivations shared by Today, Meals, Workout and Progress. One source of truth per number.
 import { macros } from './calories.js'
 import { PROGRAMS } from '../data/workouts.js'
+import { trainStatus } from './train.js'
+import { plansOn } from './plans.js'
 
 // Local calendar date (not UTC — an evening log in Winnipeg must land on today).
 export function dayKey(d = new Date()) {
@@ -89,12 +91,35 @@ export function nextDayIndex(state, key = dayKey()) {
 }
 
 // Three daily tasks: log food, hit water, train. A day "counts" for the streak at 2 of 3.
+// A planned rest day: recovery is the task, so it counts as done (Apple Fitness/Fitbod treat rest as part of the plan).
+// Weekly training days decide when set; otherwise the gap/weekly-count logic in train.js does. A workout put on
+// the calendar for that date, or any logged set, makes it a training day.
+const restMemo = new WeakMap()
+export function isRestDay(state, key = dayKey()) {
+  if (setsLogged(state, key) > 0) return false
+  const memoKey = state.workoutLog || state
+  let m = restMemo.get(memoKey)
+  if (!m || m.plans !== state.plans || m.prog !== state.program) { m = { plans: state.plans, prog: state.program, v: {} }; restMemo.set(memoKey, m) }
+  if (key in m.v) return m.v[key]
+  let rest
+  if (plansOn(state, key).some(p => p.kind === 'workout' && !p.auto)) rest = false
+  else {
+    const fc = foodCycle(state, key)
+    if (fc) rest = fc.type === 'rest'
+    else { const k = trainStatus(state, key).kind; rest = k === 'rest' || k === 'week' }
+  }
+  return (m.v[key] = rest)
+}
+
 export function dayTasks(state, key = dayKey()) {
   const t = targets(state, key)
+  const trained = setsLogged(state, key) > 0
+  const rest = !trained && isRestDay(state, key)
   return [
     { id: 'food', label: 'Log what you eat', short: 'Food', done: (state.foodLog?.[key]?.length || 0) > 0 },
     { id: 'water', label: `Drink ${t.water} glasses of water`, short: `${t.water} water`, done: waterOf(state, key) >= t.water },
-    { id: 'train', label: 'Train', short: 'Train', done: setsLogged(state, key) > 0 }
+    rest ? { id: 'train', rest: true, label: 'Rest day: recovery counts', short: 'Rest', done: true }
+      : { id: 'train', label: 'Train', short: 'Train', done: trained }
   ]
 }
 
@@ -105,7 +130,7 @@ export function dayTasks(state, key = dayKey()) {
 // Rest days skip the workout. `hour` is local, decimal (18.5 = 18:30); `workoutTime` is "HH:MM" or null.
 export function nextUp(state, key = dayKey(), { hour = new Date().getHours() + new Date().getMinutes() / 60, workoutTime = null, restDay = false } = {}) {
   const t = Object.fromEntries(dayTasks(state, key).map(x => [x.id, x]))
-  const trainPending = !t.train.done && !restDay && targets(state, key).dayType !== 'rest'
+  const trainPending = !t.train.done && !t.train.rest && !restDay
   const at = workoutTime ? +workoutTime.split(':')[0] + +workoutTime.split(':')[1] / 60 : null
   const trainNow = at != null ? hour >= at - 1.5 : hour >= 10 && hour < 21
   if (trainPending && trainNow) return { id: 'train' }
@@ -114,7 +139,7 @@ export function nextUp(state, key = dayKey(), { hour = new Date().getHours() + n
   if (last && last <= addDays(key, -7)) return { id: 'weigh', last }
   if (trainPending && (at != null || hour < 21)) return { id: 'train' }
   if (!t.water.done) return { id: 'water' }
-  if (restDay && !t.train.done) return { id: 'rest' }
+  if ((restDay && !t.train.done) || t.train.rest) return { id: 'rest' }
   return { id: 'done' }
 }
 

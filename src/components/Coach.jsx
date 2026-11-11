@@ -7,7 +7,8 @@ import { migrate } from '../lib/store.js'
 import { fmtWeight, dayKey } from '../lib/day.js'
 import {
   coachSetup, coachNewCode, coachClients, coachClient, coachReply, coachClientSeen, coachRemove, coachOverride,
-  overview, cleanCode, CODE_RE
+  overview, cleanCode, CODE_RE,
+  niceDate
 } from '../lib/coach.js'
 import './coach.css'
 
@@ -413,7 +414,7 @@ function ClientView({ id, onClose, onUpgrade }) {
 
             {ov.checkin && (
               <section className="card">
-                <div className="row"><span className="label">Latest check-in</span><span className="hint num">{ov.checkin.date}</span></div>
+                <div className="row"><span className="label">Latest check-in</span><span className="hint num">{niceDate(ov.checkin.date)}</span></div>
                 <div className="ch-ci num">
                   <div><b>{ov.checkin.sleep ?? '—'}</b><span>sleep h</span></div>
                   <div><b>{ov.checkin.mood ?? '—'}/5</b><span>mood</span></div>

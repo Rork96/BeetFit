@@ -3,7 +3,7 @@ import Ic from './Icons.jsx'
 import BeetMascot from './BeetMascot.jsx'
 
 import { createPortal } from 'react-dom'
-import { dayKey, addDays, mondayOf, dayScore, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES, isPaused, activePause } from '../lib/day.js'
+import { dayKey, addDays, mondayOf, dayScore, dayTasks, streakInfo, bestStreak, todayStanding, nextMilestone, prevMilestone, MILESTONES, isPaused, activePause } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import './streak.css'
@@ -78,7 +78,7 @@ export function StreakSheet({ state, update, onClose, onCalendar }) {
         <div className="sk-card">
           <span className="label">Today</span>
           <div className="sk-tasks">
-            {s.todo.length < 3 && ['food', 'water', 'train'].filter(id => !s.todo.some(t => t.id === id)).map(id => <span key={id} className="chip on sk-ic" aria-label={TASK[id] + ', done'}><Ic n={IC[id]} /><Ic n="check" /></span>)}
+            {dayTasks(state, today).filter(t => t.done).map(t => <span key={t.id} className="chip on sk-ic" aria-label={(t.rest ? 'Rest day' : TASK[t.id]) + ', done'}><Ic n={t.rest ? 'moon' : IC[t.id]} /><Ic n="check" /></span>)}
             {s.todo.map(t => <span key={t.id} className="chip sk-ic" aria-label={TASK[t.id]}><Ic n={IC[t.id]} /></span>)}
           </div>
           <p className="hint">{pause && s.need > 0 ? 'Paused. Today needs nothing from you; anything you log still counts.' : s.need === 0 ? 'Today counts. Anything else is a bonus.' : `${s.need} more and today counts. Any ${s.need === 1 ? 'one' : 'two'} of the open tasks.`}</p>
@@ -120,7 +120,7 @@ export function StreakSheet({ state, update, onClose, onCalendar }) {
               </div>
             ))}
           </div>
-          <p className="hint">A day counts at 2 of 3: food logged, water done, training. One miss a week is covered.</p>
+          <p className="hint">A day counts at 2 of 3: food logged, water done, training. A planned rest day counts as training. One miss a week is covered.</p>
         </div>
 
         <div className="grid2">
