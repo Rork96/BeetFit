@@ -90,3 +90,25 @@ describe('push', () => {
     expect(sent.map(x => x.url)).toContain(s.endpoint)
   })
 })
+
+
+import { overdueClients, digestMessage, localHour } from './reminders.js'
+describe('coach digest', () => {
+  const c = (name, lastTrain, planned = 3) => ({ summary: { name, lastTrain, planned } })
+  it('flags clients past their plan gap, not ones still within it or long lapsed', () => {
+    const o = overdueClients([c('Oleh', '2026-11-06'), c('Ira', '2026-11-08'), c('Max', '2026-11-09', 4), c('Old', '2026-10-01'), c('New', null), { summary: null }], '2026-11-10')
+    expect(o).toEqual([{ name: 'Oleh', days: 4 }])
+    expect(overdueClients([c('A', '2026-11-05', 2)], '2026-11-10')).toEqual([{ name: 'A', days: 5 }]) // 2/wk → 5 days
+    expect(overdueClients([c('B', '2026-11-07', 5)], '2026-11-10')).toEqual([{ name: 'B', days: 3 }]) // 5/wk → 3 days
+  })
+  it('message names up to three and is empty when nobody is overdue', () => {
+    expect(digestMessage([])).toBeNull()
+    expect(digestMessage([{ name: 'Oleh', days: 4 }]).title).toBe('1 client is overdue')
+    const m = digestMessage([1, 2, 3, 4, 5].map(i => ({ name: 'C' + i, days: 9 - i })))
+    expect(m.title).toBe('5 clients are overdue')
+    expect(m.body).toContain('+2')
+  })
+  it('knows the coach local hour', () => {
+    expect(localHour(Date.UTC(2026, 10, 10, 23, 5), 'America/Toronto')).toEqual({ hour: 18, minute: 5 })
+  })
+})

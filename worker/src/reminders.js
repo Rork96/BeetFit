@@ -164,3 +164,28 @@ export function eventMessage(ev, doc, today) {
   if (ev.kind === 'weigh' && (doc?.weightLog || []).some(w => w.date === today)) return null
   return { title: ev.title, body: ev.body, url: ev.url, tag: ev.tag }
 }
+
+export const localHour = (ts, tz) => { const p = parts(ts, tz); return { hour: p.hour, minute: p.minute } }
+
+// Coach digest: clients clearly overdue for a session. Overdue = no training for longer than their plan allows
+// (2/wk: 5 days, 3/wk: 4, 4+/wk: 3). Stops nagging 7 days past the line so a lapsed client doesn't pin the digest forever.
+const dayN = k => Math.round(Date.parse(k + 'T12:00Z') / 864e5)
+export function overdueClients(clients, today) {
+  const out = []
+  for (const c of clients || []) {
+    const s = c?.summary
+    if (!s || !s.lastTrain) continue
+    const planned = s.planned || 3
+    const limit = planned <= 2 ? 5 : planned === 3 ? 4 : 3
+    const days = dayN(today) - dayN(s.lastTrain)
+    if (days >= limit && days <= limit + 7) out.push({ name: String(s.name || 'Client').slice(0, 24), days })
+  }
+  return out.sort((a, b) => b.days - a.days)
+}
+
+export function digestMessage(over) {
+  if (!over.length) return null
+  const list = over.slice(0, 3).map(o => `${o.name} (${o.days}d)`).join(', ')
+  const more = over.length > 3 ? ` +${over.length - 3}` : ''
+  return { title: over.length === 1 ? '1 client is overdue' : `${over.length} clients are overdue`, body: `${list}${more}. A short message now brings them back.`, url: '/?coach=1', tag: 'coach-digest' }
+}

@@ -22,7 +22,7 @@ import { sendPush, vapidPublic } from './webpush.js'
 import { reviewProgram } from './review.js'
 import { getMail, setMail, unsubscribe, unsubToken, runMail } from './mailrem.js'
 import { authConfig, ensureAuthSchema, accountOf, startEmail, verifyEmail, verifyGoogle, verifyApple, signIn, signOut, deleteUser, cleanEmail } from './auth.js'
-import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay } from './reminders.js'
+import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, localDay, localHour, overdueClients, digestMessage } from './reminders.js'
 import { track, report } from './stats.js'
 import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, startTrial, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
@@ -40,6 +40,7 @@ export default {
   // Cron (wrangler.toml [triggers]): send the reminders that came due.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runReminders(env, event.scheduledTime || Date.now()))
+    ctx.waitUntil(runCoachDigest(env, event.scheduledTime || Date.now()).catch(() => {}))
     ctx.waitUntil(runMail(env, event.scheduledTime || Date.now(), { origin: env.APP_ORIGIN || 'https://beetfit.wealthifai.xyz', accountOf, getDoc: async (db, id) => parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(id).first())?.data) }).catch(() => {}))
   },
 
@@ -826,6 +827,26 @@ function notify(ctx, env, userId, payload) {
   })().catch(() => {})
   if (ctx?.waitUntil) ctx.waitUntil(job)
   return job
+}
+
+// Once a day, 18:00 in the coach's own time zone (the cron runs every 15 min, so the 18:00–18:14 window fires once):
+// which of their clients have gone quiet on training. Silent when nobody is overdue.
+export async function runCoachDigest(env, now = Date.now()) {
+  if (!env.VAPID_JWK || !env.DB) return 0
+  const db = env.DB
+  await ensureSchema(db); await ensurePushSchema(db)
+  const { results: subs } = await db.prepare('SELECT user_id, tz FROM push_subs WHERE user_id IN (SELECT user_id FROM coaches) GROUP BY user_id').all()
+  let sent = 0
+  for (const sub of subs) {
+    const tz = validTz(sub.tz) ? sub.tz : 'UTC'
+    const { hour, minute } = localHour(now, tz)
+    if (hour !== 18 || minute >= 15) continue
+    const { results } = await db.prepare('SELECT d.summary FROM links l JOIN docs d ON d.user_id = l.client_id WHERE l.coach_id = ?').bind(sub.user_id).all()
+    const msg = digestMessage(overdueClients(results.map(r => ({ summary: parse(r.summary) })), localDay(now, tz)))
+    if (!msg) continue
+    await notify(null, env, sub.user_id, msg); sent++
+  }
+  return sent
 }
 
 export async function runReminders(env, now = Date.now()) {

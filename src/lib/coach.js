@@ -107,10 +107,12 @@ export function summarize(state, today = dayKey()) {
   return {
     name: state.settings?.name || '', goal: state.profile.goal,
     adh: w.adh, sessions: w.sessions, planned: w.planned, logDays: w.logDays,
-    weight: r1(currentWeight(state)), rate: r1(weeklyRate(state, 14, today)), pain, last, day: today,
+    weight: r1(currentWeight(state)), rate: r1(weeklyRate(state, 14, today)), pain, last, lastTrain: lastTrain(state, today), day: today,
     ...(todayTrain(state, today) && { train: todayTrain(state, today) })
   }
 }
+
+const lastTrain = (state, today) => Object.keys(state.workoutLog || {}).filter(k => k <= today && setsLogged(state, k) > 0).sort().pop() || null
 
 // What the coach gets pinged about: today's session, with how much of the plan day is in and what the camera saw.
 // `done` = at least 80% of the planned sets (or 3 sets when the day can't be matched to the plan).
