@@ -536,3 +536,64 @@ HOWTO.floor_press = {
   err: [['Elbows flared out wide', 'Tuck them to about 45 degrees.'], ['Bouncing off the floor', 'Touch, pause, press.'], ['Dumbbells drifting apart', 'Keep them above the chest, wrists straight.']],
   easy: 'pushup'
 }
+HOWTO.kb_deadlift = {
+  ...HOWTO.rdl, eq: ['bar@wrist'],
+  steps: [
+    { f: 0, t: 'Stand with the kettlebell between your feet, feet shoulder-width apart.' },
+    { f: 1, t: 'Push the hips back and reach down to the handle with a flat back.' },
+    { f: 0, t: 'Push the floor away and stand tall. Squeeze the glutes at the top.' },
+    { f: 1, t: 'Hips back to lower it, back stays flat.' }
+  ],
+  err: [['Rounding the back', 'Chest proud, bell closer to the feet.'], ['Squatting it', 'The hips go back, the knees stay soft.'], ['Leaning back at the top', 'Stand tall, do not arch.']],
+  easy: 'glute_bridge'
+}
+HOWTO.kb_press = {
+  ...HOWTO.ohp, eq: ['bar@wrist'],
+  steps: [
+    { f: 0, t: 'Hold the kettlebell at the shoulder, forearm vertical, elbow close.' },
+    { f: 1, t: 'Squeeze the glute and brace the abs.' },
+    { f: 1, t: 'Press straight up until the arm is locked out beside the ear.' },
+    { f: 0, t: 'Lower back to the shoulder with control. Do all reps, then switch.' }
+  ],
+  err: [['Leaning back', 'Ribs down, glute tight.'], ['Bell crashing on the forearm', 'Keep the wrist straight and the bell close.'], ['Pressing out in front', 'Path is straight up past the ear.']],
+  easy: 'pike_pushup'
+}
+HOWTO.kb_row = {
+  ...HOWTO.bb_row, eq: ['bar@wrist'],
+  steps: [
+    { f: 0, t: 'Hinge forward, flat back, kettlebell hanging in one hand. Free hand on a bench or your thigh.' },
+    { f: 1, t: 'Pull the bell to your hip, elbow back along the body.' },
+    { f: 0, t: 'Lower until the arm is straight. Do all reps, then switch.' }
+  ],
+  err: [['Twisting the torso', 'Keep the shoulders square.'], ['Pulling with the arm only', 'Lead with the elbow.'], ['Rounding the back', 'Look at the floor ahead of you.']]
+}
+HOWTO.neg_pullup = {
+  ...HOWTO.pullup,
+  steps: [
+    { f: 1, t: 'Step or jump up so your chin is over the bar. Hold the top.' },
+    { f: 0, t: 'Lower yourself as slowly as you can, about 5 seconds, until the arms are straight.' },
+    { f: 0, t: 'Step back up and repeat. Each set builds toward the first full pull-up.' }
+  ],
+  err: [['Dropping fast', 'Count 5 seconds on the way down.'], ['Shrugging the shoulders to the ears', 'Pull the shoulders down at the bottom.'], ['Swinging', 'Legs together, body still.']],
+  easy: 'table_row'
+}
+HOWTO.incline_pushup = {
+  ...HOWTO.pushup,
+  steps: [
+    { f: 0, t: 'Hands on the edge of the bench, wider than the shoulders. Body in one straight line.' },
+    { f: 1, t: 'Lower your chest to the edge, elbows about 45 degrees from the body.' },
+    { f: 0, t: 'Press back up without letting the hips sag.' }
+  ],
+  err: [['Hips sagging', 'Squeeze glutes and abs.'], ['Elbows flaring', 'Tuck them to 45 degrees.'], ['Half reps', 'Chest touches the bench edge.']]
+}
+HOWTO.step_up = {
+  ...HOWTO.split_squat,
+  steps: [
+    { f: 0, t: 'Stand facing the bench. Put one whole foot on top.' },
+    { f: 1, t: 'Drive through the heel of the top foot and stand up tall.' },
+    { f: 0, t: 'Lower slowly back down. Finish the reps, then switch legs.' }
+  ],
+  err: [['Pushing off the back foot', 'Let the top leg do the work.'], ['Bench too high', 'Knee should not go above hip height.'], ['Knee caving in', 'Push it out over the toes.']],
+  easy: 'bw_squat'
+}
+

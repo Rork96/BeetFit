@@ -45,6 +45,12 @@ describe('mkProg', () => {
     const bands = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['bands'] })).flatMap(d => d.exercises.map(e => e.name))
     expect(bands).toContain('Band row')
   })
+  it('kettlebell and bench owners get exercises that use them', () => {
+    const kb = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['kettlebell', 'pullup_bar'] })).flatMap(d => d.exercises.map(e => e.name))
+    expect(kb).toEqual(expect.arrayContaining(['Kettlebell deadlift', 'Kettlebell row', 'Kettlebell shoulder press']))
+    const bench = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['bench'] })).flatMap(d => d.exercises.map(e => e.name))
+    expect(bench).toEqual(expect.arrayContaining(['Incline push-up', 'Bench step-up']))
+  })
   it('a 5-minute row is one block, not three sets', () => {
     const row = mkProg('lose', it_({ loc: 'gym', daysWk: 3 })).flatMap(d => d.exercises).find(e => e.name === 'Rowing machine')
     expect(row.sets).toBe(1)
