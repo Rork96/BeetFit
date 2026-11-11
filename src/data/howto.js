@@ -526,3 +526,13 @@ HOWTO.db_row = {
   ],
   err: [['Twisting the torso', 'Keep the shoulders square to the floor.'], ['Pulling with the arm only', 'Lead with the elbow and squeeze the shoulder blade.'], ['Rounding the back', 'Look at the floor a little ahead of your hand.']]
 }
+HOWTO.floor_press = {
+  ...HOWTO.bench, eq: ['bar@wrist'],
+  steps: [
+    { f: 1, t: 'Lie on the floor, knees bent, a dumbbell in each hand over your chest.' },
+    { f: 0, t: 'Lower slowly until your upper arms touch the floor, elbows about 45 degrees from the body.' },
+    { f: 1, t: 'Pause for a second, then press up until the arms are straight.' }
+  ],
+  err: [['Elbows flared out wide', 'Tuck them to about 45 degrees.'], ['Bouncing off the floor', 'Touch, pause, press.'], ['Dumbbells drifting apart', 'Keep them above the chest, wrists straight.']],
+  easy: 'pushup'
+}

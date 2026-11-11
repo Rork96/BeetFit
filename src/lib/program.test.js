@@ -36,6 +36,15 @@ describe('mkProg', () => {
       expect(all.map(e => e.name)).toContain('Chest press machine')
     }
   })
+  it('home kit changes the plan: dumbbells beat no equipment', () => {
+    const none = mkProg('lose', it_({ loc: 'home, no equipment' })).flatMap(d => d.exercises.map(e => e.name))
+    const db = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['dumbbell'] })).flatMap(d => d.exercises.map(e => e.name))
+    expect(db).not.toEqual(none)
+    expect(db).toContain('Goblet squat')
+    expect(none).not.toContain('Goblet squat')
+    const bands = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['bands'] })).flatMap(d => d.exercises.map(e => e.name))
+    expect(bands).toContain('Band row')
+  })
   it('a 5-minute row is one block, not three sets', () => {
     const row = mkProg('lose', it_({ loc: 'gym', daysWk: 3 })).flatMap(d => d.exercises).find(e => e.name === 'Rowing machine')
     expect(row.sets).toBe(1)
@@ -88,9 +97,9 @@ describe('exercise priority', () => {
   it('prefers compound lifts over isolation within a pattern', () => {
     const prog = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['dumbbell'], injuries: 'left knee' }))
     const a = prog[0].exercises.map(e => e.name)
-    expect(a).toContain('Push-up')
+    expect(a).toContain('Dumbbell floor press')
     expect(a).not.toContain('Lateral raises')
-    expect(a).toContain('Table row')
+    expect(a).toContain('One-arm dumbbell row')
   })
 })
 

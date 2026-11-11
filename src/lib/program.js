@@ -92,11 +92,13 @@ export function mkEx(L, it) {
 // One exercise per movement pattern, the best fit for the user's level, never repeated inside a session.
 export function mkProg(goal, it = DEFAULT_INTAKE) {
   const pool = exPool(it)
-  const loadRank = L => (it.loc === 'gym' && L.eq.includes('none') ? 1 : 0)
+  // Level first, then exercises that use kit the person actually has (gym machines, their dumbbells, bands...) over plain bodyweight.
+  const kit = ownedEq(it).filter(e => e !== 'none' && e !== 'furniture')
+  const loadRank = L => (!L.eq.includes('none') && L.eq.some(e => kit.includes(e)) ? 0 : 1)
   const want = it.exp === 'regular' ? 1 : 0
   const byPat = (pat, used) => pool
     .filter(L => L.pat === pat && !used.includes(L))
-    // Level first; at a gym, loaded lifts and machines beat bodyweight. Stable sort: remaining ties keep library order (main compound first).
+    // Stable sort: remaining ties keep library order (main compound first).
     .sort((a, b) => Math.abs(LVL[a.lvl] - want) - Math.abs(LVL[b.lvl] - want) || loadRank(a) - loadRank(b))[0] || null
   const pick = pats => { const used = []; pats.forEach(p => { const L = byPat(p, used); if (L) used.push(L) }); return used }
   const days = goal === 'gain' ? Math.max(3, Math.min(4, it.daysWk)) : Math.max(2, Math.min(5, it.daysWk))

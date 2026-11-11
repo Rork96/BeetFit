@@ -20,7 +20,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { proLine } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.32.0'
+const VERSION = '0.32.1'
 
 // Settings is a short list of groups (the iOS / Android pattern): each row opens its own page,
 // so the root fits on one screen and the version sits at the bottom of it.
