@@ -290,13 +290,18 @@ export default function ProSheet({ pro, account, reason, onClose }) {
 }
 
 // Settings card: one line of status and the way in.
-export function ProCard({ pro, onOpen }) {
-  if (!pro.on) return null
+export function proLine(pro) {
   const st = pro.status
-  const line = !st?.pro ? (st?.trialUsed ? 'Unlimited photo estimates, more Beet, strength trends.' : `${pro.config?.trialDays || 14} days free, no card needed.`)
+  return !st?.pro ? (st?.trialUsed ? 'Unlimited photo estimates, more Beet, strength trends.' : `${pro.config?.trialDays || 14} days free, no card needed.`)
     : st.state === 'trialing' ? `Trial · ${daysLeft(st.trialEnd)} days left`
       : st.cancelAtEnd ? `Ends ${fmtDate(st.periodEnd)}`
         : `${st.plan === 'year' ? 'Yearly' : 'Monthly'} · renews ${st.periodEnd ? fmtDate(st.periodEnd) : ''}`
+}
+
+export function ProCard({ pro, onOpen }) {
+  if (!pro.on) return null
+  const st = pro.status
+  const line = proLine(pro)
   return (
     <section className={'card pr-card' + (st?.pro ? '' : ' sell')}>
       <div className="row">

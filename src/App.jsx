@@ -153,7 +153,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={pg => setSettings(typeof pg === 'string' ? pg : true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} pro={pro} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
         {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
@@ -168,7 +168,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} onClose={() => history.back()} />}
+      {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} page={['sync', 'reminders', 'training', 'account'].includes(settings) ? settings : null} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {clients && <CoachHome onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}

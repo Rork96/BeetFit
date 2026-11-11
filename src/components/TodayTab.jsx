@@ -74,7 +74,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
     <div className="page today">
       <div className="row td-top">
         <div>
-          <div className="td-date"><span className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>{sync && <SyncBadge sync={sync} onOpen={openSettings} />}</div>
+          <div className="td-date"><span className="label">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>{sync && <SyncBadge sync={sync} onOpen={() => openSettings('sync')} />}</div>
           <div className="hero"><span className="glow" /><h1>{greeting()}{name ? `, ${name}` : ''}</h1></div>
           {state.settings?.streak !== false && <StreakPill state={state} onOpen={() => setStreakOpen(true)} />}
         </div>
