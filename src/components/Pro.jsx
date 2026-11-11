@@ -18,6 +18,7 @@ const REASON = {
   chat: 'That was today’s last free question for Beet.',
   strength: 'Strength trends for every lift are part of PRO.',
   clients: 'Free coaching covers 3 clients. PRO lifts that to 200.',
+  video: 'Your own exercises are free. Demo videos on them are part of PRO.',
   welcome: 'Your plan is built. Beet and photo estimates are what keep you on it: try them free first.',
   success: null
 }
@@ -28,6 +29,7 @@ const HEAD = {
   chat: 'A coach in your pocket, all day',
   strength: 'See every lift get stronger',
   clients: 'Coach more people',
+  video: 'Show the move, not just the name',
   default: 'The plan is free. PRO makes it stick.'
 }
 
@@ -213,9 +215,9 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         {reason && REASON[reason] && <p className="pr-why">{REASON[reason]}</p>}
 
         <div className="pr-demos" aria-label="What PRO adds">
-          {reason === 'clients' && <DemoCoach />}
+          {(reason === 'clients' || reason === 'video') && <DemoCoach />}
           <DemoSnap />
-          {reason !== 'clients' && <DemoCoach />}
+          {reason !== 'clients' && reason !== 'video' && <DemoCoach />}
           <Shot src="/pro/beet.webp" label="Ask Beet" w={780} h={460} />
           <Shot src="/pro/trend.webp" label="Strength trends" w={780} h={740} />
           <Shot src="/pro/food.webp" label="Every meal, counted" w={780} h={560} />

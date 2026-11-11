@@ -87,6 +87,18 @@ How the trial works: 14 days of PRO start on the device (`POST /api/billing/tria
 2. RevenueCat → Integrations → Webhooks → URL `https://beetfit.wealthifai.xyz/api/billing/revenuecat`, Authorization header: any long secret → `npx wrangler secret put REVENUECAT_WEBHOOK_AUTH` (same value).
 3. The app logs in to RevenueCat with `appUserId` from `/api/billing/status` (plugin wiring lands with the store release).
 
+## Exercise demo clips (R2)
+
+People can attach a short demo clip (first 8 s, ≤ 720p, no sound, ≤ 8 MB) to their own exercises. Clips live in R2.
+Until it is on, everything else works and the clip button says video storage isn't switched on yet.
+
+1. Cloudflare dashboard → **R2** → **Get started** (one time per account; free tier is 10 GB with no egress fees).
+2. `npx wrangler r2 bucket create beetfit-media`
+3. In `wrangler.toml`, remove the `#` from the three `[[r2_buckets]]` lines, then `npm run deploy`.
+
+Clips are PRO when payments are on. Each user can upload 30 a day. Keys contain a random UUID, so the public
+`GET /api/media/…` URLs can't be guessed; deleting an exercise deletes its clip.
+
 ## 2. Install on a phone (no store)
 
 - **iPhone**: open the site in Safari → Share → *Add to Home Screen*.

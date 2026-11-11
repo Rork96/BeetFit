@@ -7,12 +7,14 @@ import { useBackClose } from '../lib/hooks.js'
 import { haptic } from '../lib/platform.js'
 import Session, { setsOf } from './Session.jsx'
 import Library from './Library.jsx'
-import HowToSheet, { HowToThumb } from './HowTo.jsx'
+import HowToSheet from './HowTo.jsx'
+import { ExThumb, ExInfoSheet, ExEditor, AddExSheet } from './MyEx.jsx'
+import { removeFromDay, moveInDay } from '../lib/myex.js'
 import Ic from './Icons.jsx'
 import PlanReview from './PlanReview.jsx'
 import { liveSession, setLiveSession } from '../lib/store.js'
 
-export default function WorkoutTab({ state, update, intent, clearIntent }) {
+export default function WorkoutTab({ state, update, intent, clearIntent, pro }) {
   const { workoutLog } = state
   const program = programOf(state)
   // A session still running from before a reload / screen lock reopens where it was.
@@ -23,6 +25,10 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   const [lib, setLib] = useState(false)
   const [how, setHow] = useState(null) // exercise id whose how-to sheet is open
   const [toast, setToast] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [info, setInfo] = useState(null) // exercise whose clip/details sheet is open
+  const [edit, setEdit] = useState(null) // id of your exercise being edited
   const d = dayKey()
   const todayLog = workoutLog?.[d] || {}
   const day = program.days[Math.min(dayIdx, program.days.length - 1)]
@@ -30,6 +36,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   useBackClose(!!session, () => setSession(null))
   useBackClose(lib, () => setLib(false))
   useBackClose(!!how, () => setHow(null))
+  const editDay = fn => { haptic(); update(prev => ({ program: fn(prev.program?.length ? prev.program : program.days) })) }
 
   const done = ex => setsOf(todayLog[ex.name]).filter(s => s && (s.reps != null || s.secs != null)).length
   const doneCount = day.exercises.filter(ex => done(ex) >= ex.sets || todayLog[ex.name]?.skipped).length
@@ -66,7 +73,7 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
   if (session) {
     return <Session state={state} update={update} day={day} dayIdx={dayIdx} startCamAt={session.cam} startedAt={liveSession()?.startedAt} onClose={() => history.back()} />
   }
-  if (lib) return <Library state={state} onClose={() => history.back()} />
+  if (lib) return <Library state={state} update={update} pro={pro} onClose={() => history.back()} />
 
   return (
     <div className="page">
@@ -93,7 +100,8 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
       <div className="card stk" key={dayIdx}>
         <div className="row">
           <h3>{day.name.split('—')[1]?.trim() || day.name}</h3>
-          <span className="label num">{doneCount}/{day.exercises.length}</span>
+          {editing ? <button className="btn small" onClick={() => { haptic(); setEditing(false) }}>Done</button>
+            : <span className="row" style={{ gap: 10 }}><span className="label num">{doneCount}/{day.exercises.length}</span>{!running && !day.run && <button className="chip" onClick={() => { haptic(); setEditing(true) }} aria-label="Edit this day"><Ic n="edit" />Edit</button>}</span>}
         </div>
         <div className="progressbar"><div style={{ width: `${(doneCount / day.exercises.length) * 100}%` }} /></div>
         {day.exercises.map((ex, i) => {
@@ -106,9 +114,9 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
               <span className={'ex-mark' + (finished ? ' on' : '')}>
                 {finished && <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17 19 7" /></svg>}
               </span>
-              <HowToThumb id={ex.id || ex.name} onOpen={setHow} />
+              <ExThumb ex={ex} onHow={setHow} onInfo={setInfo} />
               <div className="ex-main">
-                <div className="ex-name">{ex.name}{tid && <span className="ex-cam i" title="Counted by the camera"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
+                <div className="ex-name">{ex.name}{ex.custom && <span className="ex-own">yours</span>}{tid && <span className="ex-cam i" title="Counted by the camera"><Ic n="cam" className="solid" label="Camera counts reps" /></span>}</div>
                 <div className="ex-meta num">
                   {entry?.skipped ? <span style={{ color: 'var(--danger)' }}>skipped · {entry.pain}</span>
                     : <span className="ex-chips" aria-label={`${n} of ${ex.sets} sets, ${ex.reps} reps${ex.weight ? `, ${ex.weight} kg` : ''}`}>
@@ -118,12 +126,20 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
                     </span>}
                 </div>
               </div>
-              {tid && !finished && !entry?.skipped && (
+              {editing ? (
+                <span className="wk-edit">
+                  <button onClick={() => editDay(p => moveInDay(p, dayIdx, i, -1))} disabled={i === 0} aria-label={`Move ${ex.name} up`}>↑</button>
+                  <button onClick={() => editDay(p => moveInDay(p, dayIdx, i, 1))} disabled={i === day.exercises.length - 1} aria-label={`Move ${ex.name} down`}>↓</button>
+                  <button className="x" onClick={() => editDay(p => removeFromDay(p, dayIdx, i))} disabled={day.exercises.length <= 1} aria-label={`Remove ${ex.name}`}>✕</button>
+                </span>
+              ) : tid && !finished && !entry?.skipped && (
                 <button className="btn small secondary" onClick={() => open({ ei: i, si: n })}>Track</button>
               )}
             </div>
           )
         })}
+        {editing && <button className="wk-addex" onClick={() => { haptic(); setAdding(true) }}><Ic n="plus" />Add exercise</button>}
+        {editing && <p className="hint" style={{ margin: 0 }}>Changes stay when you rebuild the plan. Logged history is never touched.</p>}
       </div>
 
       <button className={'btn' + (!running && (ts.kind === 'rest' || ts.kind === 'week' || (ts.kind === 'done' && dayIdx !== ts.todayIdx)) ? ' secondary' : '')} onClick={() => open()}>{running || doneCount ? (ts.kind === 'done' && !running ? 'Log more sets' : 'Continue session') : ts.kind === 'rest' || ts.kind === 'week' || ts.kind === 'done' ? 'Train anyway' : 'Start session'}{running && <span className="num wk-live"> · {Math.floor((Date.now() - running.startedAt) / 60000)} min</span>}</button>
@@ -138,6 +154,9 @@ export default function WorkoutTab({ state, update, intent, clearIntent }) {
       )}
       {toast && <div className="toast">{toast}</div>}
       {how && <HowToSheet id={how} onClose={() => history.back()} onOpen={setHow} />}
+      {adding && <AddExSheet state={state} update={update} dayIdx={dayIdx} pro={pro} onClose={() => setAdding(false)} />}
+      {info && <ExInfoSheet ex={info} onClose={() => setInfo(null)} onEdit={info.custom ? id => setEdit(id) : null} />}
+      {edit && <ExEditor state={state} update={update} id={edit} pro={pro} onClose={() => { setEdit(null); setInfo(null) }} />}
     </div>
   )
 }

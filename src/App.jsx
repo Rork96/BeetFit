@@ -24,12 +24,12 @@ import Guides from './components/Read.jsx'
 import Calendar from './components/Calendar.jsx'
 import { remindersOf, updatePush, pushOn } from './lib/push.js'
 import { stable } from './lib/sync.js'
-import { planEvents } from './lib/plans.js'
+import { planEvents, setWeekPlan } from './lib/plans.js'
 
 const REM_SENT = 'beetfit_rem_sent'
 
 // Top-level keys merged as a whole during sync: remember when each was last edited on this device.
-const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans', 'pauses', 'exNotes']
+const STAMPED = ['profile', 'settings', 'intake', 'program', 'mealPlan', 'plans', 'pauses', 'exNotes', 'myEx']
 
 // 2px geometric line icons, square-based.
 const ICON_OF = { today: 'today', workout: 'train', meals: 'food', beet: 'beet', progress: 'progress' }
@@ -135,6 +135,7 @@ export default function App() {
       setState({
         _t: Object.fromEntries(STAMPED.map(k => [k, Date.now()])),
         profile, intake, program, settings,
+        plans: intake.weekdays?.length ? setWeekPlan([], intake.weekdays, '18:00', false) : [],
         weightLog: [{ date: dayKey(), kg: profile.weightKg }],
         mealPlan: null, workoutLog: {}, foodLog: {}, water: {}
       })
@@ -153,7 +154,7 @@ export default function App() {
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
         {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={() => setSettings(true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
-        {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} />}
+        {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} pro={pro} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
         {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}
         {tab === 'progress' && <ProgressTab state={view} update={update} openCalendar={day => setCal({ day })} pro={pro} />}

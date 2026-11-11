@@ -8,6 +8,7 @@
 //   /api/auth/*                    accounts: email code, Google, Apple; sign out; delete account
 //   /api/coach/*                   coach mode: invite codes, client overview, messages, target overrides
 //   /api/push/*                    Web Push subscriptions; a 15-minute cron sends daily reminders
+//   /api/media                     exercise demo clips (R2): upload, delete, public GET with Range
 //   POST /api/chat                 Beet, the in-app assistant (Gemini)
 //   POST /api/program/review       AI review of the generated program: notes + validated exercise swaps (Gemini)
 //   /api/billing/*                 PRO: config, status, device trial, Stripe checkout + portal; Stripe and RevenueCat webhooks
@@ -26,6 +27,7 @@ import { cleanPrefs, cleanEvents, validTz, nextDue, message, eventMessage, local
 import { track, report } from './stats.js'
 import { billingOn, billingConfig, ensureBillingSchema, entitlement, checkout, portal, startTrial, verifyStripe, stripeEvent, revenuecatEvent, cancelBilling, FREE, PRO } from './billing.js'
 
+import { serveMedia, mediaRoutes } from './media.js'
 import { fixSauce } from '../../src/data/sauces.js'
 
 const OFF = 'https://world.openfoodfacts.org'
@@ -109,8 +111,18 @@ export default {
         return json({ key: vapidPublic(env.VAPID_JWK) }, 200, cors)
       }
 
+      const clip = url.pathname.match(/^\/api\/media\/(ex\/.+)$/)
+      if (clip && (req.method === 'GET' || req.method === 'HEAD')) return serveMedia(req, env, decodeURIComponent(clip[1]), cors)
+
       const device = await authenticate(req, env)
       if (!device) return json({ error: 'unauthorized' }, 401, cors)
+
+      if (url.pathname === '/api/media' || url.pathname.startsWith('/api/media/')) {
+        let owner = 'd-' + device.id
+        if (env.DB) { await ensureSchema(env.DB); owner = await userOf(env.DB, device.id) }
+        const pro = req.method === 'POST' ? (await tierOf(env, device)).pro : true
+        return mediaRoutes(req, url, env, { owner, pro, under: (k, n) => underLimit(env, k, n), json, cors })
+      }
 
       const bc = url.pathname.match(/^\/api\/food\/barcode\/(\d{6,14})$/)
       if (bc && req.method === 'GET') return withCache(req, ctx, 60 * 60 * 24 * 7, () => barcode(bc[1]), cors)

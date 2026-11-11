@@ -6,7 +6,9 @@ import { exportState, clearState } from '../lib/store.js'
 import { downloadCSV } from '../lib/foods.js'
 import { haptic } from '../lib/platform.js'
 import { KG_TO_LB } from '../lib/day.js'
-import { mkProg, DEFAULT_INTAKE } from '../lib/program.js'
+import { DEFAULT_INTAKE } from '../lib/program.js'
+import { rebuildKeep } from '../lib/myex.js'
+import { TrainingCard } from './TrainSetup.jsx'
 import { createPairCode, claimPairCode, leaveSync, mergeStates } from '../lib/sync.js'
 import { YourCoachCard, CoachModeCard, CoachHome } from './Coach.jsx'
 import { useBackClose } from '../lib/hooks.js'
@@ -16,7 +18,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { ProCard } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.26.0'
+const VERSION = '0.27.0'
 
 export default function Settings({ state, update, sync, coach, account, pro, openChat, startCoach, focusCoach, onClose }) {
   const [coachHome, setCoachHome] = useState(!!startCoach)
@@ -26,7 +28,6 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
   const [motion, setMotion] = useState(getMotionLevel())
   const [voice, setVoice] = useState(voiceEnabled())
   const [armReset, setArmReset] = useState(false)
-  const [rebuilt, setRebuilt] = useState(false)
   const [poseFull, setPoseFull] = useState(() => { try { return localStorage.getItem('bf_pose_model') === 'full' } catch { return false } })
   const lb = s.units === 'lb'
 
@@ -51,7 +52,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
           <label>Goal</label>
           <div className="chips wrap">
             {GOALS.map(g => (
-              <button key={g.id} className={'chip' + (p.goal === g.id ? ' on' : '')} onClick={() => { haptic(); update(prev => ({ profile: { ...prev.profile, goal: g.id }, program: mkProg(g.id, prev.intake || DEFAULT_INTAKE) })) }}>{g.label}</button>
+              <button key={g.id} className={'chip' + (p.goal === g.id ? ' on' : '')} onClick={() => { haptic(); update(prev => ({ profile: { ...prev.profile, goal: g.id }, program: rebuildKeep(g.id, prev.intake || DEFAULT_INTAKE, prev.program, prev.myEx) })) }}>{g.label}</button>
             ))}
           </div>
           <div className="grid2">
@@ -65,16 +66,9 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
               </select>
             </label>
           </div>
-          <label>Injuries or pain (plan leaves these out)
-            <input value={state.intake?.injuries || ''} placeholder="e.g. left knee"
-              onChange={e => update(prev => ({ intake: { ...(prev.intake || DEFAULT_INTAKE), injuries: e.target.value.slice(0, 80) } }))} />
-          </label>
-          <button className="btn secondary" onClick={() => {
-            haptic('medium')
-            update(prev => ({ program: mkProg(prev.profile.goal, prev.intake || DEFAULT_INTAKE) }))
-            setRebuilt(true); setTimeout(() => setRebuilt(false), 2000)
-          }}>{rebuilt ? '✓ Plan rebuilt' : 'Rebuild my plan'}</button>
         </section>
+
+        <TrainingCard state={state} update={update} />
 
         <section className="card">
           <span className="label">Preferences</span>
@@ -91,7 +85,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
           <Row label="Streak" hint="Off hides the streak, milestones and the evening streak nudge. Your logs stay the same.">
             <Toggle on={s.streak !== false} onChange={v => setS({ streak: v })} />
           </Row>
-          <Row label="Eat to your training days" hint="Training days get a little more food, rest days a little less; the week adds up the same. Uses your training days from Calendar.">
+          <Row label="Eat to your training days" hint="Training days get a little more food, rest days a little less; the week adds up the same. Uses your training days.">
             <Toggle on={s.cycleFood !== false} onChange={v => setS({ cycleFood: v })} />
           </Row>
           <Row label="Voice coach" hint="Counts the last reps and calls rest">

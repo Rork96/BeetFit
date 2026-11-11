@@ -7,19 +7,23 @@ import { availOf, DEFAULT_INTAKE } from '../lib/program.js'
 import { TRACKER_BY_NAME } from '../camera/pose/exercises.js'
 import { haptic } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
+import { ExEditor, Clip } from './MyEx.jsx'
+import { myExOf } from '../lib/myex.js'
 
 const CATS = ['All', 'Legs', 'Push', 'Pull', 'Core', 'Cardio']
 const ABBR = { squat: 'SQT', hinge: 'HNG', lunge: 'LNG', push: 'PSH', pull: 'PUL', core: 'COR', carry: 'CRY', cardio: 'CAR' }
 
 const LVL = { beginner: 1, novice: 1, easy: 1, intermediate: 2, medium: 2, advanced: 3, hard: 3 }
 
-export default function Library({ state, onClose }) {
+export default function Library({ state, update, pro, onClose }) {
   const it = state.intake || DEFAULT_INTAKE
   const [cat, setCat] = useState('All')
   const [onlyFit, setOnlyFit] = useState(true)
   const [open, setOpen] = useState(null)
   const [how, setHow] = useState(null)
   useBackClose(!!open, () => setOpen(null))
+  const [edit, setEdit] = useState(null) // 'new' | id of your exercise
+  const mine = myExOf(state)
 
   const rows = useMemo(() => LIB
     .filter(L => cat === 'All' || L.cat === cat)
@@ -34,6 +38,19 @@ export default function Library({ state, onClose }) {
         <span className="num td-small" style={{ width: 44, textAlign: 'right' }}>{rows.length}</span>
       </header>
       <div className="page" style={{ paddingTop: 4 }}>
+        {update && cat === 'All' && (
+          <div className="card lib-mine">
+            <div className="row"><span className="label">Your exercises</span><span className="num td-small">{mine.length}</span></div>
+            {mine.map(c => (
+              <button key={c.id} className="lib-item" onClick={() => { haptic(); setEdit(c.id) }}>
+                <span className="lib-thumb">{c.video ? <Clip v={c.video} /> : <i className="lib-pat">{ABBR[c.pat] || '★'}</i>}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><b>{c.n}</b><span className="sub num">{c.sets} × {c.reps}{c.video ? ' · demo clip' : ''}</span></div>
+              </button>
+            ))}
+            <button className="btn secondary btn-ic" onClick={() => { haptic(); setEdit('new') }}><Ic n="plus" />New exercise</button>
+            {!mine.length && <p className="hint" style={{ margin: 0 }}>Missing a move? Make it yours: name, cue, demo clip. Then add it to any day from Train → Edit.</p>}
+          </div>
+        )}
         <div className="chips">
           {CATS.map(c => <button key={c} className={'chip' + (cat === c ? ' on' : '')} onClick={() => { haptic(); setCat(c) }}>{c}</button>)}
         </div>
@@ -78,6 +95,7 @@ export default function Library({ state, onClose }) {
         </>
       )}
       {how && <HowToSheet id={how} onClose={() => setHow(null)} onOpen={setHow} />}
+      {edit && <ExEditor state={state} update={update} pro={pro} id={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
     </div>
   )
 }

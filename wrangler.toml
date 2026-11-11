@@ -36,6 +36,15 @@ binding = "RATE"
 binding = "DB"
 database_name = "beetfit"
 
+# Exercise demo clips that people record (≤ 8 MB each). Off until R2 is switched on for the account:
+#   1. Cloudflare dashboard → R2 → Get started (free tier: 10 GB, no egress fees)
+#   2. npx wrangler r2 bucket create beetfit-media
+#   3. remove the # from the three lines below, then npm run deploy
+# Without it the app still works; recording a demo clip says video storage isn't on yet.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "beetfit-media"
+
 # Daily reminders: every 15 minutes, send the ones that came due (in each user's own time zone).
 [triggers]
 crons = ["*/15 * * * *"]

@@ -16,6 +16,8 @@ import { SignIn } from './Account.jsx'
 import { coachPeek, cleanCode, CODE_RE } from '../lib/coach.js'
 import { migrate } from '../lib/store.js'
 import PlanReview from './PlanReview.jsx'
+import { WeekdayPick, daysLine } from './TrainSetup.jsx'
+import { defaultWeekdays } from '../lib/myex.js'
 import './onboarding.css'
 
 const STEPS = ['welcome', 'goal', 'body', 'days', 'training', 'building', 'ready']
@@ -45,7 +47,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const [name, setName] = useState('')
   const [units, setUnits] = useState('kg')
   const [p, setP] = useState({ sex: 'male', age: 28, heightCm: 178, weightKg: 82, targetKg: 76, goal: 'lose' })
-  const [it, setIt] = useState({ ...DEFAULT_INTAKE })
+  const [it, setIt] = useState({ ...DEFAULT_INTAKE, weekdays: defaultWeekdays(DEFAULT_INTAKE.daysWk) })
   const [coach, setCoach] = useState(null) // { code, name } picked on the welcome screen
   const [asCoach, setAsCoach] = useState(false) // "I coach people": Today opens coach setup after the plan is built
   const setI = (k, v) => { haptic(); setIt(s => ({ ...s, [k]: v })) }
@@ -184,15 +186,9 @@ export default function Onboarding({ onDone, onRestore, account }) {
                 </div>
               </Field>
             )}
-            <Field label="Days per week">
-              <div className="ob-days" role="radiogroup" aria-label="Training days per week">
-                {[1, 2, 3, 4, 5, 6, 7].map((d, i) => {
-                  const n = i + 1, ok = n >= 2 && n <= 5
-                  return <button key={i} role="radio" aria-checked={it.daysWk === n} disabled={!ok} className={(n <= it.daysWk ? 'on' : '') + (it.daysWk === n ? ' cur' : '')}
-                    onClick={() => { haptic(); setIt(s => ({ ...s, daysWk: n })) }} aria-label={`${n} days`}><b className="num">{n}</b></button>
-                })}
-              </div>
-              <span className="hint" style={{ fontSize: 12 }}><b className="num" style={{ color: 'var(--accent)' }}>{it.daysWk}</b> days a week · rest days in between</span>
+            <Field label="Training days" hint="Pick the days you can actually make. You can change them later in Settings.">
+              <WeekdayPick days={it.weekdays} min={2} max={5} onChange={w => setIt(s => ({ ...s, weekdays: w, daysWk: w.length }))} />
+              <span className="hint num" style={{ fontSize: 12 }}>{daysLine(it.weekdays)}</span>
             </Field>
             <Field label="Injuries or pain" hint="Movements that load what you name are left out.">
               <input value={it.injuries} placeholder="e.g. left knee, lower back" onChange={e => setIt(s => ({ ...s, injuries: e.target.value.slice(0, 80) }))} />
