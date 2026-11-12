@@ -3,6 +3,8 @@
 name = "beetfit"
 main = "worker/src/index.js"
 compatibility_date = "2026-10-01"
+# Keep variables set in the Cloudflare dashboard on deploy. Without this, `wrangler deploy` replaces them with what is in this file.
+keep_vars = true
 
 # Serve the app at https://beetfit.wealthifai.xyz — Cloudflare creates the DNS record and certificate.
 routes = [{ pattern = "beetfit.wealthifai.xyz", custom_domain = true }]
@@ -20,11 +22,12 @@ ALLOWED_ORIGINS = "capacitor://localhost,https://localhost,http://localhost:5173
 GEMINI_MODEL = "gemini-2.5-flash"
 # Sign-in (see DEPLOY.md → Accounts). Leave empty to hide a method.
 MAIL_FROM = "BeetFit <login@wealthifai.xyz>"
-GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials
-APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
+# GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials (add here, or as a dashboard variable)
+# APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
 # PRO (see DEPLOY.md → Payments). Price IDs from Stripe → Product catalog. Empty = payments off, no limits.
-STRIPE_PRICE_MONTH = ""
-STRIPE_PRICE_YEAR = ""
+# Do NOT leave these as "" — an empty value here overwrites the dashboard on every deploy and switches PRO and the limits off.
+# STRIPE_PRICE_MONTH = "price_..."
+# STRIPE_PRICE_YEAR = "price_..."
 
 # Daily caps (photos per device / per IP, new device tokens per IP).
 # No id: wrangler creates the namespace on the first deploy and remembers it.

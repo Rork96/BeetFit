@@ -11,7 +11,8 @@ const cache = s => { try { s ? localStorage.setItem(KEY, JSON.stringify(s)) : lo
 let cfgP = null
 export function billingConfig(force = false) {
   if (force) cfgP = null
-  cfgP ??= fetch(API_URL + '/api/billing/config').then(r => (r.ok ? r.json() : null)).catch(() => null)
+  // A failed request is not remembered, so one bad moment on the network doesn't hide Subscription until the app restarts.
+  cfgP ??= fetch(API_URL + '/api/billing/config').then(r => (r.ok ? r.json() : null)).catch(() => null).then(c => { if (!c) cfgP = null; return c })
   return cfgP
 }
 

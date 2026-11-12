@@ -12,7 +12,7 @@ export function usePro(enabled = true) {
     if (!enabled) return
     billingConfig().then(setConfig)
     refresh()
-    const vis = () => { if (document.visibilityState === 'visible') refresh() }
+    const vis = () => { if (document.visibilityState === 'visible') { refresh(); billingConfig().then(c => c && setConfig(c)) } }
     document.addEventListener('visibilitychange', vis)
     return () => document.removeEventListener('visibilitychange', vis)
   }, [enabled, refresh])
