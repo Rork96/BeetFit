@@ -1,0 +1,12 @@
+.pv { gap: 10px; border-color: var(--accent-line); }
+.pv-sum { margin: 0; font-size: 15px; line-height: 1.5; }
+.pv-note { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+.pv-note b { font-size: 13px; color: var(--accent); }
+.pv-note span { color: var(--hint); }
+.pv-swap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--card-2); border-radius: var(--r-2); font-size: 13px; }
+.pv-swap > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv-swap b { font-size: 14px; } .pv-swap span:last-child { color: var(--hint); line-height: 1.4; }
+.pv-fine { font-size: 11.5px; margin: 0; }
+.pv-skel { display: grid; gap: 8px; } .pv-skel i { height: 14px; border-radius: 3px; background: linear-gradient(90deg, var(--card-2), var(--line-2), var(--card-2)); background-size: 200% 100%; animation: pvShim 1.2s linear infinite; }
+.pv-skel i:nth-child(2) { width: 85%; } .pv-skel i:nth-child(3) { width: 60%; }
+@keyframes pvShim { to { background-position: -200% 0; } }

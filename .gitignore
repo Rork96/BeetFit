@@ -1,3 +1,9 @@
 node_modules
 dist
 .vercel
+.wrangler
+.dev.vars
+public/mediapipe
+ios/App/Pods
+*.local
+.stats-key

@@ -1,0 +1,72 @@
+# One Worker = the BeetFit web app (static files in ./dist) + its API (/api/*).
+# Deploy: npm run deploy   (builds, then `wrangler deploy`)
+name = "beetfit"
+main = "worker/src/index.js"
+compatibility_date = "2026-10-01"
+# Keep variables set in the Cloudflare dashboard on deploy. Without this, `wrangler deploy` replaces them with what is in this file.
+keep_vars = true
+
+# Serve the app at https://beetfit.wealthifai.xyz — Cloudflare creates the DNS record and certificate.
+routes = [{ pattern = "beetfit.wealthifai.xyz", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[vars]
+# Origins allowed to call /api from elsewhere: the iOS (capacitor://localhost) and Android (https://localhost) shells.
+# The website itself is same-origin and needs no CORS.
+ALLOWED_ORIGINS = "capacitor://localhost,https://localhost,http://localhost:5173"
+GEMINI_MODEL = "gemini-2.5-flash"
+# Sign-in (see DEPLOY.md → Accounts). Leave empty to hide a method.
+MAIL_FROM = "BeetFit <login@wealthifai.xyz>"
+# GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials (add here, or as a dashboard variable)
+# APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
+# PRO (see DEPLOY.md → Payments). Price IDs from Stripe → Product catalog. Empty = payments off, no limits.
+# Do NOT leave these as "" — an empty value here overwrites the dashboard on every deploy and switches PRO and the limits off.
+# STRIPE_PRICE_MONTH = "price_..."
+# STRIPE_PRICE_YEAR = "price_..."
+
+# Daily caps (photos per device / per IP, new device tokens per IP).
+# No id: wrangler creates the namespace on the first deploy and remembers it.
+[[kv_namespaces]]
+binding = "RATE"
+
+# Cross-device sync. No id: wrangler creates the database on the first deploy.
+[[d1_databases]]
+binding = "DB"
+database_name = "beetfit"
+
+# Exercise demo clips that people record (≤ 8 MB each). Off until R2 is switched on for the account:
+#   1. Cloudflare dashboard → R2 → Get started (free tier: 10 GB, no egress fees)
+#   2. npx wrangler r2 bucket create beetfit-media
+#   3. remove the # from the three lines below, then npm run deploy
+# Without it the app still works; recording a demo clip says video storage isn't on yet.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "beetfit-media"
+
+# Burst cap on the endpoints that cost money (Gemini photo estimates, Beet chat) and on clip uploads:
+# 10 requests a minute per IP and endpoint, counted at the edge. Free on every plan, nothing to set up.
+[[ratelimits]]
+name = "BURST"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+# Daily reminders: every 15 minutes, send the ones that came due (in each user's own time zone).
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Secrets — set once, never commit:
+#   npx wrangler secret put DEVICE_SECRET    (any long random string: `openssl rand -hex 32`)
+#   npx wrangler secret put GEMINI_API_KEY   (https://aistudio.google.com/apikey)
+#   npx wrangler secret put USDA_API_KEY     (optional, https://fdc.nal.usda.gov/api-key-signup)
+#   npm run --silent vapid | npx wrangler secret put VAPID_JWK   (push notifications; key never shown)
+#   npx wrangler secret put RESEND_API_KEY   (email sign-in codes, https://resend.com)
+#   npx wrangler secret put STRIPE_SECRET_KEY        (PRO on the web: Stripe → Developers → API keys)
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET    (whsec_… from the webhook endpoint)
+#   npx wrangler secret put REVENUECAT_WEBHOOK_AUTH  (store purchases; same value as RevenueCat's webhook auth header)

@@ -1,0 +1,290 @@
+// Day-level derivations shared by Today, Meals, Workout and Progress. One source of truth per number.
+import { macros, kcalFloor } from './calories.js'
+import { PROGRAMS } from '../data/workouts.js'
+import { trainStatus } from './train.js'
+import { plansOn } from './plans.js'
+
+// Local calendar date (not UTC — an evening log in Winnipeg must land on today).
+export function dayKey(d = new Date()) {
+  const z = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+}
+
+export function addDays(key, n) {
+  const [y, m, d] = key.split('-').map(Number)
+  return dayKey(new Date(y, m - 1, d + n))
+}
+
+export function currentWeight(state) {
+  const log = state.weightLog || []
+  return log.length ? log[log.length - 1].kg : state.profile.weightKg
+}
+
+export function targets(state, key = dayKey()) {
+  const m = macros({ ...state.profile, weightKg: currentWeight(state) })
+  const o = state.coach?.override // set by the client's coach; wins over the formula
+  const base = { kcal: o?.kcal ?? m.kcal, protein: o?.protein ?? m.protein, coach: !!(o?.kcal || o?.protein), fat: m.fat, carbs: m.carbs, water: state.settings?.waterTarget || 8, dayType: null, delta: 0 }
+  if (base.coach || state.settings?.cycleFood === false) return base
+  const c = foodCycle(state, key)
+  if (!c) return base
+  // Carbs carry the difference; protein and fat stay put. The week's total matches the plain target.
+  let delta = Math.round(m.kcal * c.k / 10) * 10
+  // A rest-day cut never takes the day under the safe minimum (calories.js kcalFloor); the cut just gets smaller.
+  if (delta < 0) delta = Math.min(0, Math.max(delta, kcalFloor(state.profile) - base.kcal))
+  return { ...base, kcal: base.kcal + delta, carbs: Math.max(0, base.carbs + Math.round(delta / 4)), dayType: c.type, delta }
+}
+
+// Training days from the weekly plan (Calendar → Training days) eat a bit more, rest days a bit less.
+// Boost a ≤ 10%, rest cut r = a·n/(7−n) ≤ 12%, so the weekly average equals the normal target.
+export function foodCycle(state, key = dayKey()) {
+  const week = (state.plans || []).filter(p => p.auto === 'week' && p.kind === 'workout' && p.repeat === 'weekly')
+  const days = new Set(week.map(p => weekday(p.date)))
+  const n = days.size
+  if (!n || n > 6) return null
+  const a = Math.min(0.1, 0.12 * (7 - n) / n)
+  const planned = week.some(p => weekday(p.date) === weekday(key) && !(p.skip || []).includes(key) && key >= p.date)
+  const train = planned || setsLogged(state, key) > 0
+  return train ? { type: 'train', k: a } : { type: 'rest', k: -a * n / (7 - n) }
+}
+
+// Eaten = everything logged (search, scan, photo, quick add, a suggestion you tapped "Log it" on).
+export function eaten(state, key = dayKey()) {
+  // Only what was logged. Suggested meals (state.mealPlan) are ideas, not food eaten.
+  const logged = state.foodLog?.[key] || []
+  const t = { kcal: 0, p: 0, c: 0, f: 0, items: logged.length }
+  for (const m of logged) { t.kcal += m.kcal; t.p += m.p; t.c += m.c; t.f += m.f }
+  return { ...t, kcal: Math.round(t.kcal), p: Math.round(t.p), c: Math.round(t.c), f: Math.round(t.f) }
+}
+
+export const waterOf = (state, key = dayKey()) => state.water?.[key] || 0
+
+// A glass is state.settings.glassMl (default 250 ml). Volume is shown in ml / L, or fl oz when units are lb.
+export const GLASS_SIZES = [200, 250, 300, 500]
+export const glassMl = state => state.settings?.glassMl || 250
+export function fmtWater(glasses, state) {
+  const ml = glasses * glassMl(state)
+  if (state.settings?.units === 'lb') return `${+(ml / 29.5735).toFixed(ml >= 2000 ? 0 : 1)} fl oz`
+  return ml >= 1000 ? `${+(ml / 1000).toFixed(2)} L` : `${ml} ml`
+}
+
+export function setsLogged(state, key = dayKey()) {
+  const day = state.workoutLog?.[key] || {}
+  return Object.values(day).reduce((n, e) => n + (e === true || typeof e === 'number' ? 1 : (e?.sets?.length || 0)), 0)
+}
+
+// Generated at onboarding (lib/program.js); older installs fall back to the fixed templates.
+export function program(state) {
+  if (state.program?.length) return { name: planName(state), days: state.program }
+  return PROGRAMS[state.profile.goal] || PROGRAMS.maintain
+}
+
+function planName(state) {
+  const g = { lose: 'Fat loss', maintain: 'Get fit', gain: 'Muscle' }[state.profile.goal] || 'Your plan'
+  const n = state.program.filter(d => !d.run).length
+  return `${g} · ${n} ${n === 1 ? 'day' : 'days'}/week`
+}
+
+// Next training day = the plan day after the last one trained (matched by exercise names, last 14 days).
+// Falls back to counting sessions in the last 7 days when nothing matches (e.g. the plan was rebuilt).
+export function nextDayIndex(state, key = dayKey()) {
+  const days = program(state).days
+  for (let i = 1; i <= 14; i++) {
+    const k = addDays(key, -i)
+    if (setsLogged(state, k) === 0) continue
+    const names = new Set(Object.keys(state.workoutLog[k]))
+    let best = -1, hit = 0
+    days.forEach((d, j) => { const h = d.exercises.filter(e => names.has(e.name)).length; if (h > hit) { hit = h; best = j } })
+    if (best >= 0) return (best + 1) % days.length
+  }
+  let done = 0
+  for (let i = 1; i <= 7; i++) if (setsLogged(state, addDays(key, -i)) > 0) done++
+  return done % days.length
+}
+
+// Three daily tasks: log food, hit water, train. A day "counts" for the streak at 2 of 3.
+// A planned rest day: recovery is the task, so it counts as done (Apple Fitness/Fitbod treat rest as part of the plan).
+// Weekly training days decide when set; otherwise the gap/weekly-count logic in train.js does. A workout put on
+// the calendar for that date, or any logged set, makes it a training day.
+const restMemo = new WeakMap()
+export function isRestDay(state, key = dayKey()) {
+  if (setsLogged(state, key) > 0) return false
+  const memoKey = state.workoutLog || state
+  let m = restMemo.get(memoKey)
+  if (!m || m.plans !== state.plans || m.prog !== state.program) { m = { plans: state.plans, prog: state.program, v: {} }; restMemo.set(memoKey, m) }
+  if (key in m.v) return m.v[key]
+  let rest
+  if (plansOn(state, key).some(p => p.kind === 'workout' && !p.auto)) rest = false
+  else {
+    const fc = foodCycle(state, key)
+    if (fc) rest = fc.type === 'rest'
+    else { const k = trainStatus(state, key).kind; rest = k === 'rest' || k === 'week' }
+  }
+  return (m.v[key] = rest)
+}
+
+export function dayTasks(state, key = dayKey()) {
+  const t = targets(state, key)
+  const trained = setsLogged(state, key) > 0
+  const rest = !trained && isRestDay(state, key)
+  return [
+    { id: 'food', label: 'Log what you eat', short: 'Food', done: (state.foodLog?.[key]?.length || 0) > 0 },
+    { id: 'water', label: `Drink ${t.water} glasses of water`, short: `${t.water} water`, done: waterOf(state, key) >= t.water },
+    rest ? { id: 'train', rest: true, label: 'Rest day: recovery counts', short: 'Rest', done: true }
+      : { id: 'train', label: 'Train', short: 'Train', done: trained }
+  ]
+}
+
+// The one thing to do next today, by the clock:
+//  - a workout scheduled today (calendar time) comes first from 90 minutes before it;
+//  - with no time set, mornings are for breakfast (train from 10:00) and after 21:00 it is too late to start;
+//  - then first meal, a weigh-in when the last one is a week old, the workout if it is still pending, water, done.
+// Rest days skip the workout. `hour` is local, decimal (18.5 = 18:30); `workoutTime` is "HH:MM" or null.
+export function nextUp(state, key = dayKey(), { hour = new Date().getHours() + new Date().getMinutes() / 60, workoutTime = null, restDay = false } = {}) {
+  const t = Object.fromEntries(dayTasks(state, key).map(x => [x.id, x]))
+  const trainPending = !t.train.done && !t.train.rest && !restDay
+  const at = workoutTime ? +workoutTime.split(':')[0] + +workoutTime.split(':')[1] / 60 : null
+  const trainNow = at != null ? hour >= at - 1.5 : hour >= 10 && hour < 21
+  if (trainPending && trainNow) return { id: 'train' }
+  if (!t.food.done) return { id: 'food' }
+  const last = (state.weightLog || []).reduce((m, w) => (w.date > m ? w.date : m), '')
+  if (last && last <= addDays(key, -7)) return { id: 'weigh', last }
+  if (trainPending && (at != null || hour < 21)) return { id: 'train' }
+  if (!t.water.done) return { id: 'water' }
+  if ((restDay && !t.train.done) || t.train.rest) return { id: 'rest' }
+  return { id: 'done' }
+}
+
+export const dayScore = (state, key) => dayTasks(state, key).filter(t => t.done).length
+
+// 0 = Monday … 6 = Sunday
+export const weekday = key => { const [y, m, d] = key.split('-').map(Number); return (new Date(y, m - 1, d).getDay() + 6) % 7 }
+export const mondayOf = key => addDays(key, -weekday(key))
+
+// A day counts at 2 of 3 tasks. One missed day per Mon–Sun week is covered by a freeze:
+// the streak holds through it but doesn't grow. A second miss in the same week ends it.
+// Paused days (sick, travelling, life happening) neither count nor break the streak.
+export const isPaused = (state, k) => (state.pauses || []).some(p => k >= p.from && k <= p.to)
+export const activePause = (state, key = dayKey()) => (state.pauses || []).find(p => key >= p.from && key <= p.to) || null
+
+export function streakInfo(state, key = dayKey()) {
+  let days = 0, oldest = null
+  const frozen = [], used = new Set()
+  let k = dayScore(state, key) >= 2 || isPaused(state, key) ? key : addDays(key, -1) // today doesn't break it until it's over
+  for (let i = 0; i < 3650; i++, k = addDays(k, -1)) {
+    if (dayScore(state, k) >= 2) { days++; oldest = k; continue }
+    if (isPaused(state, k)) continue
+    const wk = mondayOf(k)
+    if (used.has(wk)) break
+    used.add(wk); frozen.push(k)
+  }
+  const real = days ? frozen.filter(f => f > oldest) : [] // a freeze only counts inside the streak
+  return { days, frozen: real, freezeLeft: !real.some(f => mondayOf(f) === mondayOf(key)) }
+}
+
+export const streak = (state, key = dayKey()) => streakInfo(state, key).days
+
+// Longest streak ever, same rules walked forward from the first logged day.
+export function bestStreak(state, key = dayKey()) {
+  const first = firstDay(state)
+  if (!first) return 0
+  let run = 0, best = 0
+  const used = new Set()
+  for (let k = first; k <= key; k = addDays(k, 1)) {
+    if (dayScore(state, k) >= 2) { run++; best = Math.max(best, run); continue }
+    if (k === key) break // today isn't over
+    if (isPaused(state, k)) continue
+    const wk = mondayOf(k)
+    if (run > 0 && !used.has(wk)) { used.add(wk); continue }
+    run = 0
+  }
+  return best
+}
+
+function firstDay(state) {
+  const keys = [...Object.keys(state.foodLog || {}), ...Object.keys(state.workoutLog || {}), ...Object.keys(state.water || {})]
+  return keys.length ? keys.sort()[0] : null
+}
+
+export const MILESTONES = [3, 7, 14, 30, 60, 100, 180, 365]
+export const nextMilestone = n => MILESTONES.find(m => m > n) ?? Math.ceil((n + 1) / 100) * 100
+export const prevMilestone = n => [...MILESTONES].reverse().find(m => m <= n) ?? 0
+
+// Today's standing for the streak: how many of the 3 tasks are done and what's left.
+export function todayStanding(state, key = dayKey()) {
+  const tasks = dayTasks(state, key)
+  const done = tasks.filter(t => t.done).length
+  return { done, need: Math.max(0, 2 - done), todo: tasks.filter(t => !t.done) }
+}
+
+// Mon–Sun of the current week.
+export function week(state, key = dayKey()) {
+  const monday = mondayOf(key)
+  return Array.from({ length: 7 }, (_, i) => {
+    const k = addDays(monday, i)
+    return { key: k, label: 'MTWTFSS'[i], score: k > key ? null : dayScore(state, k), today: k === key, paused: isPaused(state, k) }
+  })
+}
+
+const foodLogged = (state, k) => (state.foodLog?.[k]?.length || 0) > 0
+
+// Weekly review, shown Sunday (this week so far) and Monday (last week). Training, logging, protein, weight trend.
+// No calorie verdicts here on purpose: a "you ate under target" line rewards restriction.
+export function weekReview(state, key = dayKey()) {
+  const dow = weekday(key)
+  if (dow !== 6 && dow !== 0) return null
+  const start = dow === 6 ? mondayOf(key) : addDays(mondayOf(key), -7)
+  const end = addDays(start, 6)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i)).filter(k => k <= key)
+  const planned = program(state).days.length
+  const sessions = days.filter(k => setsLogged(state, k) > 0).length
+  const logged = days.filter(k => foodLogged(state, k))
+  const protein = logged.length ? Math.round(logged.reduce((a, k) => a + eaten(state, k).p, 0) / logged.length) : null
+  const series = weightSeries(state, 15, end <= key ? end : key)
+  const a = series.find(p => p.key === addDays(start, -1))?.avg, b = series[series.length - 1]?.avg
+  const weightChange = a != null && b != null && (state.weightLog || []).filter(w => w.date >= addDays(start, -7)).length >= 2 ? +(b - a).toFixed(1) : null
+  // Nothing at all that week (e.g. a brand-new install): no review, it would only scold.
+  if (!sessions && !logged.length && !(state.weightLog || []).some(w => w.date >= start && w.date <= end)) return null
+  return { id: start, final: dow === 0, start, end, sessions, planned, kept: sessions >= planned, foodDays: logged.length, protein, proteinTarget: targets(state).protein, weightChange, goal: state.profile.goal }
+}
+
+export const KG_TO_LB = 2.20462
+export function fmtWeight(kg, units = 'kg') {
+  return units === 'lb' ? `${(kg * KG_TO_LB).toFixed(1)} lb` : `${(+kg).toFixed(1)} kg`
+}
+
+// 7-day rolling average over the logged weights (calendar days, not entries).
+export function weightSeries(state, days = 30, key = dayKey()) {
+  const log = (state.weightLog || []).slice().sort((a, b) => a.date.localeCompare(b.date))
+  const byDate = Object.fromEntries(log.map(e => [e.date, e.kg]))
+  const start = addDays(key, -(days - 1))
+  const out = []
+  for (let i = 0; i < days; i++) {
+    const k = addDays(start, i)
+    const win = []
+    for (let j = 0; j < 7; j++) { const v = byDate[addDays(k, -j)]; if (v != null) win.push(v) }
+    out.push({ key: k, kg: byDate[k] ?? null, avg: win.length ? win.reduce((a, b) => a + b, 0) / win.length : null })
+  }
+  return out
+}
+
+// kg per week from the rolling average over the last `span` days (null if not enough data).
+export function weeklyRate(state, span = 14, key = dayKey()) {
+  const s = weightSeries(state, span, key).filter(p => p.avg != null)
+  if (s.length < 2) return null
+  const daysApart = (Date.parse(s[s.length - 1].key) - Date.parse(s[0].key)) / 864e5
+  if (daysApart < 6) return null
+  return ((s[s.length - 1].avg - s[0].avg) / daysApart) * 7
+}
+
+export function monthGrid(state, year, month) {
+  const first = new Date(year, month, 1)
+  const lead = (first.getDay() + 6) % 7
+  const n = new Date(year, month + 1, 0).getDate()
+  const today = dayKey()
+  const cells = Array.from({ length: lead }, () => null)
+  for (let d = 1; d <= n; d++) {
+    const k = dayKey(new Date(year, month, d))
+    cells.push({ key: k, d, score: k > today ? null : dayScore(state, k), today: k === today })
+  }
+  return cells
+}

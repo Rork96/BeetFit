@@ -1,0 +1,36 @@
+/* "Day complete": full-screen, numbers only, one button */
+.dd { position: fixed; inset: 0; z-index: 80; overflow-y: auto; background: rgba(8,9,12,.94); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn var(--dur-2) var(--ease-out) both; padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 20px); display: grid; place-items: center; }
+.dd-in { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.dd-stage { position: relative; display: grid; place-items: center; min-height: 140px; }
+.dd-burst { position: absolute; top: 50%; left: 50%; width: 0; height: 0; }
+.dd-burst i { position: absolute; width: 9px; height: 9px; background: var(--accent); left: -4.5px; top: -4.5px; transform: rotate(var(--a)) translateY(-64px); animation: ddBurst 900ms var(--ease-out) both; }
+@keyframes ddBurst { from { transform: rotate(var(--a)) translateY(-30px) scale(.4); opacity: 0; } 40% { opacity: 1; } to { transform: rotate(var(--a)) translateY(-104px) scale(1); opacity: 0; } }
+.dd-h { margin: 0; animation: riseIn var(--dur-3) var(--ease-out) 120ms backwards; }
+.dd-sub { margin: -4px 0 4px; color: var(--hint); font-size: 15px; animation: riseIn var(--dur-3) var(--ease-out) 180ms backwards; }
+.dd-tiles { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.dd-tiles > div { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 4px 10px; border: 1px solid var(--line); background: var(--card); border-radius: var(--r-2); animation: popIn var(--dur-3) var(--ease-spring) backwards; }
+.dd-tiles .dd-ic { width: 20px; height: 20px; color: var(--accent); margin-bottom: 4px; }
+.dd-tiles b { font-size: 19px; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-tiles span { font: 200 10.5px var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--hint); }
+.dd-tiles small { font-size: 11px; color: var(--hint); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-card { width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--card); text-align: left; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.dd-wk { font-size: 13px; color: var(--accent); }
+.dd-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.dd-days span { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--hint); }
+.dd-days span.today { color: var(--text); }
+.dd-days i { width: 100%; aspect-ratio: 1; border: 1px solid var(--line); display: block; }
+.dd-days i.s1 { background: rgba(224,253,144,.18); border-color: transparent; }
+.dd-days i.s2 { background: rgba(224,253,144,.55); border-color: transparent; }
+.dd-days i.s3 { background: var(--accent); border-color: transparent; }
+.dd-days i.pz { border-style: dashed; }
+.dd-days i.future { opacity: .25; border-style: dashed; }
+.dd-coach { width: 100%; margin: 0; display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--r-2); font-size: 13.5px; line-height: 1.4; color: var(--hint); animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.dd-coach > svg { width: 22px; height: 22px; flex: none; color: var(--accent); }
+.dd-coach > span { flex: 1; min-width: 0; }
+.dd-coach b { color: var(--text); font-weight: 600; }
+.dd-next { margin: 0; font-size: 14px; color: var(--hint); animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.dd-next b { color: var(--text); }
+.dd-btn { width: 100%; margin-top: 4px; }
+.td-seeday { align-self: center; }
+@media (prefers-reduced-motion: reduce) { .dd-burst { display: none; } }

@@ -1,0 +1,8 @@
+{
+  "appId": "xyz.wealthifai.beetfit",
+  "appName": "BeetFit",
+  "webDir": "dist",
+  "backgroundColor": "#0c0d11",
+  "ios": { "contentInset": "never", "backgroundColor": "#0c0d11" },
+  "android": { "backgroundColor": "#0c0d11" }
+}
