@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { HABIT_TEMPLATES, habitsOf, newHabit, addHabitPatch, editHabitPatch, removeHabitPatch, markHabitPatch, habitDone, habitStreak, seen, MAX_HABITS } from './habits.js'
+import { HABIT_TEMPLATES, habitsOf, newHabit, addHabitPatch, editHabitPatch, removeHabitPatch, markHabitPatch, habitDone, habitStreak, scheduledOn, seen, MAX_HABITS } from './habits.js'
 
 const key = '2026-11-11'
 describe('habits', () => {
@@ -28,6 +28,16 @@ describe('habits', () => {
     st = { ...st, ...markHabitPatch(st, 'teeth', 'manual', key) }
     expect(habitStreak(st, 'teeth', key)).toBe(3)
     expect(habitStreak(st, 'water', key)).toBe(0)
+  })
+  it('streak skips days off and forgives one miss, not two in a row', () => {
+    const mk = days => days.reduce((st, d) => ({ ...st, ...markHabitPatch(st, 'g', 'camera', d) }), {})
+    // 2026-11-11 is a Wednesday. Mon/Wed/Fri habit: done Mon 9th... and the Fri before (6th), Wed 4th, Mon 2nd
+    const mwf = [1, 3, 5]
+    expect(habitStreak(mk(['2026-11-02', '2026-11-04', '2026-11-06', '2026-11-09']), 'g', key, mwf)).toBe(4) // today (Wed) still open
+    expect(habitStreak(mk(['2026-11-02', '2026-11-04', '2026-11-09', '2026-11-11']), 'g', key, mwf)).toBe(4) // missed Fri 6th once: forgiven
+    expect(habitStreak(mk(['2026-11-02', '2026-11-11']), 'g', key, mwf)).toBe(1) // missed Wed 4th + Fri 6th + Mon 9th: broken
+    expect(scheduledOn({ days: mwf }, '2026-11-10')).toBe(false) // Tuesday
+    expect(scheduledOn({ days: [] }, '2026-11-10')).toBe(true)
   })
   it('matches only wanted labels above the bar', () => {
     const dets = [{ label: 'chair', score: 0.9 }, { label: 'cup', score: 0.4 }, { label: 'bottle', score: 0.6 }]

@@ -35,7 +35,8 @@ export function cleanPrefs(p = {}) {
   // Habit reminders: up to 6 of { id, n, h, m, on }. The object to show is the phone's business; the server only needs the time and the name.
   out.habits = (Array.isArray(p.habits) ? p.habits : []).slice(0, 6).map(x => {
     const h = Math.min(23, Math.max(0, Math.round(+x?.h))), m = Math.min(59, Math.max(0, Math.round(+x?.m)))
-    return { id: clip(x?.id, 16).replace(/[^\w-]/g, ''), n: clip(x?.n, 24), on: x?.on !== false, h: Number.isFinite(h) ? h : 9, m: Number.isFinite(m) ? m : 0 }
+    const days = [...new Set((Array.isArray(x?.days) ? x.days : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort()
+    return { id: clip(x?.id, 16).replace(/[^\w-]/g, ''), n: clip(x?.n, 24), on: x?.on !== false, loud: x?.loud !== false, days: days.length < 7 ? days : [], h: Number.isFinite(h) ? h : 9, m: Number.isFinite(m) ? m : 0 }
   }).filter(x => x.id && x.n)
   return out
 }
@@ -87,7 +88,7 @@ export function nextDue(prefs, tz, from = Date.now(), events = []) {
       if (at > from && (!best || at < best.at)) best = { at, kind: k }
     }
     for (const x of prefs.habits || []) {
-      if (!x.on) continue
+      if (!x.on || (x.days?.length && !x.days.includes(day.getUTCDay()))) continue
       const at = localToUtc(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), x.h, x.m, tz)
       if (at > from && (!best || at < best.at)) best = { at, kind: 'habit:' + x.id }
     }
@@ -104,7 +105,8 @@ export function message(kind, doc, today, prefs) {
     const id = kind.slice(6)
     const h = (prefs?.habits || []).find(x => x.id === id)
     if (!h || doc?.habitLog?.[today]?.[id]) return null
-    return { title: h.n, body: 'Show Beet the thing on camera and it counts.', url: `/?habit=${id}`, tag: 'habit-' + id }
+    if (h.days?.length && !h.days.includes(new Date(today + 'T12:00:00Z').getUTCDay())) return null
+    return { title: h.n, body: 'Show Beet the thing on camera and it counts.', url: `/?habit=${id}`, tag: 'habit-' + id, loud: h.loud !== false }
   }
   const name = doc?.settings?.name ? doc.settings.name.split(' ')[0] : ''
   const hi = name ? `${name}, ` : ''

@@ -5,7 +5,7 @@ export function createMockDetector(label = 'cup') {
   return {
     detectForVideo() {
       const label = performance.now() - t0 > 2500 ? want : 'chair'
-      return { detections: [{ categories: [{ categoryName: label, score: 0.82 }] }] }
+      return { detections: [{ categories: [{ categoryName: label, score: 0.82 }], boundingBox: { originX: 120, originY: 160, width: 300, height: 260 } }] }
     },
     close() {}
   }

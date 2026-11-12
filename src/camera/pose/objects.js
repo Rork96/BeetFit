@@ -34,5 +34,5 @@ export const preloadObjects = () => { loadObjectDetector().catch(() => {}) }
 // [{ label, score }] for one video frame, best first.
 export function detect(detector, video, now) {
   const r = detector.detectForVideo(video, now)
-  return (r?.detections || []).map(d => ({ label: d.categories?.[0]?.categoryName, score: d.categories?.[0]?.score || 0 })).filter(d => d.label).sort((a, b) => b.score - a.score)
+  return (r?.detections || []).map(d => ({ label: d.categories?.[0]?.categoryName, score: d.categories?.[0]?.score || 0, box: d.boundingBox ? { x: d.boundingBox.originX, y: d.boundingBox.originY, w: d.boundingBox.width, h: d.boundingBox.height } : null })).filter(d => d.label).sort((a, b) => b.score - a.score)
 }

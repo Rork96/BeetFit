@@ -1,5 +1,5 @@
 // Day-level derivations shared by Today, Meals, Workout and Progress. One source of truth per number.
-import { macros } from './calories.js'
+import { macros, kcalFloor } from './calories.js'
 import { PROGRAMS } from '../data/workouts.js'
 import { trainStatus } from './train.js'
 import { plansOn } from './plans.js'
@@ -28,7 +28,9 @@ export function targets(state, key = dayKey()) {
   const c = foodCycle(state, key)
   if (!c) return base
   // Carbs carry the difference; protein and fat stay put. The week's total matches the plain target.
-  const delta = Math.round(m.kcal * c.k / 10) * 10
+  let delta = Math.round(m.kcal * c.k / 10) * 10
+  // A rest-day cut never takes the day under the safe minimum (calories.js kcalFloor); the cut just gets smaller.
+  if (delta < 0) delta = Math.min(0, Math.max(delta, kcalFloor(state.profile) - base.kcal))
   return { ...base, kcal: base.kcal + delta, carbs: Math.max(0, base.carbs + Math.round(delta / 4)), dayType: c.type, delta }
 }
 

@@ -8,3 +8,9 @@
 @keyframes hcIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes hcPop { from { transform: scale(.4) } to { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) { .hc-ok, .hc-tick { animation: none; } }
+
+/* Show the whole frame the model sees (no crop), so the object can be found and framed. */
+.hc .ct-video { object-fit: contain; background: #000; }
+.hc .ct-vignette { background: linear-gradient(rgba(0,0,0,.55), transparent 14%, transparent 70%, rgba(0,0,0,.7)); }
+.hc-box { position: absolute; z-index: 5; border: 2px solid rgba(255,255,255,.75); border-radius: 10px; pointer-events: none; transition: left .12s linear, top .12s linear, width .12s linear, height .12s linear; }
+.hc-box.hit { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }

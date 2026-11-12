@@ -81,3 +81,20 @@ describe('move to another day', () => {
     expect(movePlan([n], n, '2026-11-03', '2026-11-04')[0].date).toBe('2026-11-04')
   })
 })
+
+import { weekAdvice } from './plans.js'
+describe('weekAdvice', () => {
+  const full = [{ name: 'Full Body A' }, { name: 'Full Body B' }, { name: 'Full Body C' }]
+  const split = [{ name: 'Lower A' }, { name: 'Upper A' }, { name: 'Lower B' }, { name: 'Upper B' }]
+  it('full-body days need a gap, Mon/Wed/Fri is fine', () => {
+    expect(weekAdvice([0, 2, 4], full)).toBeNull()
+    expect(weekAdvice([0, 1, 3], full)).toMatch(/48 hours/)
+    expect(weekAdvice([6, 0, 3], full)).toMatch(/48 hours/) // Sunday and Monday touch across the week edge
+  })
+  it('upper/lower may go back to back, but not four in a row or seven days', () => {
+    expect(weekAdvice([0, 1, 3, 4], split)).toBeNull()
+    expect(weekAdvice([0, 1, 2, 3], split)).toMatch(/Four or more/)
+    expect(weekAdvice([5, 6, 0, 1], split)).toMatch(/Four or more/)
+    expect(weekAdvice([0, 1, 2, 3, 4, 5, 6], split)).toMatch(/Every day/)
+  })
+})

@@ -16,3 +16,8 @@
 .hb-invite-a { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .hb-x { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--hint); font-size: 14px; }
 .hb-custom { gap: 10px; }
+
+.hb-days { display: flex; gap: 4px; flex-basis: 100%; order: 9; margin-top: 4px; }
+.hb-day { flex: 1; min-width: 0; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink-3, inherit); font: 600 12px/1 var(--f-body); opacity: .55; }
+.hb-day.on { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); opacity: 1; color: inherit; }
+.hb-day.loud { flex: 0 0 40px; }

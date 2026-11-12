@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { reducedMotion } from './motion.js'
+import { dayKey } from './day.js'
 
 // Overlays (camera, settings, sheets) push a history entry, so the browser / Android back button closes them.
 // A single stack makes nested overlays close one at a time, top first.
@@ -79,4 +80,24 @@ export function useOnline() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
   return online
+}
+
+// Re-render the app when the calendar day changes (open past midnight, or a phone resumed the next morning).
+// Everything derives "today" from dayKey() on render, so a render at the right moment is all it takes.
+export function useDayRollover() {
+  const [day, setDay] = useState(() => dayKey())
+  useEffect(() => {
+    let timer
+    const check = () => setDay(prev => { const now = dayKey(); return now === prev ? prev : now })
+    const arm = () => {
+      clearTimeout(timer)
+      const n = new Date()
+      timer = setTimeout(() => { check(); arm() }, new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 2) - n)
+    }
+    const vis = () => { if (document.visibilityState === 'visible') { check(); arm() } }
+    document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); window.addEventListener('pageshow', vis)
+    arm()
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); window.removeEventListener('pageshow', vis) }
+  }, [])
+  return day
 }

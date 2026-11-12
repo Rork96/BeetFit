@@ -48,6 +48,11 @@ describe('training-day targets', () => {
     expect(week[0].protein).toBe(week[1].protein)
     expect(week[0].kcal).toBeGreaterThan(week[1].kcal)
   })
+  it('a rest-day cut never goes under the safe minimum', () => {
+    const lean = { ...state, profile: { ...state.profile, sex: 'female', weightKg: 55, heightCm: 160, age: 30, goal: 'lose', targetKg: 50 } }
+    const floor = 1200
+    for (let i = 0; i < 7; i++) expect(targets(lean, addDays(T, i)).kcal).toBeGreaterThanOrEqual(floor)
+  })
   it('switch off in settings', () => {
     expect(targets({ ...state, settings: { cycleFood: false } }, T).dayType).toBeNull()
   })

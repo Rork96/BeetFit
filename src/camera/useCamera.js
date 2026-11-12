@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Camera lifecycle shared by the rep tracker, barcode scanner and meal snap.
 // status: 'idle' | 'starting' | 'live' | 'denied' | 'unavailable' | 'error'
-export function useCamera({ facing = 'user', width = 640, height = 480, autoStart = true } = {}) {
+export function useCamera({ facing = 'user', width = 640, height = 480, autoStart = true, wide = false } = {}) {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const [status, setStatus] = useState('idle')
@@ -39,6 +39,8 @@ export function useCamera({ facing = 'user', width = 640, height = 480, autoStar
       }
       const track = stream.getVideoTracks()[0]
       const caps = track?.getCapabilities?.() || {}
+      // Widest field of view: some phones start a zoomed lens, and a zoomed picture makes it hard to aim at an object.
+      if (wide && caps.zoom && Number.isFinite(caps.zoom.min)) await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }).catch(() => {})
       setTorchState({ supported: !!caps.torch, on: false })
       setStatus('live')
     } catch (e) {
@@ -47,7 +49,7 @@ export function useCamera({ facing = 'user', width = 640, height = 480, autoStar
       else setStatus('error')
       setError(e?.message || String(e))
     }
-  }, [facingMode, width, height, stop])
+  }, [facingMode, width, height, wide, stop])
 
   const flip = useCallback(() => {
     const next = facingMode === 'user' ? 'environment' : 'user'

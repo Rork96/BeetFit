@@ -105,7 +105,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
       </div>
 
-      {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key)} onDone={how => update(prev => markHabitPatch(prev, habit.id, how))} onClose={() => setHabit(null)} />}
+      {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key, habit.days?.length ? habit.days : null)} onDone={how => update(prev => markHabitPatch(prev, habit.id, how))} onClose={() => setHabit(null)} />}
       {waterOpen && <WaterSheet state={state} onSet={setGlasses} onClose={() => setWaterOpen(false)} />}
       <div className="stk td-stack">
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}

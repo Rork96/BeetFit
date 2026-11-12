@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { haptic } from '../lib/platform.js'
 import { dayKey } from '../lib/day.js'
-import { HABIT_TEMPLATES, HABIT_OBJECTS, MAX_HABITS, habitsOf, habitDone, habitStreak, addHabitPatch, editHabitPatch, removeHabitPatch } from '../lib/habits.js'
+import { HABIT_TEMPLATES, HABIT_OBJECTS, MAX_HABITS, habitsOf, habitDone, habitStreak, habitDays, scheduledOn, WEEKDAYS, addHabitPatch, editHabitPatch, removeHabitPatch } from '../lib/habits.js'
 import './habits.css'
 
 const pad = n => String(n).padStart(2, '0')
@@ -9,9 +9,10 @@ const clock = h => `${pad(h.h)}:${pad(h.m)}`
 
 // Today: tap a habit, show the camera its object.
 export function HabitsToday({ state, update, onCheck, openSetup }) {
-  const list = habitsOf(state)
+  const all = habitsOf(state)
   const key = dayKey()
-  if (!list.length) {
+  const list = all.filter(h => scheduledOn(h, key) || habitDone(state, h.id, key)) // not-today habits stay out of the way
+  if (!all.length) {
     if (state.settings?.habitsHint === false) return null
     return (
       <section className="card hb-invite">
@@ -23,12 +24,13 @@ export function HabitsToday({ state, update, onCheck, openSetup }) {
       </section>
     )
   }
+  if (!list.length) return null
   const done = list.filter(h => habitDone(state, h.id, key)).length
   return (
     <section className="card hb-card">
       <div className="hb-head"><span className="label">Habits</span><span className="num hb-count">{done}/{list.length}</span></div>
       {list.map(h => {
-        const ok = habitDone(state, h.id, key), s = habitStreak(state, h.id, key)
+        const ok = habitDone(state, h.id, key), s = habitStreak(state, h.id, key, habitDays(h))
         return (
           <button key={h.id} className={'hb-row' + (ok ? ' ok' : '')} disabled={ok} aria-label={ok ? `${h.n}, done` : `${h.n}. Check with camera`} onClick={() => { haptic(); onCheck(h) }}>
             <i className="hb-dot" aria-hidden="true">{ok ? '✓' : ''}</i>
@@ -60,6 +62,18 @@ export function HabitsSetup({ state, update }) {
           <div className="rm-t"><b>{h.n}</b><span className="hint">Camera looks for: {h.labels.join(', ')}</span></div>
           <input type="time" className="rm-time num" aria-label={`${h.n} time`} value={clock(h)} disabled={!h.on}
             onChange={e => { const [hh, mm] = e.target.value.split(':').map(Number); if (Number.isFinite(hh)) update(prev => editHabitPatch(prev, h.id, { h: hh, m: mm || 0 })) }} />
+          <div className="hb-days" role="group" aria-label={`${h.n} days`}>
+            {WEEKDAYS.map((w, i) => {
+              const on = !habitDays(h) || h.days.includes(i)
+              return <button key={w} className={'hb-day' + (on ? ' on' : '')} aria-pressed={on} onClick={() => {
+                haptic()
+                const cur = habitDays(h) || [0, 1, 2, 3, 4, 5, 6]
+                const next = cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i].sort()
+                if (next.length) update(prev => editHabitPatch(prev, h.id, { days: next.length === 7 ? [] : next }))
+              }}>{w}</button>
+            })}
+            <button className={'hb-day loud' + (h.loud !== false ? ' on' : '')} aria-pressed={h.loud !== false} title="Loud alarm: stays on screen, vibrates, rings while the app is open" onClick={() => { haptic(); update(prev => editHabitPatch(prev, h.id, { loud: h.loud === false })) }}>🔔</button>
+          </div>
           <button className="hb-x" aria-label={`Remove ${h.n}`} onClick={() => { haptic(); update(prev => removeHabitPatch(prev, h.id)) }}>✕</button>
         </div>
       ))}

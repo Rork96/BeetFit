@@ -137,10 +137,14 @@ async function enableNative(prefs, ask = true, events = []) {
     schedule: { on: { hour: prefs[r.id].h, minute: prefs[r.id].m }, repeats: true, allowWhileIdle: true }
   }))
   // Habit reminders repeat daily; tapping one opens the camera check.
-  ;(prefs.habits || []).filter(h => h.on).forEach((h, i) => list.push({
-    id: 300 + i, title: h.n, body: 'Show Beet the thing on camera and it counts.',
-    schedule: { on: { hour: h.h, minute: h.m }, repeats: true, allowWhileIdle: true }, extra: { url: `/?habit=${h.id}` }
-  }))
+  // Habits with chosen weekdays get one repeating notification per weekday (Capacitor: 1 = Sunday … 7 = Saturday).
+  ;(prefs.habits || []).filter(h => h.on).forEach((h, i) => {
+    const days = h.days?.length && h.days.length < 7 ? h.days : [null]
+    days.forEach(d => list.push({
+      id: 300 + i * 10 + (d ?? 0), title: h.n, body: 'Show Beet the thing on camera and it counts.',
+      schedule: { on: { ...(d == null ? {} : { weekday: d + 1 }), hour: h.h, minute: h.m }, repeats: true, allowWhileIdle: true }, extra: { url: `/?habit=${h.id}` }
+    }))
+  })
   // Calendar items: one-off notifications at their time (the list rolls forward each time the app opens).
   events.forEach((e, i) => list.push({ id: 2000 + i, title: e.title, body: e.body, schedule: { at: new Date(e.at), allowWhileIdle: true }, extra: { url: e.url } }))
   if (list.length) await LocalNotifications.schedule({ notifications: list })

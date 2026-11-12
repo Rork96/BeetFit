@@ -112,6 +112,15 @@ describe('coach digest', () => {
     expect(one.actions).toEqual([{ action: 'remind', title: 'Remind' }])
     expect(one.url).toBe('/?clients=1&client=u1')
   })
+  it('habit days and loud flag survive cleanPrefs; off-days are skipped', async () => {
+    const { cleanPrefs, message } = await import('./reminders.js')
+    const p = cleanPrefs({ habits: [{ id: 'g', n: 'Gym bag', h: 7, m: 0, days: [1, 3, 5, 9, 'x'], loud: false }, { id: 'w', n: 'Water', h: 9, m: 0, days: [0, 1, 2, 3, 4, 5, 6] }] })
+    expect(p.habits[0]).toMatchObject({ days: [1, 3, 5], loud: false })
+    expect(p.habits[1]).toMatchObject({ days: [], loud: true })
+    expect(message('habit:g', null, '2026-11-10', p)).toBeNull() // Tuesday
+    expect(message('habit:g', null, '2026-11-11', p).title).toBe('Gym bag') // Wednesday
+    expect(message('habit:w', null, '2026-11-11', p).loud).toBe(true)
+  })
   it('knows the coach local hour', () => {
     expect(localHour(Date.UTC(2026, 10, 10, 23, 5), 'America/Toronto')).toEqual({ hour: 18, minute: 5 })
   })

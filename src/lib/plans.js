@@ -74,6 +74,20 @@ export function weekPlanOf(state) {
   return { days: ps.map(p => weekday(p.date)), time: ps[0]?.time || '18:00', remind: ps.length ? ps.every(p => p.remind) : true }
 }
 
+// Advice on the picked training days (0 = Mon … 6 = Sun), or null. Full-body sessions want ~48 h between them;
+// a 7-day week has no rest day; four in a row is a lot even for an upper/lower split.
+export function weekAdvice(days, programDays = []) {
+  const set = new Set(days)
+  if (set.size >= 7) return 'Every day is too much: muscle grows while you rest. Leave at least one day off.'
+  const fullBody = programDays.length > 0 && programDays.length <= 3 && programDays.every(d => /full body/i.test(d.name || ''))
+  const touching = [...set].some(d => set.has((d + 1) % 7))
+  if (fullBody && touching) return 'Your sessions are full-body, so they need about 48 hours between them (Mon / Wed / Fri works well).'
+  let run = 0, best = 0
+  for (let i = 0; i < 14; i++) { if (set.has(i % 7)) { run++; best = Math.max(best, run) } else run = 0 }
+  if (best >= 4) return 'Four or more days in a row is hard to recover from. Put a rest day in the middle.'
+  return null
+}
+
 export function setWeekPlan(plans, days, time, remind, today = dayKey()) {
   const keep = (plans || []).filter(p => p.auto !== 'week')
   const add = [...new Set(days)].sort().map(d => {

@@ -11,7 +11,7 @@ import WorkoutTab from './components/WorkoutTab.jsx'
 import Settings from './components/Settings.jsx'
 import { haptic, isNative } from './lib/platform.js'
 import { track } from './lib/track.js'
-import { useBackClose } from './lib/hooks.js'
+import { useBackClose, useDayRollover } from './lib/hooks.js'
 import { dayKey } from './lib/day.js'
 import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
@@ -19,6 +19,7 @@ import { useAccount } from './lib/useAccount.js'
 import { usePro } from './lib/usePro.js'
 import ProSheet from './components/Pro.jsx'
 import { CoachChat, CoachHome } from './components/Coach.jsx'
+import HabitAlarm from './components/HabitAlarm.jsx'
 import BeetChat from './components/Beet.jsx'
 import Guides from './components/Read.jsx'
 import Calendar from './components/Calendar.jsx'
@@ -50,6 +51,7 @@ export default function App() {
   const [settings, setSettings] = useState(false)
   const [clients, setClients] = useState(false)
   useBackClose(clients, () => setClients(false))
+  useDayRollover()
   const [chat, setChat] = useState(false)
   const [habitLink, setHabitLink] = useState(null) // /?habit=<id> from a reminder: opens that habit's camera check
   const [guides, setGuides] = useState(null) // null | { first: guide id or null }
@@ -171,6 +173,7 @@ export default function App() {
           </button>
         ))}
       </nav>
+      <HabitAlarm state={view} onCheck={h => { setTab('today'); setHabitLink(h.id) }} />
       {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} page={['sync', 'reminders', 'training', 'account'].includes(settings) ? settings : null} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
       {clients && <CoachHome start={clients === true ? null : clients} onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}

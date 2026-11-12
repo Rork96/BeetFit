@@ -5,7 +5,11 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(d.title || 'BeetFit', {
     body: d.body || '',
     tag: d.tag || 'beetfit',
-    renotify: d.tag === 'coach',
+    renotify: d.tag === 'coach' || !!d.loud,
+    silent: false, // always let the system play its notification sound
+    // Loud (habit alarms): stays until dismissed and vibrates in a long pattern. A custom sound file isn't possible from the web; the system sound plays.
+    requireInteraction: !!d.loud,
+    vibrate: d.loud ? [500, 200, 500, 200, 800] : [120],
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
     actions: Array.isArray(d.actions) ? d.actions.slice(0, 2) : [],

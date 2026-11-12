@@ -29,7 +29,7 @@ export function newHabit(existing, base) {
   let id = base.id || slug(base.n)
   const taken = new Set(existing.map(h => h.id))
   for (let i = 2; taken.has(id); i++) id = `${(base.id || slug(base.n)).slice(0, 13)}-${i}`
-  return { id, n: String(base.n).slice(0, 24), labels: base.labels, ask: base.ask || `a ${base.labels[0]}`, h: base.h ?? 9, m: base.m ?? 0, on: true }
+  return { id, n: String(base.n).slice(0, 24), labels: base.labels, ask: base.ask || `a ${base.labels[0]}`, h: base.h ?? 9, m: base.m ?? 0, on: true, loud: true, days: [] }
 }
 
 // State patch helpers (use inside update(prev => ...)).
@@ -46,10 +46,26 @@ export const markHabitPatch = (prev, id, how = 'camera', key = dayKey()) => ({
   habitHow: how
 })
 
-// Consecutive days up to today (or up to yesterday if today isn't done yet).
-export function habitStreak(state, id, key = dayKey()) {
-  let d = habitDone(state, id, key) ? key : addDays(key, -1), n = 0
-  while (habitDone(state, id, d)) { n++; d = addDays(d, -1) }
+// `days` = weekdays the habit runs on (0 = Sunday); empty or all seven = every day.
+export const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+export const habitDays = h => (Array.isArray(h?.days) && h.days.length > 0 && h.days.length < 7 ? h.days : null)
+export function scheduledOn(h, key = dayKey()) {
+  const days = habitDays(h)
+  if (!days) return true
+  const [y, m, d] = key.split('-').map(Number)
+  return days.includes(new Date(y, m - 1, d).getDay())
+}
+
+// Streak in scheduled days, ending today (or yesterday while today is still open). "Never miss twice":
+// one missed scheduled day is forgiven, a second one in a row ends it. Days the habit doesn't run on are skipped.
+export function habitStreak(state, id, key = dayKey(), days = null) {
+  const h = { days }
+  let d = key, n = 0, misses = 0
+  for (let i = 0; i < 400; i++, d = addDays(d, -1)) {
+    if (!scheduledOn(h, d)) continue
+    if (habitDone(state, id, d)) { n++; misses = 0 }
+    else if (d !== key) { misses++; if (misses >= 2) break } // today still open is not a miss
+  }
   return n
 }
 

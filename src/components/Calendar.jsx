@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { dayKey, addDays, weekday, dayScore, dayTasks, eaten, waterOf, fmtWater, setsLogged, streakInfo, program, KG_TO_LB } from '../lib/day.js'
-import { plansOf, plansOn, planDone, planTitle, dropPlan, movePlan, toggleNote, newId, weekPlanOf, setWeekPlan, exportICS, PLAN_KINDS, DOW, planEvents } from '../lib/plans.js'
+import { plansOf, plansOn, planDone, planTitle, dropPlan, movePlan, toggleNote, newId, weekPlanOf, setWeekPlan, exportICS, PLAN_KINDS, DOW, planEvents, weekAdvice } from '../lib/plans.js'
 import { pushOn, pushSupport, enablePush, remindersOf, PUSH_ERR } from '../lib/push.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
@@ -269,6 +269,7 @@ function WeekSheet({ state, plan, onSave }) {
   const [time, setTime] = useState(plan.time)
   const [remind, setRemind] = useState(plan.remind)
   const want = program(state).days.length
+  const advice = weekAdvice(days, program(state).days)
   const flip = d => { haptic(); setDays(ds => (ds.includes(d) ? ds.filter(x => x !== d) : [...ds, d])) }
   return (
     <div className="sheet cl-sheet">
@@ -281,6 +282,7 @@ function WeekSheet({ state, plan, onSave }) {
       <p className={'hint num' + (days.length && days.length !== want ? ' cl-warn' : '')} style={{ margin: 0 }}>
         {days.length} of {want} picked{days.length > want ? ' · extra days are fine for walks or mobility' : days.length && days.length < want ? ' · the plan will run over more days' : ''}
       </p>
+      {advice && <p className="hint cl-warn" style={{ margin: 0 }} role="status">{advice}</p>}
       <div className="set-row"><span className="set-l">Time</span><input type="time" value={time} style={{ maxWidth: 140 }} onChange={e => setTime(e.target.value || '18:00')} /></div>
       <div className="set-row"><span className="set-l">Remind me</span><Toggle label="Remind me" on={remind} onChange={v => setRemind(v)} /></div>
       <button className="btn" onClick={() => onSave(days, time, remind)}>{days.length ? 'Save training days' : 'Clear training days'}</button>
