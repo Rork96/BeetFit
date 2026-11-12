@@ -51,6 +51,19 @@ describe('mkProg', () => {
     const bench = mkProg('lose', it_({ loc: 'home, basic', ownEq: ['bench'] })).flatMap(d => d.exercises.map(e => e.name))
     expect(bench).toEqual(expect.arrayContaining(['Incline push-up', 'Bench step-up']))
   })
+  it('muscle gain reaches 10 weekly sets for every main muscle group', () => {
+    for (const daysWk of [3, 4]) for (const loc of ['gym', 'home, no equipment']) {
+      const sets = {}
+      for (const d of mkProg('gain', it_({ loc, daysWk }))) for (const e of d.exercises) sets[e.pattern] = (sets[e.pattern] || 0) + e.sets
+      expect(sets.push).toBeGreaterThanOrEqual(10)
+      expect(sets.pull).toBeGreaterThanOrEqual(10)
+      expect((sets.squat || 0) + (sets.lunge || 0)).toBeGreaterThanOrEqual(10)
+      expect((sets.hinge || 0) + (sets.squat || 0) + (sets.lunge || 0)).toBeGreaterThanOrEqual(16)
+    }
+  })
+  it('weight loss keeps 3 sets (no extra volume)', () => {
+    expect(mkProg('lose', it_({ loc: 'gym', daysWk: 3 })).flatMap(d => d.exercises).every(e => e.sets <= 3)).toBe(true)
+  })
   it('a 5-minute row is one block, not three sets', () => {
     const row = mkProg('lose', it_({ loc: 'gym', daysWk: 3 })).flatMap(d => d.exercises).find(e => e.name === 'Rowing machine')
     expect(row.sets).toBe(1)

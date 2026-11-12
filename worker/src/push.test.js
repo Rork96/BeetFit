@@ -107,6 +107,10 @@ describe('coach digest', () => {
     const m = digestMessage([1, 2, 3, 4, 5].map(i => ({ name: 'C' + i, days: 9 - i })))
     expect(m.title).toBe('5 clients are overdue')
     expect(m.body).toContain('+2')
+    expect(m.actions).toBeUndefined()
+    const one = digestMessage(overdueClients([{ id: 'u1', summary: { name: 'Oleh', lastTrain: '2026-11-06', planned: 3 } }], '2026-11-10'))
+    expect(one.actions).toEqual([{ action: 'remind', title: 'Remind' }])
+    expect(one.url).toBe('/?clients=1&client=u1')
   })
   it('knows the coach local hour', () => {
     expect(localHour(Date.UTC(2026, 10, 10, 23, 5), 'America/Toronto')).toEqual({ hour: 18, minute: 5 })

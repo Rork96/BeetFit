@@ -67,3 +67,18 @@ describe('food search ranking', () => {
     expect(out.map(x => x.name).indexOf('Chicken noodle soup')).toBeGreaterThan(out.map(x => x.name).indexOf('Chicken wrap'))
   })
 })
+
+import { chainMatches } from './index.js'
+describe('chain catalog', () => {
+  const list = [{ brand: 'Tim Hortons', name: 'Chicken Club Wrap', servingG: 200, per100: { kcal: 200, p: 12, c: 18, f: 9 } }]
+  it('matches all words across brand and name and tags source', () => {
+    const r = chainMatches('tim wrap', list)
+    expect(r).toHaveLength(1)
+    expect(r[0].source).toBe('chain')
+    expect(r[0].per100.kcal).toBe(200)
+  })
+  it('no match and empty query give nothing', () => {
+    expect(chainMatches('pizza', list)).toEqual([])
+    expect(chainMatches('', list)).toEqual([])
+  })
+})

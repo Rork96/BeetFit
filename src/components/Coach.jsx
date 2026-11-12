@@ -42,8 +42,8 @@ const ago = day => {
 
 // ---------------------------------------------------------------- shared
 
-export function Thread({ msgs, me, other, onSend, placeholder }) {
-  const [text, setText] = useState('')
+export function Thread({ msgs, me, other, onSend, placeholder, draft = '' }) {
+  const [text, setText] = useState(draft)
   const [sending, setSending] = useState(false)
   const end = useRef(null)
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [msgs.length])
@@ -273,10 +273,10 @@ export function CoachStrip({ openClients }) {
   )
 }
 
-export function CoachHome({ onClose, onUpgrade }) {
+export function CoachHome({ onClose, onUpgrade, start }) {
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
-  const [open, setOpen] = useState(null)
+  const [open, setOpen] = useState(start?.id || null)
   useBackClose(!!open, () => setOpen(null))
 
   const load = useCallback(async () => {
@@ -332,12 +332,12 @@ export function CoachHome({ onClose, onUpgrade }) {
           )
         })}
       </div>
-      {open && <ClientView id={open} onClose={() => history.back()} onUpgrade={onUpgrade} />}
+      {open && <ClientView id={open} remind={start?.remind && start.id === open} onClose={() => history.back()} onUpgrade={onUpgrade} />}
     </div>
   )
 }
 
-function ClientView({ id, onClose, onUpgrade }) {
+function ClientView({ id, onClose, onUpgrade, remind }) {
   const [res, setRes] = useState(null)
   const [err, setErr] = useState('')
   const [ovr, setOvr] = useState({ kcal: '', protein: '', note: '' })
@@ -430,7 +430,7 @@ function ClientView({ id, onClose, onUpgrade }) {
         {res && (
           <section className="card">
             <span className="label">Messages</span>
-            <Thread msgs={res.msgs || []} me="coach" other={(ov?.name || 'Client').split(' ')[0]} onSend={send} placeholder="They’ll see this on Today" />
+            <Thread msgs={res.msgs || []} me="coach" other={(ov?.name || 'Client').split(' ')[0]} onSend={send} placeholder="They’ll see this on Today" draft={remind ? `Hey ${(ov?.name || '').split(" ")[0]}, haven’t seen you train in a few days. Everything OK? Even a short session counts.` : ''} />
           </section>
         )}
 

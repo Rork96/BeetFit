@@ -194,7 +194,7 @@ export function overdueClients(clients, today) {
     const planned = s.planned || 3
     const limit = planned <= 2 ? 5 : planned === 3 ? 4 : 3
     const days = dayN(today) - dayN(s.lastTrain)
-    if (days >= limit && days <= limit + 7) out.push({ name: String(s.name || 'Client').slice(0, 24), days })
+    if (days >= limit && days <= limit + 7) out.push({ ...(c.id ? { id: c.id } : {}), name: String(s.name || 'Client').slice(0, 24), days })
   }
   return out.sort((a, b) => b.days - a.days)
 }
@@ -203,5 +203,5 @@ export function digestMessage(over) {
   if (!over.length) return null
   const list = over.slice(0, 3).map(o => `${o.name} (${o.days}d)`).join(', ')
   const more = over.length > 3 ? ` +${over.length - 3}` : ''
-  return { title: over.length === 1 ? '1 client is overdue' : `${over.length} clients are overdue`, body: `${list}${more}. A short message now brings them back.`, url: '/?coach=1', tag: 'coach-digest' }
+  return { title: over.length === 1 ? '1 client is overdue' : `${over.length} clients are overdue`, body: `${list}${more}. A short message now brings them back.`, ...(over.length === 1 && over[0].id ? { url: `/?clients=1&client=${encodeURIComponent(over[0].id)}`, actions: [{ action: 'remind', title: 'Remind' }] } : { url: '/?coach=1' }), tag: 'coach-digest' }
 }

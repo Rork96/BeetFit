@@ -1,4 +1,5 @@
 // BeetFit — one Cloudflare Worker serves the web app (static assets from ../dist) and the API.
+import { CHAINS } from './chains.js'
 //   POST /api/device               issue a signed per-install token (no account needed)
 //   GET  /api/health
 //   GET  /api/food/barcode/:code   Open Food Facts product → normalized per-100 g macros (cached 7 days)
@@ -261,6 +262,13 @@ export function rankFoods(items, q) {
     .map(x => x.it)
 }
 
+// Restaurant / meal-kit items (worker/src/chains.js). Matched locally so they rank above random OFF products.
+export function chainMatches(q, list = CHAINS) {
+  const toks = q.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  if (!toks.length) return []
+  return list.filter(it => { const hay = `${it.brand} ${it.name}`.toLowerCase(); return toks.every(t => hay.includes(t)) })
+    .map(it => ({ source: 'chain', code: `chain:${it.brand}:${it.name}`.toLowerCase().replace(/\s+/g, '-'), name: it.name, brand: it.brand, image: null, per100: it.per100, servingG: it.servingG || null }))
+}
 async function search(q, env) {
   const offGet = url => fetch(url, { headers: { 'User-Agent': UA } })
     .then(r => (r.ok ? r.json() : { products: [] }))
@@ -276,7 +284,7 @@ async function search(q, env) {
     : Promise.resolve([])
   const [usda, ca, world] = await Promise.all([usdaP, caP, worldP])
   const all = rankFoods([...usda, ...ca, ...world], q)
-  return json({ items: all.slice(0, 20) })
+  return json({ items: [...chainMatches(q), ...all].slice(0, 20) })
 }
 
 function normalizeUsda(f) {
@@ -912,8 +920,8 @@ export async function runCoachDigest(env, now = Date.now()) {
     const tz = validTz(sub.tz) ? sub.tz : 'UTC'
     const { hour, minute } = localHour(now, tz)
     if (hour !== 18 || minute >= 15) continue
-    const { results } = await db.prepare('SELECT d.summary FROM links l JOIN docs d ON d.user_id = l.client_id WHERE l.coach_id = ?').bind(sub.user_id).all()
-    const msg = digestMessage(overdueClients(results.map(r => ({ summary: parse(r.summary) })), localDay(now, tz)))
+    const { results } = await db.prepare('SELECT l.client_id AS id, d.summary FROM links l JOIN docs d ON d.user_id = l.client_id WHERE l.coach_id = ?').bind(sub.user_id).all()
+    const msg = digestMessage(overdueClients(results.map(r => ({ id: r.id, summary: parse(r.summary) })), localDay(now, tz)))
     if (!msg) continue
     await notify(null, env, sub.user_id, msg); sent++
   }

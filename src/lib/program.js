@@ -108,7 +108,11 @@ export function mkProg(goal, it = DEFAULT_INTAKE) {
   else if (days === 3) defs = [['Full Body A', ['squat', 'push', 'pull', 'hinge', 'core']], ['Full Body B', ['hinge', 'lunge', 'pull', 'push', 'cardio']], ['Full Body C', ['squat', 'push', 'pull', 'core', 'carry']]]
   else defs = [['Lower A', ['squat', 'hinge', 'lunge', 'core', 'carry']], ['Upper A', ['push', 'pull', 'push', 'pull', 'core']], ['Lower B', ['hinge', 'lunge', 'squat', 'cardio', 'core']], ['Upper B', ['pull', 'push', 'pull', 'push', 'core']], ['Full Body', ['squat', 'push', 'hinge', 'pull', 'core']]].slice(0, days)
 
-  const program = defs.map(([name, pats]) => ({ name, exercises: pick(pats).map(L => mkEx(L, it)) })).filter(d => d.exercises.length)
+  // Building muscle: ACSM (2026) puts the floor at 10+ hard sets per muscle group a week. Main lifts get a 4th set so a 3-day split reaches it.
+  const MAIN = ['squat', 'hinge', 'lunge', 'push', 'pull']
+  // A pattern asked for twice in a session but with only one exercise available (bodyweight pull at home) gets the missing volume as a 5th set.
+  const bump = (pats, L, e) => goal !== 'gain' || !MAIN.includes(L.pat) || e.sets !== 3 ? e : { ...e, sets: pats.filter(p => p === L.pat).length > 1 && pick(pats).filter(x => x.pat === L.pat).length < 2 ? 5 : 4 }
+  const program = defs.map(([name, pats]) => ({ name, exercises: pick(pats).map(L => bump(pats, L, mkEx(L, it))) })).filter(d => d.exercises.length)
   if (it.running && goal !== 'gain') {
     program.push({ name: 'Run / Walk', run: true, exercises: [{ id: 'run_walk', name: 'Run/walk intervals', sets: 1, reps: '6× (1 min run / 2 min walk)', rest: 0, cue: 'Conversational pace on the runs.' }] })
   }

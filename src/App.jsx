@@ -115,6 +115,7 @@ export default function App() {
     if (t && TABS.some(x => x.id === t)) { prevTab.current = tab; setTab(t) }
     if (q.get('chat') === 'coach') setChat(true)
     if (q.get('coach') === '1') setSettings('coach')
+    if (q.get('clients') === '1') setClients(q.get('client') ? { id: q.get('client'), remind: q.get('remind') === '1' } : true)
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('cal') || '')) setCal({ day: q.get('cal') })
     if (q.get('habit')) { setTab('today'); setHabitLink(q.get('habit')) }
     if (q.get('pro') === '1') pro.open()
@@ -172,7 +173,7 @@ export default function App() {
       </nav>
       {settings && <Settings state={view} update={update} sync={sync} coach={coach} account={account} pro={pro} openChat={() => setChat(true)} startCoach={settings === 'coach'} focusCoach={settings === 'setup'} page={['sync', 'reminders', 'training', 'account'].includes(settings) ? settings : null} onClose={() => history.back()} />}
       {chat && <CoachChat coach={coach} onClose={() => history.back()} />}
-      {clients && <CoachHome onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
+      {clients && <CoachHome start={clients === true ? null : clients} onClose={() => history.back()} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
       {guides && <Guides first={guides.first} onClose={() => history.back()} />}
       {cal && <Calendar state={view} update={update} first={cal.day} planWeek={cal.plan} onClose={() => history.back()}
         onStartWorkout={() => { history.back(); setTimeout(() => go('workout', { start: true }), 60) }} />}
