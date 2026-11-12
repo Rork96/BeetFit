@@ -252,7 +252,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .rm-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rm-t b { font-size: 15px; font-weight: 500; }
 .rm-t .hint { font-size: 12px; }
-.rm-time { width: auto; padding: 8px 10px; font-size: 15px; }
+.rm-time { width: auto; flex: none; padding: 8px 10px; font-size: 15px; }
+/* Phones open the time picker on tap anyway; the clock icon only steals width from the label next to it. */
+@media (pointer: coarse) { .rm-time { width: 104px; padding: 8px; text-align: center; } .rm-time::-webkit-calendar-picker-indicator { display: none; } }
 .rm-time:disabled { opacity: .4; }
 textarea { font-family: inherit; }
 

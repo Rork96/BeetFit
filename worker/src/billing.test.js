@@ -47,6 +47,7 @@ beforeAll(() => {
       calls.push({ path, method: init.method, body })
       if (path === 'prices/price_m') return Response.json({ unit_amount: 699, currency: 'usd' })
       if (path === 'prices/price_y') return Response.json({ unit_amount: 4999, currency: 'usd' })
+      if (path.startsWith('prices?product=prod_pro')) return Response.json({ data: [{ id: 'price_y', recurring: { interval: 'year' } }, { id: 'price_m', recurring: { interval: 'month' } }] })
       if (path === 'customers') return Response.json({ id: 'cus_1' })
       if (path === 'checkout/sessions') return Response.json({ id: 'cs_1', url: 'https://checkout.stripe.com/c/pay/cs_1' })
       if (path === 'billing_portal/sessions') return Response.json({ url: 'https://billing.stripe.com/p/session/1' })
@@ -66,6 +67,15 @@ describe('billing', () => {
     expect(await r.json()).toMatchObject({ on: true, web: true, store: true, trialDays: 14, free: { snaps: 3, chats: 5 }, prices: { month: { amount: 699 }, year: { amount: 4999 } } })
     const tok = await issueToken(SECRET)
     expect(await call(tok, '/api/billing/status')).toMatchObject({ pro: false, on: true, trialUsed: false, manage: false })
+  })
+
+  it('product ids (prod_) resolve to their monthly / yearly price', async () => {
+    _clearPrices()
+    const prod = { ...env, STRIPE_PRICE_MONTH: 'prod_pro', STRIPE_PRICE_YEAR: 'prod_pro' }
+    const r = await (await worker.fetch(new Request('https://beetfit.test/api/billing/config'), prod, {})).json()
+    expect(r).toMatchObject({ on: true, prices: { month: { amount: 699 }, year: { amount: 4999 } } })
+    expect(r.priceError).toBeUndefined()
+    _clearPrices()
   })
 
   it('config tells the owner why prices are missing, and keeps web on', async () => {

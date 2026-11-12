@@ -88,16 +88,31 @@ export async function stripe(env, path, params, method = params ? 'POST' : 'GET'
   return body
 }
 
+// STRIPE_PRICE_* may hold a price id (price_…) or a product id (prod_…). For a product, its active recurring
+// price with the matching interval is used, so copying the id from the product page also works.
+const resolved = {}
+export async function priceId(env, plan) {
+  const raw = plan === 'year' ? env.STRIPE_PRICE_YEAR : plan === 'month' ? env.STRIPE_PRICE_MONTH : null
+  if (!raw || !raw.startsWith('prod_')) return raw
+  const key = raw + ':' + plan
+  if (resolved[key]) return resolved[key]
+  const list = await stripe(env, `prices?product=${encodeURIComponent(raw)}&active=true&type=recurring&limit=20`)
+  const hit = (list.data || []).find(p => p.recurring?.interval === plan)
+  if (!hit) throw new Error(`stripe: no active ${plan}ly price on ${raw}`)
+  return (resolved[key] = hit.id)
+}
+
 let priceCache = null
 export async function prices(env) {
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_MONTH || !env.STRIPE_PRICE_YEAR) return null
   if (priceCache && priceCache.at > Date.now() - 3600e3) return priceCache.v
-  const [m, y] = await Promise.all([stripe(env, 'prices/' + env.STRIPE_PRICE_MONTH), stripe(env, 'prices/' + env.STRIPE_PRICE_YEAR)])
+  const [mId, yId] = await Promise.all([priceId(env, 'month'), priceId(env, 'year')])
+  const [m, y] = await Promise.all([stripe(env, 'prices/' + mId), stripe(env, 'prices/' + yId)])
   const p = x => ({ amount: x.unit_amount, currency: x.currency })
   priceCache = { at: Date.now(), v: { month: p(m), year: p(y) } }
   return priceCache.v
 }
-export const _clearPrices = () => { priceCache = null }
+export const _clearPrices = () => { priceCache = null; for (const k in resolved) delete resolved[k] }
 
 // Why the amounts could not be loaded (wrong key mode, a prod_ id instead of price_, a deleted price). Shown to the owner, not the buyer.
 export async function priceProblem(env) {
@@ -117,7 +132,8 @@ export async function billingConfig(env) {
 }
 
 export async function checkout(env, db, userId, { plan, origin, email }) {
-  const price = plan === 'year' ? env.STRIPE_PRICE_YEAR : plan === 'month' ? env.STRIPE_PRICE_MONTH : null
+  if (plan !== 'year' && plan !== 'month') return { error: 'bad_plan' }
+  const price = await priceId(env, plan)
   if (!price) return { error: 'bad_plan' }
   const ent = await entitlement(db, userId)
   if (ent.pro && ent.source !== 'trial') return { error: 'already_pro' } // paying during the device trial is the point of it

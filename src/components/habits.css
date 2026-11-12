@@ -21,3 +21,16 @@
 .hb-day { flex: 1; min-width: 0; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink-3, inherit); font: 600 12px/1 var(--f-body); opacity: .55; }
 .hb-day.on { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); opacity: 1; color: inherit; }
 .hb-day.loud { flex: 0 0 40px; }
+
+/* Settings rows (grid, so nothing squeezes on a 320 px phone):
+   [✓] Name / what the camera looks for      [✕]
+       [time]
+       Su Mo Tu We Th Fr Sa 🔔                        */
+.hb-setup .rm-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 44px; grid-template-areas: "chk t x" ". tm tm" ". d d"; column-gap: 12px; row-gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.hb-setup .rm-row .rm-check { grid-area: chk; }
+.hb-setup .rm-row .rm-t { grid-area: t; }
+.hb-setup .rm-row .rm-t b, .hb-setup .rm-row .rm-t .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-setup .rm-row .rm-time { grid-area: tm; justify-self: start; }
+.hb-setup .rm-row .hb-x { grid-area: x; justify-self: end; }
+.hb-setup .hb-days { grid-area: d; margin-top: 0; }
+.hb-setup .rm-row.off .hb-days { opacity: .4; pointer-events: none; }

@@ -25,9 +25,10 @@ MAIL_FROM = "BeetFit <login@wealthifai.xyz>"
 # GOOGLE_CLIENT_ID = ""   # Web client ID from Google Cloud → Credentials (add here, or as a dashboard variable)
 # APPLE_CLIENT_ID = ""    # Services ID from Apple Developer → Identifiers
 # PRO (see DEPLOY.md → Payments). Price IDs from Stripe → Product catalog. Empty = payments off, no limits.
-# Do NOT leave these as "" — an empty value here overwrites the dashboard on every deploy and switches PRO and the limits off.
-# STRIPE_PRICE_MONTH = "price_..."
-# STRIPE_PRICE_YEAR = "price_..."
+# Price ids (price_…) or product ids (prod_…: the active monthly / yearly price of that product is used).
+# Never leave them as "": an empty value switches PRO and the free limits off.
+STRIPE_PRICE_MONTH = "prod_VYdD1Ik5Djlatg"
+STRIPE_PRICE_YEAR = "prod_VYdE8PjEpALCMM"
 
 # Daily caps (photos per device / per IP, new device tokens per IP).
 # No id: wrangler creates the namespace on the first deploy and remembers it.
