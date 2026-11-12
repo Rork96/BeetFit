@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'public', 'mediapipe')
 const src = join(root, 'node_modules', '@mediapipe', 'tasks-vision', 'wasm')
-const MODELS = ['lite', 'full'].map(m => [`pose_landmarker_${m}.task`, `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/1/pose_landmarker_${m}.task`])
+const MODELS = [
+  ...['lite', 'full'].map(m => [`pose_landmarker_${m}.task`, `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/1/pose_landmarker_${m}.task`]),
+  ['efficientdet_lite0.tflite', 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite'] // habit check
+]
 
 await mkdir(join(out, 'wasm'), { recursive: true })
 for (const f of ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision_wasm_nosimd_internal.js', 'vision_wasm_nosimd_internal.wasm']) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextDue, localToUtc, localDay, message, eventMessage, cleanEvents, cleanPrefs, DEFAULT_PREFS, validTz } from './reminders.js'
+import { localHour, nextDue, localToUtc, localDay, message, eventMessage, cleanEvents, cleanPrefs, DEFAULT_PREFS, validTz } from './reminders.js'
 
 describe('reminder schedule', () => {
   it('converts local wall time across DST', () => {
@@ -91,5 +91,24 @@ describe('calendar events', () => {
     expect(eventMessage({ kind: 'weigh', title: 'W' }, { weightLog: [{ date: d }] }, d)).toBeNull()
     expect(eventMessage({ kind: 'note', title: 'Physio', body: 'b', url: '/', tag: 't' }, null, d)).toEqual({ title: 'Physio', body: 'b', url: '/', tag: 't' })
     expect(eventMessage(undefined, null, d)).toBeNull()
+  })
+})
+
+describe('habit reminders', () => {
+  const prefs = cleanPrefs({ ...DEFAULT_PREFS, brief: { on: false, h: 8, m: 0 }, meals: { on: false, h: 12, m: 0 }, workout: { on: false, h: 18, m: 0 }, streak: { on: false, h: 20, m: 0 },
+    habits: [{ id: 'teeth', n: 'Brush teeth', h: 7, m: 30, on: true }, { id: 'bad id!', n: '', h: 9, m: 0 }, { id: 'vit', n: 'Vitamins', h: 8, m: 0, on: false }] })
+  it('keeps only valid habits and schedules the enabled ones', () => {
+    expect(prefs.habits.map(h => h.id)).toEqual(['teeth', 'vit'])
+    const from = Date.parse('2026-11-11T05:00:00Z') // 23:00 Nov 10 in Winnipeg
+    const due = nextDue(prefs, 'America/Winnipeg', from)
+    expect(due.kind).toBe('habit:teeth')
+    expect(localDay(due.at, 'America/Winnipeg')).toBe('2026-11-11')
+    expect(localHour(due.at, 'America/Winnipeg')).toEqual({ hour: 7, minute: 30 })
+  })
+  it('stays quiet once the habit is done today', () => {
+    expect(message('habit:teeth', { habitLog: { '2026-11-11': { teeth: 1 } } }, '2026-11-11', prefs)).toBe(null)
+    const m = message('habit:teeth', { habitLog: {} }, '2026-11-11', prefs)
+    expect(m).toMatchObject({ title: 'Brush teeth', url: '/?habit=teeth' })
+    expect(message('habit:gone', {}, '2026-11-11', prefs)).toBe(null)
   })
 })

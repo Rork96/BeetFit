@@ -21,7 +21,7 @@
 <h2>1. What stays on your phone</h2>
 <ul>
 <li><b>Everything you log</b>: meals, water, weight, body measurements, workouts, notes, pain reports, your plan and settings. It is stored in your browser or app storage on the device.</li>
-<li><b>Camera video for rep counting.</b> Pose detection runs on the phone. Video frames are never uploaded or saved.</li>
+<li><b>Camera video for rep counting and habit checks.</b> Pose and object detection run on the phone. Video frames are never uploaded or saved.</li>
 </ul>
 
 <h2>2. What leaves your phone, and why</h2>
@@ -32,7 +32,7 @@
 <tr><td>Ask Beet, or ask for a plan review</td><td>Your question and a short summary of your plan and recent logs (targets, today's totals, recent workouts), so the answer fits you. We don't keep the conversation on our servers.</td><td>Google (Gemini API)</td></tr>
 <tr><td>Search food or scan a barcode</td><td>The search text or barcode number.</td><td>Open Food Facts, USDA FoodData Central (via our server)</td></tr>
 <tr><td>Turn on sync, or sign in</td><td>A copy of your app data (everything in section 1 except camera video), so it follows you to other phones. Your email address if you sign in with email; an account ID from Google or Apple if you use them.</td><td>Cloudflare (database), Resend (sign-in and check-in emails), Google / Apple (sign-in)</td></tr>
-<tr><td>Turn on reminders</td><td>A push address for this phone and your reminder times and time zone.</td><td>Apple, Google or Mozilla push services</td></tr>
+<tr><td>Turn on reminders</td><td>A push address for this phone, your reminder times (including the names of your habits) and time zone.</td><td>Apple, Google or Mozilla push services</td></tr>
 <tr><td>Join a coach</td><td>Your synced data, a summary (adherence, last workout, camera-checked sets, form score), and messages, visible to that coach until you leave.</td><td>Your coach, through Cloudflare</td></tr>
 <tr><td>Add a demo clip to your own exercise</td><td>The clip, shortened on your phone to 8 seconds without sound. Anyone with its link can play it; the link contains a long random code and isn't listed anywhere.</td><td>Cloudflare (R2 storage)</td></tr>
 <tr><td>Buy PRO</td><td>Payment details go straight to the payment provider; we never see your card. We keep your subscription status and the provider's customer ID.</td><td>Stripe (web), Apple App Store or Google Play via RevenueCat (apps)</td></tr>

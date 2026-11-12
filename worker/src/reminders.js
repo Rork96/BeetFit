@@ -32,6 +32,11 @@ export function cleanPrefs(p = {}) {
     const h = Math.min(23, Math.max(0, Math.round(+v.h))), m = Math.min(59, Math.max(0, Math.round(+v.m)))
     out[k] = { on: !!v.on, h: Number.isFinite(h) ? h : DEFAULT_PREFS[k].h, m: Number.isFinite(m) ? m : DEFAULT_PREFS[k].m }
   }
+  // Habit reminders: up to 6 of { id, n, h, m, on }. The object to show is the phone's business; the server only needs the time and the name.
+  out.habits = (Array.isArray(p.habits) ? p.habits : []).slice(0, 6).map(x => {
+    const h = Math.min(23, Math.max(0, Math.round(+x?.h))), m = Math.min(59, Math.max(0, Math.round(+x?.m)))
+    return { id: clip(x?.id, 16).replace(/[^\w-]/g, ''), n: clip(x?.n, 24), on: x?.on !== false, h: Number.isFinite(h) ? h : 9, m: Number.isFinite(m) ? m : 0 }
+  }).filter(x => x.id && x.n)
   return out
 }
 
@@ -81,6 +86,11 @@ export function nextDue(prefs, tz, from = Date.now(), events = []) {
       const at = localToUtc(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), r.h, r.m, tz)
       if (at > from && (!best || at < best.at)) best = { at, kind: k }
     }
+    for (const x of prefs.habits || []) {
+      if (!x.on) continue
+      const at = localToUtc(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), x.h, x.m, tz)
+      if (at > from && (!best || at < best.at)) best = { at, kind: 'habit:' + x.id }
+    }
   }
   return best
 }
@@ -89,7 +99,13 @@ const setsOn = day => Object.values(day || {}).reduce((n, e) => n + (e === true 
 const addDays = (key, n) => { const d = new Date(key + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
 
 // What to send for `kind` today, given the user's synced doc (may be null) — or null to stay quiet.
-export function message(kind, doc, today) {
+export function message(kind, doc, today, prefs) {
+  if (typeof kind === 'string' && kind.startsWith('habit:')) {
+    const id = kind.slice(6)
+    const h = (prefs?.habits || []).find(x => x.id === id)
+    if (!h || doc?.habitLog?.[today]?.[id]) return null
+    return { title: h.n, body: 'Show Beet the thing on camera and it counts.', url: `/?habit=${id}`, tag: 'habit-' + id }
+  }
   const name = doc?.settings?.name ? doc.settings.name.split(' ')[0] : ''
   const hi = name ? `${name}, ` : ''
   if (kind === 'meals') {

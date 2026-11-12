@@ -936,7 +936,7 @@ export async function runReminders(env, now = Date.now()) {
       const day = localDay(row.next_at, row.tz)
       const msg = row.next_kind === 'event'
         ? eventMessage(events.find(e => e.at === row.next_at), docs.get(row.user_id), day)
-        : message(row.next_kind, docs.get(row.user_id), day)
+        : message(row.next_kind, docs.get(row.user_id), day, prefs)
       if (msg) {
         const r = await sendPush(row, msg, env, { ttl: 2 * 3600, topic: (msg.tag || row.next_kind).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) }).catch(() => ({ ok: false }))
         if (r.gone) { await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(row.endpoint).run(); continue }

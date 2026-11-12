@@ -45,6 +45,7 @@ export function mergeStates(local, remote) {
   out.foodLog = mergeDated(local.foodLog, remote.foodLog, mergeFoodDay)
   out.workoutLog = mergeDated(local.workoutLog, remote.workoutLog, mergeWorkoutDay)
   out.water = mergeDated(local.water, remote.water, (a, b) => Math.max(a || 0, b || 0))
+  out.habitLog = mergeDated(local.habitLog, remote.habitLog, (a, b) => ({ ...a, ...b }))
   out.checkins = mergeDated(local.checkins, remote.checkins, (a, b) => ({ ...a, ...b }))
   const wl = { ...byKey(remote.weightLog, 'date'), ...byKey(local.weightLog, 'date') }
   out.weightLog = Object.values(wl).sort((a, b) => a.date.localeCompare(b.date))

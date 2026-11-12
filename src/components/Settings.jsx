@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { HabitsSetup } from './Habits.jsx'
 import { GOALS, ACTIVITY_LEVELS, minTargetKg, targetNote } from '../lib/calories.js'
 import { applyMotionLevel, getMotionLevel } from '../lib/motion.js'
 import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.js'
@@ -20,7 +21,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { proLine } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.33.0'
+const VERSION = '0.34.0'
 
 // Settings is a short list of groups (the iOS / Android pattern): each row opens its own page,
 // so the root fits on one screen and the version sits at the bottom of it.
@@ -103,7 +104,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
             </section>
           )}
 
-          {page === 'reminders' && <RemindersCard state={state} update={update} sync={sync} account={account?.value} />}
+          {page === 'reminders' && <><RemindersCard state={state} update={update} sync={sync} account={account?.value} /><HabitsSetup state={state} update={update} /></>}
 
           {page === 'workout' && (
             <section className="card">

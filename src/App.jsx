@@ -51,6 +51,7 @@ export default function App() {
   const [clients, setClients] = useState(false)
   useBackClose(clients, () => setClients(false))
   const [chat, setChat] = useState(false)
+  const [habitLink, setHabitLink] = useState(null) // /?habit=<id> from a reminder: opens that habit's camera check
   const [guides, setGuides] = useState(null) // null | { first: guide id or null }
   const [cal, setCal] = useState(null) // null | { day, plan }
   const prevTab = useRef(tab)
@@ -115,6 +116,7 @@ export default function App() {
     if (q.get('chat') === 'coach') setChat(true)
     if (q.get('coach') === '1') setSettings('coach')
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('cal') || '')) setCal({ day: q.get('cal') })
+    if (q.get('habit')) { setTab('today'); setHabitLink(q.get('habit')) }
     if (q.get('pro') === '1') pro.open()
     const b = q.get('billing') // back from Stripe
     if (b === 'success') pro.open('success')
@@ -153,7 +155,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={pg => setSettings(typeof pg === 'string' ? pg : true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={pg => setSettings(typeof pg === 'string' ? pg : true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} habitLink={habitLink} clearHabitLink={() => setHabitLink(null)} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} pro={pro} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
         {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}

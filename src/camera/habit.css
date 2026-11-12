@@ -1,0 +1,10 @@
+.hc-sheet { gap: 10px; }
+.hc-sub { margin: 0; min-height: 1.4em; }
+.hc-manual { width: 100%; }
+.hc-ok { position: absolute; inset: 0; z-index: 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(8,9,12,.82); backdrop-filter: blur(10px); animation: hcIn .25s ease-out; }
+.hc-ok b { font: 700 24px/1.1 var(--f-display); }
+.hc-ok span { color: rgba(255,255,255,.7); font-size: 14px; }
+.hc-tick { width: 88px; height: 88px; border-radius: 50%; background: var(--accent); color: #0c0d11; display: grid; place-items: center; font-size: 46px; font-weight: 800; animation: hcPop .35s cubic-bezier(.2,1.4,.4,1); }
+@keyframes hcIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes hcPop { from { transform: scale(.4) } to { transform: scale(1) } }
+@media (prefers-reduced-motion: reduce) { .hc-ok, .hc-tick { animation: none; } }

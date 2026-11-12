@@ -1,5 +1,8 @@
 import { ProgramOffer } from './CoachProgram.jsx'
-import React, { useState } from 'react'
+import { HabitsToday } from './Habits.jsx'
+import HabitCheck from '../camera/HabitCheck.jsx'
+import { habitsOf, habitStreak, markHabitPatch } from '../lib/habits.js'
+import React, { useEffect, useState } from 'react'
 import { planStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, fmtWater, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
@@ -23,7 +26,7 @@ import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync, habitLink, clearHabitLink }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -43,6 +46,13 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const [splash, setSplash] = useState(0)
   const [streakOpen, setStreakOpen] = useState(false)
   const [waterOpen, setWaterOpen] = useState(false)
+  const [habit, setHabit] = useState(null)
+  useEffect(() => { // a habit reminder was tapped: /?habit=<id>
+    if (!habitLink) return
+    const h = habitsOf(state).find(x => x.id === habitLink)
+    if (h) setHabit(h)
+    clearHabitLink?.()
+  }, [habitLink]) // eslint-disable-line react-hooks/exhaustive-deps
   useBackClose(streakOpen, () => setStreakOpen(false))
   const [milestone, closeMilestone] = useMilestone(state)
   const [dayDone, closeDayDone, openDayDone, allDone] = useDayDone(state)
@@ -95,6 +105,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
       </div>
 
+      {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key)} onDone={how => update(prev => markHabitPatch(prev, habit.id, how))} onClose={() => setHabit(null)} />}
       {waterOpen && <WaterSheet state={state} onSet={setGlasses} onClose={() => setWaterOpen(false)} />}
       <div className="stk td-stack">
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
@@ -137,6 +148,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
             ))}
           </button>
         )}
+
+        <HabitsToday state={state} update={update} onCheck={setHabit} openSetup={() => openSettings('reminders')} />
 
         {/* Water + Body */}
         <div className="grid2">
