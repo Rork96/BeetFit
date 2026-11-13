@@ -46,3 +46,24 @@ describe('habits', () => {
     expect(seen(dets, ['cup', 'bottle']).label).toBe('bottle')
   })
 })
+
+import { habitIcon, habitWeek, habitByHand } from './habits.js'
+describe('habit look', () => {
+  it('icons by template, then by object, else a sparkle', () => {
+    expect(habitIcon({ id: 'teeth', labels: ['toothbrush'] })).toBe('🪥')
+    expect(habitIcon({ id: 'vitamins-2', labels: ['bottle'] })).toBe('💊')
+    expect(habitIcon({ id: 'read', labels: ['book'] })).toBe('📖')
+    expect(habitIcon({ id: 'x', labels: ['nope'] })).toBe('✨')
+  })
+  it('week strip: done, missed, off-day and today', () => {
+    const st = { habitLog: { '2026-11-09': { g: 1 }, '2026-11-11': { g: 2 } } }
+    const w = habitWeek(st, { id: 'g', days: [1, 2, 3, 5] }, '2026-11-11') // Wed
+    expect(w).toHaveLength(7)
+    expect(w.map(c => c.st)).toEqual(['off', 'miss', 'off', 'off', 'done', 'miss', 'done']) // Thu5 Fri6 Sat7 Sun8 Mon9 Tue10 Wed11
+  })
+  it('manual ticks are marked, camera ticks are not', () => {
+    const m = markHabitPatch({}, 'g', 'manual', '2026-11-11')
+    expect(habitByHand(m, 'g', '2026-11-11')).toBe(true)
+    expect(habitByHand(markHabitPatch({}, 'g', 'camera', '2026-11-11'), 'g', '2026-11-11')).toBe(false)
+  })
+})

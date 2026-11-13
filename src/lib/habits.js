@@ -41,10 +41,32 @@ export const addHabitPatch = (prev, base) => patchHabits(prev, list => (list.len
 export const editHabitPatch = (prev, id, patch) => patchHabits(prev, list => list.map(h => (h.id === id ? { ...h, ...patch } : h)))
 export const removeHabitPatch = (prev, id) => patchHabits(prev, list => list.filter(h => h.id !== id))
 
+// habitProof[day][id] = 'm' marks a tick by hand (camera ticks are the default and aren't stored).
 export const markHabitPatch = (prev, id, how = 'camera', key = dayKey()) => ({
   habitLog: { ...(prev.habitLog || {}), [key]: { ...(prev.habitLog?.[key] || {}), [id]: Date.now() } },
+  ...(how === 'manual' ? { habitProof: { ...(prev.habitProof || {}), [key]: { ...(prev.habitProof?.[key] || {}), [id]: 'm' } } } : {}),
   habitHow: how
 })
+export const habitByHand = (state, id, key = dayKey()) => state.habitProof?.[key]?.[id] === 'm'
+export const habitAt = (state, id, key = dayKey()) => state.habitLog?.[key]?.[id] || null
+
+// A glyph per habit: template id first, then what the camera looks for.
+const ICON_BY_ID = { teeth: '🪥', water: '💧', vitamins: '💊', breakfast: '🥣' }
+const ICON_BY_LABEL = { toothbrush: '🪥', bottle: '💧', cup: '☕', 'wine glass': '💧', bowl: '🥣', book: '📖', banana: '🍌', apple: '🍎', orange: '🍊', sandwich: '🥪', sink: '🚰', laptop: '💻', backpack: '🎒', chair: '🪑', 'sports ball': '⚽', clock: '⏰' }
+export const habitIcon = h => ICON_BY_ID[String(h?.id).replace(/-\d+$/, '')] || ICON_BY_LABEL[h?.labels?.[0]] || '✨'
+
+// The last 7 days ending today, for the little proof strip: 'done' | 'miss' | 'off' | 'today'.
+export function habitWeek(state, h, key = dayKey()) {
+  const out = []
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(key, -i)
+    const [y, m, dd] = d.split('-').map(Number)
+    const wd = new Date(y, m - 1, dd).getDay()
+    const st = habitDone(state, h.id, d) ? 'done' : !scheduledOn(h, d) ? 'off' : i === 0 ? 'today' : 'miss'
+    out.push({ d, st, wd })
+  }
+  return out
+}
 
 // `days` = weekdays the habit runs on (0 = Sunday); empty or all seven = every day.
 export const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']

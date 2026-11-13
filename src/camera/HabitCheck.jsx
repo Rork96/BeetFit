@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useCamera } from './useCamera.js'
 import { loadObjectDetector, detect } from './pose/objects.js'
-import { seen } from '../lib/habits.js'
+import { seen, habitIcon } from '../lib/habits.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import './camera.css'
@@ -11,7 +11,9 @@ const NEED = 3 // consecutive frames with the object, so a passing glance doesn'
 
 // Full-screen: show the camera the object that belongs to the habit and it ticks itself off.
 // Reachable without the camera: after a few seconds (or when the camera or model fail) "Mark done" appears.
-export default function HabitCheck({ habit, streak, onDone, onClose }) {
+export default function HabitCheck({ habit, streak: streakIn, onDone, onClose }) {
+  // Frozen at open: after the tick lands the parent recomputes a streak that already includes today.
+  const [streak] = useState(streakIn || 0)
   useBackClose(true, onClose)
   const cam = useCamera({ facing: 'environment', width: 1280, height: 720, wide: true })
   const [model, setModel] = useState('loading') // loading | ready | failed
@@ -28,7 +30,7 @@ export default function HabitCheck({ habit, streak, onDone, onClose }) {
   const finish = how => {
     if (finished.current) return
     finished.current = true
-    hapticSuccess(); setDone(true); onDone(how)
+    hapticSuccess(); setDone(how); onDone(how)
     setTimeout(onClose, 1500)
   }
 
@@ -71,16 +73,22 @@ export default function HabitCheck({ habit, streak, onDone, onClose }) {
     <div className="ct hc" role="dialog" aria-label={habit.n} ref={rootRef}>
       <video ref={cam.videoRef} className="ct-video" playsInline muted />
       <div className="ct-vignette" />
+      {!done && !box && <div className="hc-finder" aria-hidden="true"><i /><i /><i /><i /></div>}
       {box && !done && <i className={'hc-box' + (box.hit ? ' hit' : '')} style={{ left: box.l, top: box.t, width: box.w, height: box.h }} aria-hidden="true" />}
       <header className="ct-top">
         <div className="ct-title">{habit.n}</div>
         <div className="ct-actions"><button className="ct-btn ghost" onClick={onClose}>Close</button></div>
       </header>
       {done ? (
-        <div className="hc-ok" role="status"><div className="hc-tick">✓</div><b>Done</b>{streak > 0 && <span>{streak + 1} days in a row</span>}</div>
+        <div className="hc-ok" role="status">
+          <div className="hc-tick">✓</div>
+          <b>{done === 'manual' ? 'Ticked' : 'Proved'}</b>
+          <span className="hc-ok-n">{habitIcon(habit)} {habit.n}</span>
+          {streak + 1 > 1 && <span className="hc-ok-s">🔥 {streak + 1}-day streak</span>}
+        </div>
       ) : (
         <div className="ct-sheet stk hc-sheet">
-          <div className="ct-h">Show me {habit.ask}</div>
+          <div className="ct-h"><span className="hc-want" aria-hidden="true">{habitIcon(habit)}</span>Show me {habit.ask}</div>
           <p className="ct-p hc-sub" aria-live="polite">
             {noCam ? (cam.status === 'denied' ? 'Camera access is off for BeetFit.' : 'The camera check isn’t available right now.')
               : model === 'loading' ? 'Getting ready…'
