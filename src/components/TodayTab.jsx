@@ -1,7 +1,7 @@
 import { ProgramOffer } from './CoachProgram.jsx'
 import { HabitsToday } from './Habits.jsx'
 import HabitCheck from '../camera/HabitCheck.jsx'
-import { habitsOf, habitStreak, markHabitPatch } from '../lib/habits.js'
+import { habitsOf, habitStreak, markHabitPatch, waterFor } from '../lib/habits.js'
 import React, { useEffect, useState } from 'react'
 import { planStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, fmtWater, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
@@ -105,7 +105,10 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
       </div>
 
-      {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key, habit.days?.length ? habit.days : null)} onDone={how => update(prev => markHabitPatch(prev, habit.id, how))} onClose={() => setHabit(null)} />}
+      {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key, habit.days?.length ? habit.days : null)} onClose={() => setHabit(null)}
+        onDone={(how, info) => update(prev => ({ ...markHabitPatch(prev, habit.id, how), ...(info?.glasses ? { water: { ...(prev.water || {}), [key]: (prev.water?.[key] || 0) + info.glasses } } : {}) }))}
+        water={{ amount: label => waterFor(state, habit, label), text: g => fmtWater(g, state), left: g => (water + g >= t.water ? 'goal reached' : `${fmtWater(t.water - water - g, state)} to go`) }}
+        onAction={l => (l === 'food' ? go('meals') : go('workout', { start: true, dayIdx }))} />}
       {waterOpen && <WaterSheet state={state} onSet={setGlasses} onClose={() => setWaterOpen(false)} />}
       <div className="stk td-stack">
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}

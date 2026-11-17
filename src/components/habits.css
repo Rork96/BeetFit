@@ -74,7 +74,7 @@
    [✓] Name / what the camera looks for      [✕]
        [time]
        Su Mo Tu We Th Fr Sa 🔔                        */
-.hb-setup .rm-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 44px; grid-template-areas: "chk t x" ". tm tm" ". d d"; column-gap: 12px; row-gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.hb-setup .rm-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 44px; grid-template-areas: "chk t x" ". tm tm" ". d d" ". ml ml"; column-gap: 12px; row-gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
 .hb-setup .rm-row .rm-check { grid-area: chk; }
 .hb-setup .rm-row .rm-t { grid-area: t; }
 .hb-setup .rm-row .rm-t b, .hb-setup .rm-row .rm-t .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -91,3 +91,6 @@
   .hb-ico { width: 44px; height: 44px; font-size: 22px; }
   .hb-row { gap: 10px; }
 }
+
+.hb-setup .hb-ml { grid-area: ml; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hb-setup .hb-ml select { flex: 1; min-width: 0; padding: 8px 10px; font-size: 14px; }

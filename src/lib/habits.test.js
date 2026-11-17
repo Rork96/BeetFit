@@ -67,3 +67,27 @@ describe('habit look', () => {
     expect(habitByHand(markHabitPatch({}, 'g', 'camera', '2026-11-11'), 'g', '2026-11-11')).toBe(false)
   })
 })
+
+import { habitLink, waterFor, habitStats, newHabit, HABIT_TEMPLATES } from './habits.js'
+describe('linked habits', () => {
+  it('links come from the template, and old saved habits are recognised by id', () => {
+    expect(habitLink(newHabit([], HABIT_TEMPLATES.find(t => t.id === 'water')))).toBe('water')
+    expect(habitLink({ id: 'water-2', labels: ['cup'] })).toBe('water')
+    expect(habitLink({ id: 'breakfast' })).toBe('food')
+    expect(habitLink({ id: 'teeth' })).toBeNull()
+  })
+  it('water per proof: glass, bottle, own bottle size, in whole glasses', () => {
+    const st = { settings: { glassMl: 250 } }
+    expect(waterFor(st, { id: 'water' }, 'cup')).toEqual({ glasses: 1, ml: 250 })
+    expect(waterFor(st, { id: 'water' }, 'bottle')).toEqual({ glasses: 2, ml: 500 })
+    expect(waterFor(st, { id: 'water', ml: 750 }, 'cup')).toEqual({ glasses: 3, ml: 750 })
+    expect(waterFor({ settings: { glassMl: 500 } }, { id: 'water', ml: 330 }, 'cup').glasses).toBe(1)
+  })
+  it('30-day stats count from the first tick and split camera from hand', () => {
+    let st = { settings: { reminders: { habits: [{ id: 'g', n: 'G', labels: ['cup'], on: true, days: [] }] } } }
+    st = { ...st, ...markHabitPatch(st, 'g', 'camera', '2026-11-08') }
+    st = { ...st, ...markHabitPatch(st, 'g', 'manual', '2026-11-09') }
+    expect(habitStats(st, '2026-11-11')).toMatchObject({ due: 3, done: 2, cam: 1, pct: 67, camPct: 50 }) // 8 ✓cam, 9 ✓hand, 10 missed, 11 = today, still open
+    expect(habitStats({}, '2026-11-11')).toBeNull()
+  })
+})

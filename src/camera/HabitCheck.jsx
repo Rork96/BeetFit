@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useCamera } from './useCamera.js'
 import { loadObjectDetector, detect } from './pose/objects.js'
-import { seen, habitIcon } from '../lib/habits.js'
+import { seen, habitIcon, habitLink } from '../lib/habits.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import './camera.css'
@@ -11,7 +11,9 @@ const NEED = 3 // consecutive frames with the object, so a passing glance doesn'
 
 // Full-screen: show the camera the object that belongs to the habit and it ticks itself off.
 // Reachable without the camera: after a few seconds (or when the camera or model fail) "Mark done" appears.
-export default function HabitCheck({ habit, streak: streakIn, onDone, onClose }) {
+// `water` = { amount(label) → { glasses, ml }, left(ml) → text } for water habits; `onAction` runs the linked next step (log food, start workout).
+export default function HabitCheck({ habit, streak: streakIn, onDone, onClose, water, onAction }) {
+  const link = habitLink(habit)
   // Frozen at open: after the tick lands the parent recomputes a streak that already includes today.
   const [streak] = useState(streakIn || 0)
   useBackClose(true, onClose)
@@ -27,12 +29,20 @@ export default function HabitCheck({ habit, streak: streakIn, onDone, onClose })
   const finished = useRef(false)
 
   const camFailed = ['denied', 'unavailable', 'error'].includes(cam.status)
-  const finish = how => {
+  const [drink, setDrink] = useState(null) // water habits: seen (or marked by hand), waiting for "Drank it"
+  const [added, setAdded] = useState(null)
+  const finish = (how, info) => {
     if (finished.current) return
     finished.current = true
-    hapticSuccess(); setDone(how); onDone(how)
-    setTimeout(onClose, 1500)
+    hapticSuccess(); setDone(how); setAdded(info || null); onDone(how, info)
+    if (link !== 'food' && link !== 'train') setTimeout(onClose, info ? 2200 : 1500) // linked habits wait for the next-step choice
   }
+  // The camera can see a glass, not that it was drunk. So a water habit asks once: drank it?
+  const proved = (how, label) => {
+    if (link === 'water' && water) { if (!finished.current && !drinkRef.current) { drinkRef.current = true; haptic(); setDrink({ how, ...water.amount(label) }) } }
+    else finish(how)
+  }
+  const drinkRef = useRef(false)
 
   useEffect(() => { const t = setTimeout(() => setLate(true), 8000); return () => clearTimeout(t) }, [])
   useEffect(() => {
@@ -46,7 +56,7 @@ export default function HabitCheck({ habit, streak: streakIn, onDone, onClose })
     const video = cam.videoRef.current
     let stopped = false, last = 0, lastVT = -1, raf
     const step = () => {
-      if (stopped) return
+      if (stopped || drinkRef.current) return
       raf = requestAnimationFrame(step)
       const now = performance.now()
       if (!video || video.readyState < 2 || now - last < 180 || video.currentTime === lastVT) return
@@ -62,7 +72,7 @@ export default function HabitCheck({ habit, streak: streakIn, onDone, onClose })
         const ox = (cw - video.videoWidth * k) / 2, oy = (ch - video.videoHeight * k) / 2
         setBox({ l: ox + top.box.x * k, t: oy + top.box.y * k, w: top.box.w * k, h: top.box.h * k, hit: habit.labels.includes(top.label) && top.score >= 0.45 })
       } else setBox(null)
-      if (seen(dets, habit.labels)) { hits.current += 1; if (hits.current >= NEED) finish('camera') } else hits.current = 0
+      if (seen(dets, habit.labels)) { hits.current += 1; if (hits.current >= NEED) proved('camera', dets.find(d => habit.labels.includes(d.label))?.label) } else hits.current = 0
     }
     raf = requestAnimationFrame(step)
     return () => { stopped = true; cancelAnimationFrame(raf) }
@@ -84,7 +94,21 @@ export default function HabitCheck({ habit, streak: streakIn, onDone, onClose })
           <div className="hc-tick">✓</div>
           <b>{done === 'manual' ? 'Ticked' : 'Proved'}</b>
           <span className="hc-ok-n">{habitIcon(habit)} {habit.n}</span>
+          {added && <span className="hc-ok-w">💧 +{added.text}{added.left ? ` · ${added.left}` : ''}</span>}
           {streak + 1 > 1 && <span className="hc-ok-s">🔥 {streak + 1}-day streak</span>}
+          {(link === 'food' || link === 'train') && (
+            <div className="hc-next">
+              <button className="ct-btn" onClick={() => { haptic(); onClose(); onAction?.(link) }}>{link === 'food' ? 'Log it now' : 'Start workout'}</button>
+              <button className="ct-btn ghost" onClick={onClose}>Later</button>
+            </div>
+          )}
+        </div>
+      ) : drink ? (
+        <div className="ct-sheet stk hc-sheet">
+          <div className="ct-h"><span className="hc-want" aria-hidden="true">💧</span>Got it. Now drink it.</div>
+          <p className="ct-p hc-sub">Tap when it’s gone. It goes into today’s water.</p>
+          <button className="ct-btn hc-manual" onClick={() => finish(drink.how, { glasses: drink.glasses, text: water.text(drink.glasses), left: water.left(drink.glasses) })}>Drank it · +{water.text(drink.glasses)}</button>
+          <button className="ct-btn ghost hc-manual" onClick={onClose}>Not yet</button>
         </div>
       ) : (
         <div className="ct-sheet stk hc-sheet">
@@ -94,7 +118,7 @@ export default function HabitCheck({ habit, streak: streakIn, onDone, onClose })
               : model === 'loading' ? 'Getting ready…'
               : best ? `I see: ${best.label} ${Math.round(best.score * 100)}%` : 'Point the camera at it.'}
           </p>
-          {(noCam || late) && <button className="ct-btn ghost hc-manual" onClick={() => { haptic(); finish('manual') }}>{noCam ? 'Mark done' : 'Can’t find it? Mark done'}</button>}
+          {(noCam || late) && <button className="ct-btn ghost hc-manual" onClick={() => { haptic(); proved('manual', 'cup') }}>{noCam ? 'Mark done' : 'Can’t find it? Mark done'}</button>}
           {camFailed && cam.status === 'denied' && <button className="ct-btn" onClick={() => cam.start()}>Try camera again</button>}
         </div>
       )}

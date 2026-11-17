@@ -1,4 +1,5 @@
 // Coach mode: API calls plus the numbers a coach reads about a client.
+import { habitStats } from './habits.js'
 // Everything here works on a plain state object, so the coach's phone runs the same maths on a
 // client's synced document that the client's phone runs on its own state.
 import { api } from './api.js'
@@ -159,6 +160,7 @@ export function overview(state, today = dayKey()) {
     week: w, weeks, alerts, last,
     checkin: ciKey ? { date: ciKey, ...state.checkins[ciKey] } : null,
     plan: program(state),
+    habits: habitStats(state, today),
     sessions: verifiedSessions(state, today)
   }
 }

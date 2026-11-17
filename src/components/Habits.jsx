@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { haptic } from '../lib/platform.js'
 import Ic from './Icons.jsx'
-import { dayKey } from '../lib/day.js'
-import { HABIT_TEMPLATES, HABIT_OBJECTS, MAX_HABITS, habitsOf, habitDone, habitStreak, habitDays, scheduledOn, WEEKDAYS, habitIcon, habitWeek, habitByHand, habitAt, addHabitPatch, editHabitPatch, removeHabitPatch } from '../lib/habits.js'
+import { dayKey, fmtWater, glassMl } from '../lib/day.js'
+import { HABIT_TEMPLATES, HABIT_OBJECTS, MAX_HABITS, habitsOf, habitDone, habitStreak, habitDays, scheduledOn, WEEKDAYS, habitIcon, habitWeek, habitByHand, habitAt, habitLink, BOTTLE_SIZES, addHabitPatch, editHabitPatch, removeHabitPatch } from '../lib/habits.js'
 import './habits.css'
 
 const pad = n => String(n).padStart(2, '0')
@@ -115,6 +115,16 @@ export function HabitsSetup({ state, update }) {
             })}
             <button className={'hb-day loud' + (h.loud !== false ? ' on' : '')} aria-pressed={h.loud !== false} title="Loud alarm: stays on screen, vibrates, rings while the app is open" onClick={() => { haptic(); update(prev => editHabitPatch(prev, h.id, { loud: h.loud === false })) }}>🔔</button>
           </div>
+          {habitLink(h) === 'water' && (
+            <label className="hb-ml">
+              <span className="hint">Each proof adds</span>
+              <select value={h.ml || 0} onChange={e => update(prev => editHabitPatch(prev, h.id, { ml: Number(e.target.value) }))}>
+                {BOTTLE_SIZES.map(n => <option key={n} value={n}>{n ? fmtWater(n / glassMl(state), state) : 'Glass or bottle (auto)'}</option>)}
+              </select>
+            </label>
+          )}
+          {habitLink(h) === 'food' && <span className="hint hb-ml">After the proof: one tap to log the meal.</span>}
+          {habitLink(h) === 'train' && <span className="hint hb-ml">After the proof: one tap starts today’s workout.</span>}
           <button className="hb-x" aria-label={`Remove ${h.n}`} onClick={() => { haptic(); update(prev => removeHabitPatch(prev, h.id)) }}>✕</button>
         </div>
       ))}

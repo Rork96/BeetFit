@@ -399,6 +399,7 @@ function ClientView({ id, onClose, onUpgrade, remind }) {
               <div><b className="num">{fmtWeight(ov.weight, units)}</b><span>{ov.rate == null ? 'weight' : `${ov.rate > 0 ? '+' : ''}${ov.rate} kg/wk`}</span></div>
               <div><b className="num">{ov.week.sessions}/{ov.week.planned}</b><span>sessions 7d</span></div>
               <div><b className="num">{ov.week.kcal ?? '—'}</b><span>kcal avg / {ov.targets.kcal}</span></div>
+              {ov.habits && <div><b className="num">{ov.habits.pct}%</b><span>habits 30d · {ov.habits.camPct}% on camera</span></div>}
             </div>
 
             <Verified sessions={ov.sessions} week={ov.week} locked={!!onUpgrade} onUpgrade={() => onUpgrade?.('coach_form')} />

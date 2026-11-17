@@ -27,3 +27,6 @@
 .hc-ok .hc-ok-n { color: #fff; font-size: 16px; }
 .hc-ok .hc-ok-s { margin-top: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(255,179,64,.16); color: #ffb340; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .hc-finder { animation: none; } }
+
+.hc-ok .hc-ok-w { margin-top: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(90,200,250,.16); color: #7fd4ff; font-weight: 600; }
+.hc-next { display: grid; gap: 8px; width: min(280px, 80vw); margin-top: 16px; }
