@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { localHour, nextDue, localToUtc, localDay, message, eventMessage, cleanEvents, cleanPrefs, DEFAULT_PREFS, validTz } from './reminders.js'
+import { addDays } from '../../src/lib/day.js'
 
 describe('reminder schedule', () => {
   it('converts local wall time across DST', () => {
@@ -33,6 +34,19 @@ describe('reminder schedule', () => {
     expect(m.title).toBe('Beet: your day')
     expect(m.body).toMatch(/^Max, today: \d+ kcal, \d+ g protein\. Yesterday 1600 kcal, trained\. 2 sessions left this week\./)
     expect(message('brief', { ...doc, pauses: [{ from: d, to: '2026-10-30' }] }, d)).toBeNull()
+  })
+  it('the morning brief turns into the weekly check-in when there is a number waiting', () => {
+    const d = '2026-10-24'
+    const foodLog = {}, weightLog = []
+    for (let i = 1; i <= 14; i++) {
+      const k = addDays(d, -i)
+      foodLog[k] = [{ kcal: 2100, p: 100, c: 200, f: 60 }]
+      if (i % 2 === 0) weightLog.push({ date: k, kg: 82 })
+    }
+    const doc = { profile: { sex: 'male', age: 28, heightCm: 178, weightKg: 82, targetKg: 76, goal: 'lose', activity: 'light', rateKg: 0.5 }, settings: { name: 'Max' }, program: [{ name: 'A', exercises: [] }], foodLog, weightLog: weightLog.reverse() }
+    const m = message('brief', doc, d)
+    expect(m).toMatchObject({ title: 'Your weekly check-in is ready', tag: 'checkin', url: '/' })
+    expect(message('brief', { ...doc, settings: { name: 'Max', adaptAt: addDays(d, -2) } }, d).title).toBe('Beet: your day') // done this week
   })
   it('local day follows the time zone', () => {
     expect(localDay(Date.parse('2026-10-25T02:00:00Z'), 'America/Winnipeg')).toBe('2026-10-24')

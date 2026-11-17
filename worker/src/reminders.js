@@ -1,6 +1,7 @@
 // Daily reminders: when each one is next due in the user's own time zone, and what it says
 // (or whether to stay quiet because the thing is already done today).
 
+import { energyCheck } from '../../src/lib/adapt.js'
 import { targets, eaten, streak as streakOf, setsLogged, addDays as dayAdd, activePause, program as programOf } from '../../src/lib/day.js'
 
 export const KINDS = ['meals', 'workout', 'water', 'weigh', 'streak', 'brief']
@@ -152,6 +153,9 @@ function briefMessage(doc, today, hi) {
   if (!doc?.profile) return null
   try {
     if (activePause(doc, today)) return null
+    // The weekly check-in is the one morning worth its own message: there is a new number waiting.
+    const ec = energyCheck(doc, today)
+    if (ec?.ready && ec.due && !ec.coach) return { title: 'Your weekly check-in is ready', body: cap(`${hi}your food log and the scale have this week's number: what you really burn. It takes one tap on Today.`), url: '/', tag: 'checkin' }
     const t = targets(doc, today), y = dayAdd(today, -1), ye = eaten(doc, y)
     const planned = programOf(doc).days.length
     const done = Array.from({ length: 7 }, (_, i) => dayAdd(today, -i)).filter(k => setsLogged(doc, k) > 0).length
