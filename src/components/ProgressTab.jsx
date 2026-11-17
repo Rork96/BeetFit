@@ -3,7 +3,8 @@ import { BeetEmpty } from './BeetMascot.jsx'
 import BodyFigure from './BodyFigure.jsx'
 import { bmi, bmiCategory, macros, bmr, tdee, eta } from '../lib/calories.js'
 import EnergyCard from './Energy.jsx'
-import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
+import { planPath, planStanding } from '../lib/adapt.js'
+import { dayKey, addDays, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { strengthTrends } from '../lib/strength.js'
 import Ic, { Stat } from './Icons.jsx'
@@ -33,6 +34,13 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
   const curBmi = bmi({ heightCm: profile.heightCm, weightKg: now })
   const m = macros({ ...profile, weightKg: now })
   const planEta = state.coach?.override?.kcal ? null : eta({ ...profile, weightKg: now })
+  const path = planPath(state)
+  // A new plan has no history to show: the window starts at the first weigh-in and the rest of it looks ahead along the plan.
+  const since = path ? Math.round((Date.parse(today + 'T12:00:00Z') - Date.parse(path.start + 'T12:00:00Z')) / 864e5) + 1 : range
+  const back = Math.max(1, Math.min(range, since))
+  const series = weightSeries(state, back)
+  const fwd = path ? Math.max(Math.round(range / 3), range - back) : 0
+  const standing = planStanding(state, [...series].reverse().find(p => p.avg != null)?.avg, today)
 
   const logWeight = () => {
     const kg = lb ? Math.round((entry / KG_TO_LB) * 10) / 10 : entry
@@ -84,7 +92,9 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
         <div className="row"><span className="label">Weight</span>
           <div className="seg">{RANGES.map(([l, d]) => <button key={l} className={range === d ? 'on' : ''} onClick={() => { haptic(); setRange(d) }}>{l}</button>)}</div>
         </div>
-        <WeightChart series={weightSeries(state, range)} target={profile.targetKg} toU={toU} key={range} />
+        <WeightChart series={series} target={profile.targetKg} toU={toU} path={path} fwd={fwd} key={range} />
+        {standing && <p className={'pg-stand ' + standing.state}><Ic n={standing.state === 'behind' ? 'trend' : 'check'} />{standing.state === 'on' ? 'Right on your plan.' : `${toU(standing.delta).toFixed(1)} ${units} ${standing.state === 'ahead' ? 'ahead of' : 'behind'} your plan.`}{standing.state === 'behind' ? ' The weekly check-in will tell you why.' : ''}</p>}
+        {path && !standing && <p className="td-small">The dashed line is your plan. Your weigh-ins land on it or off it.</p>}
         <div className="pg-log">
           <div className="ss-mini">
             <button onClick={() => { haptic(); setEntry(v => +(v - 0.1).toFixed(1)) }} aria-label="Less">−</button>
@@ -172,29 +182,46 @@ function Scale({ label, value, words, onPick }) {
   )
 }
 
-function WeightChart({ series, target, toU }) {
+// The weight chart always has something to show: the plan as a dashed path running past today,
+// with the weigh-ins and their 7-day average landing on or off it.
+function WeightChart({ series, target, toU, path, fwd: fwdIn }) {
   const pts = series.filter(p => p.kg != null || p.avg != null)
-  if (pts.length < 2) return <BeetEmpty compact mood="think" size={60} title="No trend yet" hint="Weigh in 2–3 mornings and the line appears." />
-  const w = 340, h = 150, px = 8, py = 12
-  const vals = series.flatMap(p => [p.kg, p.avg]).filter(v => v != null).concat(target)
-  const min = Math.min(...vals) - 0.5, max = Math.max(...vals) + 0.5
-  const x = i => px + (i / (series.length - 1)) * (w - px * 2)
+  if (pts.length < 2 && !(path && pts.length)) return <BeetEmpty compact mood="think" size={60} title="No trend yet" hint="Weigh in 2–3 mornings and the line appears." />
+  const fwd = path ? (fwdIn ?? Math.round(series.length / 3)) : 0
+  const keys = [...series.map(p => p.key), ...Array.from({ length: fwd }, (_, i) => addDays(series[series.length - 1].key, i + 1))]
+  const plan = path ? keys.map(k => path.at(k)) : []
+  const w = 340, h = 160, px = 8, py = 14
+  const vals = series.flatMap(p => [p.kg, p.avg]).concat(plan).filter(v => v != null)
+  const near = Math.abs(target - vals[vals.length - 1]) < 6 // only stretch the axis to the target when it is in reach of this window
+  const all = near ? vals.concat(target) : vals
+  const min = Math.min(...all) - 0.5, max = Math.max(...all) + 0.5
+  const x = i => px + (i / (keys.length - 1)) * (w - px * 2)
   const y = v => h - py - ((v - min) / (max - min)) * (h - py * 2)
   const avgPath = series.map((p, i) => (p.avg == null ? null : `${x(i)},${y(p.avg)}`)).filter(Boolean)
+  const planPts = plan.map((v, i) => (v == null ? null : `${x(i)},${y(v)}`)).filter(Boolean)
   const last = [...series].reverse().find(p => p.avg != null)
   const li = series.indexOf(last)
+  const ti = series.length - 1
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="pg-chart" role="img" aria-label="Weight trend">
-      <line x1={px} x2={w - px} y1={y(target)} y2={y(target)} stroke="var(--accent)" strokeDasharray="4 5" strokeWidth="1" opacity=".6" />
-      <text x={w - px} y={y(target) - 5} textAnchor="end" className="pg-ax">target {toU(target).toFixed(1)}</text>
+    <svg viewBox={`0 0 ${w} ${h}`} className="pg-chart" role="img" aria-label={path ? 'Weight trend against your plan' : 'Weight trend'}>
+      {near && <>
+        <line x1={px} x2={w - px} y1={y(target)} y2={y(target)} stroke="var(--accent)" strokeDasharray="4 5" strokeWidth="1" opacity=".6" />
+        <text x={px} y={y(target) - 5} className="pg-ax">target {toU(target).toFixed(1)}</text>
+      </>}
+      {fwd > 0 && <line x1={x(ti)} x2={x(ti)} y1={py} y2={h - py} stroke="var(--line-2)" strokeWidth="1" />}
+      {planPts.length > 1 && <>
+        <polyline points={planPts.join(' ')} fill="none" stroke="var(--data-2, #8b7cff)" strokeWidth="1.8" strokeDasharray="5 5" strokeLinecap="round" />
+        <text x={w - px} y={y(plan[plan.length - 1]) + (path.perDay < 0 ? -9 : 14)} textAnchor="end" className="pg-ax" style={{ fill: 'var(--data-2, #8b7cff)' }}>plan {toU(plan[plan.length - 1]).toFixed(1)}</text>
+      </>}
       {series.map((p, i) => p.kg != null && <rect key={i} x={x(i) - 2.5} y={y(p.kg) - 2.5} width="5" height="5" fill="rgba(255,255,255,.35)" />)}
-      <polyline points={avgPath.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" className="pg-line" />
+      {avgPath.length > 1 && <polyline points={avgPath.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" className="pg-line" />}
       {last && <>
         <rect x={x(li) - 4} y={y(last.avg) - 4} width="8" height="8" fill="var(--accent)" />
-        <text x={x(li) - 8} y={y(last.avg) - 9} textAnchor="end" className="pg-ax strong">{toU(last.avg).toFixed(1)}</text>
+        <text x={x(li) < 50 ? x(li) + 8 : x(li) - 8} y={y(last.avg) - 9} textAnchor={x(li) < 50 ? 'start' : 'end'} className="pg-ax strong">{toU(last.avg).toFixed(1)}</text>
       </>}
-      <text x={px} y={h - 1} className="pg-ax">{series[0].key.slice(5)}</text>
-      <text x={w - px} y={h - 1} textAnchor="end" className="pg-ax">today</text>
+      {x(ti) > 70 && <text x={px} y={h - 1} className="pg-ax">{series[0].key.slice(5)}</text>}
+      <text x={x(ti)} y={h - 1} textAnchor={!fwd ? 'end' : x(ti) < 40 ? 'start' : 'middle'} className="pg-ax">today</text>
+      {fwd > 0 && <text x={w - px} y={h - 1} textAnchor="end" className="pg-ax">{keys[keys.length - 1].slice(5)}</text>}
     </svg>
   )
 }

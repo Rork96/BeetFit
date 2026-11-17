@@ -110,3 +110,26 @@ describe('energyCheck', () => {
     expect(s.profile.burnAdj).toBeUndefined()
   })
 })
+
+import { planPath, planStanding } from './adapt.js'
+describe('plan path', () => {
+  const st = { profile, weightLog: [{ date: '2026-11-01', kg: 90 }], settings: {} }
+  it('runs from the first weigh-in at the planned pace and stops at the target', () => {
+    const p = planPath(st)
+    expect(p.at('2026-10-31')).toBeNull()
+    expect(p.at('2026-11-01')).toBe(90)
+    expect(p.at('2026-11-15')).toBeCloseTo(89, 0) // 0.5 kg a week
+    expect(p.at('2028-01-01')).toBe(82)
+  })
+  it('no path when maintaining, coached or never weighed', () => {
+    expect(planPath({ ...st, profile: { ...profile, goal: 'maintain' } })).toBeNull()
+    expect(planPath({ ...st, coach: { override: { kcal: 1800 } } })).toBeNull()
+    expect(planPath({ profile, weightLog: [] })).toBeNull()
+  })
+  it('standing waits a week, then says ahead, on or behind', () => {
+    expect(planStanding(st, 89.9, '2026-11-04')).toBeNull()
+    expect(planStanding(st, 88.4, '2026-11-15').state).toBe('ahead')
+    expect(planStanding(st, 89.1, '2026-11-15').state).toBe('on')
+    expect(planStanding(st, 90.0, '2026-11-15')).toMatchObject({ state: 'behind', delta: 1 })
+  })
+})

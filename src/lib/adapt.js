@@ -80,3 +80,30 @@ export function applyCheck(prev, check, choice, today = dayKey()) {
 }
 
 export { kcalFloor }
+
+// The plan as a line on the weight chart: from the first weigh-in, at the pace the calories deliver, until the target.
+// null when there is no pace to draw (maintaining, a coach sets the calories, or nothing weighed yet).
+export function planPath(state) {
+  const first = (state.weightLog || []).slice().sort((a, b) => a.date.localeCompare(b.date))[0]
+  const p = state.profile
+  if (!first || !p || p.goal === 'maintain' || state.coach?.override?.kcal) return null
+  const perDay = realRate({ ...p, weightKg: first.kg }) / 7
+  if (Math.abs(perDay) < 0.004 || Math.sign(p.targetKg - first.kg) !== Math.sign(perDay)) return null
+  const lose = perDay < 0
+  const at = key => {
+    const d = dayNum(key) - dayNum(first.date)
+    if (d < 0) return null
+    const v = first.kg + perDay * d
+    return lose ? Math.max(p.targetKg, v) : Math.min(p.targetKg, v)
+  }
+  return { start: first.date, startKg: first.kg, perDay, at }
+}
+
+// Where the 7-day average sits against that line today: { delta kg, state: 'ahead' | 'on' | 'behind' } after the first week.
+export function planStanding(state, avgKg, today = dayKey()) {
+  const path = planPath(state)
+  if (!path || avgKg == null || dayNum(today) - dayNum(path.start) < 7) return null
+  const delta = +(avgKg - path.at(today)).toFixed(1)
+  const good = path.perDay < 0 ? -delta : delta // positive = further along than planned
+  return { delta: Math.abs(delta), state: good >= 0.3 ? 'ahead' : good <= -0.3 ? 'behind' : 'on' }
+}
