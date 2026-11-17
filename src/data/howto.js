@@ -580,11 +580,11 @@ HOWTO.neg_pullup = {
 HOWTO.incline_pushup = {
   ...HOWTO.pushup,
   steps: [
-    { f: 0, t: 'Hands on the edge of the bench, wider than the shoulders. Body in one straight line.' },
+    { f: 0, t: 'Hands on the edge of a bench, a sturdy table or the sofa, wider than the shoulders. Body in one straight line.' },
     { f: 1, t: 'Lower your chest to the edge, elbows about 45 degrees from the body.' },
     { f: 0, t: 'Press back up without letting the hips sag.' }
   ],
-  err: [['Hips sagging', 'Squeeze glutes and abs.'], ['Elbows flaring', 'Tuck them to 45 degrees.'], ['Half reps', 'Chest touches the bench edge.']]
+  err: [['Hips sagging', 'Squeeze glutes and abs.'], ['Elbows flaring', 'Tuck them to 45 degrees.'], ['Half reps', 'Chest touches the edge.'], ['Too hard or too easy', 'Higher surface is easier, lower is harder.']]
 }
 HOWTO.step_up = {
   ...HOWTO.split_squat,

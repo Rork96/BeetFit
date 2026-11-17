@@ -379,7 +379,9 @@ function ExerciseCard({ ex, ei, entry, last, prev = [], sug, note = '', onNote, 
 function SetRow({ si, goal, ex, set, prev, sug, active, onDone }) {
   const done = set && (set.reps != null || set.secs != null)
   const [w, setW] = useState(set?.w ?? (sug?.up ? sug.w : prev?.w) ?? ex.weight ?? 0)
-  const [r, setR] = useState(set?.reps ?? set?.secs ?? goal.value)
+  // Reps start from what was done last time; the first time, from the low end of the range (an honest "Done" tap for a beginner).
+  const lo = goal.kind === 'hold' ? goal.value : +(String(ex.reps ?? '').match(/\d+/)?.[0] || goal.value)
+  const [r, setR] = useState(set?.reps ?? set?.secs ?? (goal.kind === 'hold' ? prev?.secs : prev?.reps) ?? lo)
   const [rpe, setRpe] = useState(set?.rpe ?? null)
   const hold = goal.kind === 'hold'
   if (done && !active) {

@@ -85,7 +85,7 @@ export const EXERCISES = {
 export const TRACKER_BY_NAME = {
   'Bodyweight squats': 'squat', 'Bodyweight squat': 'squat', Squats: 'squat', 'Squats (goblet)': 'squat',
   'Squats (tempo)': 'squat', 'Goblet squat': 'squat', 'Squat to press': 'squat', 'Wall sit': 'wallsit',
-  'Push-ups': 'pushup', 'Push-up': 'pushup', 'Incline push-ups': 'pushup', 'Push-ups (weighted if easy)': 'pushup',
+  'Push-ups': 'pushup', 'Push-up': 'pushup', 'Incline push-ups': 'pushup', 'Incline push-up': 'pushup', 'Push-ups (weighted if easy)': 'pushup',
   'Lunges': 'lunge', 'Lunges (each leg)': 'lunge', 'Reverse lunge': 'lunge', 'Bulgarian split squat': 'lunge',
   'Glute bridges': 'bridge', 'Glute bridge': 'bridge', 'Hip thrusts': 'bridge', 'Hip thrust': 'bridge',
   'Romanian deadlift': 'rdl',

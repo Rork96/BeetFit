@@ -3,6 +3,7 @@ import Ic from './Icons.jsx'
 import { MacroBar, MacroChips } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
+import { stapleMatches } from '../data/staples.js'
 import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
 import { suggestMeals, suggestBudget } from '../data/meals.js'
 import FoodHistory from './FoodHistory.jsx'
@@ -245,11 +246,14 @@ function FoodSearch({ onAdd, slotLabel, bare, actions, focus }) {
     const query = q.trim()
     if (query.length < 2) { setRes({ items: [], busy: false, error: null }); return }
     const n = ++seq.current
-    setRes(r => ({ ...r, busy: true }))
+    // Everyday foods answer at once, from the phone; the server's brands and packaged foods follow underneath.
+    const local = stapleMatches(query)
+    setRes({ items: local, busy: true, error: null })
     const id = setTimeout(async () => {
       const r = await searchFood(query)
       if (n !== seq.current) return
-      setRes({ items: r.items || [], busy: false, error: r.status && r.status !== 200 ? 'offline' : r.error || null })
+      const codes = new Set(local.map(x => x.code))
+      setRes({ items: [...local, ...(r.items || []).filter(x => !codes.has(x.code))], busy: false, error: r.status && r.status !== 200 ? 'offline' : r.error || null })
     }, 350)
     return () => clearTimeout(id)
   }, [q])
@@ -264,8 +268,8 @@ function FoodSearch({ onAdd, slotLabel, bare, actions, focus }) {
         </div>
         {actions}
       </div>
-      {res.busy && <div className="fc-skel"><i /><i /></div>}
-      {!res.busy && res.error && <p className="hint">Search needs the BeetFit server — it's offline right now. Scanning a barcode still works.</p>}
+      {res.busy && res.items.length === 0 && <div className="fc-skel"><i /><i /></div>}
+      {!res.busy && res.error && <p className="hint">{res.items.length ? 'Brands and packaged foods need a connection. Everyday foods still work.' : 'Search needs the BeetFit server — it’s offline right now. Scanning a barcode still works.'}</p>}
       {!res.busy && !res.error && q.trim().length >= 2 && res.items.length === 0 && <p className="hint">Nothing found. Try a simpler name, or scan the barcode.</p>}
       {res.items.length > 0 && (
         <div className="fs-results stk">
@@ -279,8 +283,10 @@ function FoodSearch({ onAdd, slotLabel, bare, actions, focus }) {
                   setOpen(key)
                 }}>
                   {it.image ? <img src={it.image} alt="" loading="lazy" /> : <span className="fc-ph"><Ic n="food" /></span>}
-                  <div><b>{it.name}</b><span className="fs-sub">{it.brand && <span className="fs-brand">{it.brand}</span>}<MacroBar p={it.per100.p} c={it.per100.c} f={it.per100.f} w={44} /></span></div>
-                  <span className="fs-kcal num" aria-label={`${it.per100.kcal} kcal per 100 g`}><b>{it.per100.kcal}</b><small>/100g</small></span>
+                  <div><b>{it.name}</b><span className="fs-sub">{it.brand && <span className="fs-brand">{it.brand}</span>}{it.serving && <span className="fs-brand">{it.serving} · {it.servingG} g</span>}<MacroBar p={it.per100.p} c={it.per100.c} f={it.per100.f} w={44} /></span></div>
+                  {it.serving
+                    ? <span className="fs-kcal num" aria-label={`${Math.round(it.per100.kcal * it.servingG / 100)} kcal for ${it.serving}`}><b>{Math.round(it.per100.kcal * it.servingG / 100)}</b><small>kcal</small></span>
+                    : <span className="fs-kcal num" aria-label={`${it.per100.kcal} kcal per 100 g`}><b>{it.per100.kcal}</b><small>/100g</small></span>}
                 </button>
                 {open === key && (
                   <CenterDialog onClose={() => setOpen(null)}>

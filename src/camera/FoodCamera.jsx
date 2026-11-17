@@ -178,11 +178,11 @@ function PortionCard({ item, slotLabel, onAdd, onRescan, backLabel = 'Scan anoth
   return (
     <div className="fc-card">
       <div className="fc-prod">
-        {item.image ? <img src={item.image} alt="" /> : <span className="fc-ph"><Ic n={item.code ? 'barcode' : 'food'} /></span>}
+        {item.image ? <img src={item.image} alt="" /> : <span className="fc-ph"><Ic n={item.code && !/^fdc:/.test(item.code) ? 'barcode' : 'food'} /></span>}
         <div style={{ minWidth: 0 }}>
           <div className="fc-name">{item.name}</div>
           <div className="fc-tags">
-            <span className="fc-tag">{item.brand || (item.source === 'usda' ? 'USDA' : 'Open Food Facts')}</span>
+            <span className="fc-tag">{item.brand || (item.source === 'usda' || item.source === 'staple' ? 'USDA' : 'Open Food Facts')}</span>
             <span className="fc-tag num" aria-label={`${item.per100.kcal} kcal per 100 g`}><Ic n="flame" />{item.per100.kcal}<small>/100g</small></span>
           </div>
         </div>
@@ -191,6 +191,11 @@ function PortionCard({ item, slotLabel, onAdd, onRescan, backLabel = 'Scan anoth
         <MacroRing kcal={x.kcal} p={x.p} c={x.c} f={x.f} size={104} />
         <div className="fc-portion-r">
           <span className="label">Portion</span>
+          {item.serving && item.servingG > 0 && (
+            <div className="fc-servs" role="group" aria-label="Quick portions">
+              {[0.5, 1, 2].map(k => { const v = Math.round(item.servingG * k); return <button key={k} className={'chip' + (g === v ? ' on' : '')} aria-label={`${k === 1 ? item.serving : k === 0.5 ? 'Half of ' + item.serving : 'Double ' + item.serving}, ${v} grams`} onClick={() => { haptic(); setG(v) }}>{k === 1 ? item.serving : k === 0.5 ? '½×' : '2×'}</button> })}
+            </div>
+          )}
           <Stepper value={g} onChange={setG} step={g >= 100 ? 25 : 10} unit="g" />
           <MacroChips p={x.p} c={x.c} f={x.f} />
         </div>

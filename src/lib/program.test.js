@@ -136,3 +136,12 @@ describe('applySwap', () => {
     expect(applySwap(prog, { day: 0, from: ex.id, to: 'nope' }, it0)).toBe(prog)
   })
 })
+
+describe('beginner starting points', () => {
+  it('a beginner at home starts on incline push-ups; someone irregular gets the full push-up', () => {
+    const names = exp => mkProg('lose', it_({ loc: 'home, no equipment', exp })).flatMap(d => d.exercises.map(e => e.name))
+    expect(names('beginner')).toContain('Incline push-up')
+    expect(names('beginner')).not.toContain('Push-up')
+    expect(names('irregular')).toContain('Push-up')
+  })
+})
