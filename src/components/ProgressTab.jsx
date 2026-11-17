@@ -192,7 +192,7 @@ function WeightChart({ series, target, toU, path, fwd: fwdIn }) {
   const plan = path ? keys.map(k => path.at(k)) : []
   const w = 340, h = 160, px = 8, py = 14
   const vals = series.flatMap(p => [p.kg, p.avg]).concat(plan).filter(v => v != null)
-  const near = Math.abs(target - vals[vals.length - 1]) < 6 // only stretch the axis to the target when it is in reach of this window
+  const near = Math.abs(target - vals[vals.length - 1]) < 3 // only stretch the axis to the target when it is in reach of this window
   const all = near ? vals.concat(target) : vals
   const min = Math.min(...all) - 0.5, max = Math.max(...all) + 0.5
   const x = i => px + (i / (keys.length - 1)) * (w - px * 2)
