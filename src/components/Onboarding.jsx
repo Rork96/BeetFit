@@ -279,7 +279,7 @@ function Welcome({ onStart, onRestore, account }) {
         </div>
         <h1>Your week,<br />planned. Then<br />watched.</h1>
         <ul className="ob-feats">
-          <li><span><Ic n="flame" className="solid" /></span>Daily calories and protein</li>
+          <li><span><Ic n="flame" className="solid" /></span>Calories that adjust to you</li>
           <li><span><Ic n="train" className="solid" /></span>A plan for your kit and days</li>
           <li><span><Ic n="cam" className="solid" /></span>The camera counts your reps</li>
           <li><span><Ic n="beet" className="solid" /></span>Beet knows your plan and food</li>
