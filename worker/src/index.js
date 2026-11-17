@@ -44,6 +44,7 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runReminders(env, event.scheduledTime || Date.now()))
     ctx.waitUntil(runCoachDigest(env, event.scheduledTime || Date.now()).catch(() => {}))
+    ctx.waitUntil(runTrialNotes(env, event.scheduledTime || Date.now()).catch(() => {}))
     if (env.DB) ctx.waitUntil(pruneStats(env.DB, event.scheduledTime || Date.now()).catch(() => {}))
     ctx.waitUntil(runMail(env, event.scheduledTime || Date.now(), { origin: env.APP_ORIGIN || 'https://beetfit.wealthifai.xyz', accountOf, getDoc: async (db, id) => parse((await db.prepare('SELECT data FROM docs WHERE user_id = ?').bind(id).first())?.data) }).catch(() => {}))
   },
@@ -924,6 +925,27 @@ export async function runCoachDigest(env, now = Date.now()) {
     const msg = digestMessage(overdueClients(results.map(r => ({ id: r.id, summary: parse(r.summary) })), localDay(now, tz)))
     if (!msg) continue
     await notify(null, env, sub.user_id, msg); sent++
+  }
+  return sent
+}
+
+// The free device trial has no Stripe behind it to announce its end, so the Worker does: one push, two days before,
+// at noon in the person's own time zone (the 12:00–12:14 cron tick). Only for people still on the trial alone.
+export const trialEndingMessage = () => ({ title: 'PRO ends in 2 days', body: 'No card on file, so it just stops and nothing is charged. Your plan and logs stay. Keep PRO from Settings.', url: '/?pro=1', tag: 'trial' })
+export async function runTrialNotes(env, now = Date.now()) {
+  if (!env.VAPID_JWK || !env.DB || !billingOn(env)) return 0
+  const db = env.DB
+  await ensurePushSchema(db); await ensureBillingSchema(db)
+  // Ends between 1.5 and 2.5 days from now: exactly one local noon falls inside that band.
+  const { results } = await db.prepare("SELECT p.user_id, p.tz FROM push_subs p JOIN subs s ON s.user_id = p.user_id WHERE s.source = 'trial' AND s.status = 'trialing' AND s.period_end > ? AND s.period_end <= ? GROUP BY p.user_id")
+    .bind(now + 1.5 * 864e5, now + 2.5 * 864e5).all()
+  let sent = 0
+  for (const row of results) {
+    const { hour, minute } = localHour(now, validTz(row.tz) ? row.tz : 'UTC')
+    if (hour !== 12 || minute >= 15) continue
+    const ent = await entitlement(db, row.user_id)
+    if (!ent.pro || ent.source !== 'trial') continue // already paying
+    await notify(null, env, row.user_id, trialEndingMessage()); sent++
   }
   return sent
 }

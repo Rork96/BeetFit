@@ -27,7 +27,15 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Painted before the app's CSS and JS arrive: no white flash, and something to look at on a slow connection. -->
+    <style>
+      html, body { margin: 0; background: #0c0d11; }
+      #boot { position: fixed; inset: 0; display: grid; place-items: center; background: #0c0d11; }
+      #boot img { width: 84px; height: 84px; border-radius: 22px; animation: boot 1.6s ease-in-out infinite; }
+      @keyframes boot { 50% { transform: scale(1.06); opacity: .8; } }
+      @media (prefers-reduced-motion: reduce) { #boot img { animation: none; } }
+    </style>
+    <div id="root"><div id="boot" aria-label="Loading BeetFit"><img src="/favicon.svg" alt="" /></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

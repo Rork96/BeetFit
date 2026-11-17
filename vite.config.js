@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'BeetFit',
         short_name: 'BeetFit',
-        description: 'Training, food and progress with an on-device camera coach.',
+        description: 'A plan for your days and kit, a camera that counts your reps, calories that follow your body.',
         id: '/',
         start_url: '/',
         scope: '/',

@@ -125,3 +125,26 @@ describe('coach digest', () => {
     expect(localHour(Date.UTC(2026, 10, 10, 23, 5), 'America/Toronto')).toEqual({ hour: 18, minute: 5 })
   })
 })
+
+import { runTrialNotes, trialEndingMessage } from './index.js'
+describe('trial ending note', () => {
+  it('one push two days before a device trial ends, at local noon, and never to someone paying', async () => {
+    const benv = { ...env, STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_PRICE_MONTH: 'price_m', STRIPE_PRICE_YEAR: 'price_y' }
+    const bcall = (tok, path, method = 'GET', body) => worker.fetch(new Request('https://x' + path, { method, headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }), benv, { waitUntil: () => {} }).then(async r => ({ status: r.status, ...(await r.json()) }))
+    const C = await issueToken(SECRET)
+    expect((await bcall(C, '/api/push/subscribe', 'POST', { sub: await fakeSub(), tz: 'UTC', prefs: {} })).status).toBe(200)
+    const t = await bcall(C, '/api/billing/trial', 'POST')
+    expect(t.ok).toBe(true)
+    // A UTC noon that sits 1.5–2.5 days before the end.
+    let noon = Math.floor((t.trialEnd - 2 * 864e5) / 864e5) * 864e5 + 12 * 3600e3 + 5 * 60e3
+    if (t.trialEnd - noon > 2.5 * 864e5) noon += 864e5
+    if (t.trialEnd - noon <= 1.5 * 864e5) noon -= 864e5
+    const before = sent.length
+    expect(await runTrialNotes(benv, noon)).toBe(1)
+    expect(sent.length).toBe(before + 1)
+    expect(await runTrialNotes(benv, noon + 3 * 3600e3)).toBe(0) // not noon
+    expect(await runTrialNotes(benv, noon - 5 * 864e5)).toBe(0) // too early
+    expect(await runTrialNotes(env, noon)).toBe(0) // billing off
+    expect(trialEndingMessage()).toMatchObject({ tag: 'trial', url: '/?pro=1' })
+  })
+})
