@@ -45,7 +45,7 @@ export default function EnergyCard({ state, update, pro, where = 'progress' }) {
         <div className="en-meters">
           <M have={c.have.logDays} need={c.need.logDays} label="full food days" />
           <M have={c.have.weighIns} need={c.need.weighIns} label="weigh-ins" />
-          <M have={c.have.spanDays} need={c.need.spanDays} label="days apart" />
+          <M have={c.have.spanDays} need={c.need.spanDays} label="days between weigh-ins" />
         </div>
         <p className="hint en-fine">Counted over the last 4 weeks. Then your calories follow your body, not an average.</p>
       </section>
