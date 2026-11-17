@@ -76,16 +76,19 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
 
   // One suggestion a day, and none while the person is still getting started: Today is for today's work.
   const [, setFsTick] = useState(0)
+  const [pitchTick, setPitchTick] = useState(0)
   const starting = gettingStarted(state, !!askBeet)
   const pitch = useMemo(() => {
     if (starting) return null
+    // Days of logs that exist only in this browser come first: a cleared browser would take them all.
+    if (!sync?.on && loggedDays(state) >= 5 && !backupSnoozed()) return 'backup'
     const can = []
     if (installMode() && !snoozed()) can.push('install')
     if (!habitsOf(state).length && state.settings?.habitsHint !== false) can.push('habits')
     let atOff = false; try { atOff = localStorage.getItem(AT_OFF) === '1' } catch { /* ignore */ }
     if (coach && !coach.link?.coach && !atOff) can.push('trainer')
     return can.length ? can[Math.floor(Date.parse(key + 'T12:00:00Z') / 864e5) % can.length] : null
-  }, [starting, key, !!coach?.link?.coach, habitsOf(state).length, state.settings?.habitsHint]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [starting, key, !!coach?.link?.coach, habitsOf(state).length, state.settings?.habitsHint, sync?.on, pitchTick]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ec = energyCheck(state, key)
   const checkDue = !!(ec?.ready && ec.due && !ec.coach) // the weekly check-in is up: one PRO-related card at a time
@@ -223,6 +226,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
 
         {pitch === 'install' && <InstallCard />}
+        {pitch === 'backup' && <BackupCard days={loggedDays(state)} onOpen={() => openSettings('sync')} onLater={() => setPitchTick(n => n + 1)} />}
         {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
       {streakOpen && <StreakSheet state={state} update={update} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
@@ -313,6 +317,29 @@ function NextUp({ up, onSummary, tasks, day, camCount, tomorrow, streak, t, wate
         ))}
       </div>
       <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · {(n => n >= 3 ? 'all three, a full day' : n === 2 ? 'streak kept for today' : tasks.some(x => x.rest) ? 'rest day counts, one more keeps your streak' : n === 1 ? 'one more keeps your streak' : 'any 2 keep your streak')(tasks.filter(x => x.done).length)}</p>
+    </div>
+  )
+}
+
+// Logs that live only in this browser: say so once there is something to lose, and point at the switch.
+const BK = 'beetfit_backup_later'
+const backupSnoozed = () => { try { return +localStorage.getItem(BK) > Date.now() } catch { return false } }
+export function loggedDays(state) {
+  const days = new Set()
+  for (const [k, v] of Object.entries(state.foodLog || {})) if (v?.length) days.add(k)
+  for (const [k, v] of Object.entries(state.workoutLog || {})) if (Object.keys(v || {}).some(n => !n.startsWith('__'))) days.add(k)
+  for (const w of state.weightLog || []) days.add(w.date)
+  return days.size
+}
+function BackupCard({ days, onOpen, onLater }) {
+  return (
+    <div className="card at">
+      <div className="at-h">
+        <span className="at-ic"><Ic n="lock" className="solid" /></span>
+        <div><b>{days} days of logs live only on this phone</b><span className="hint">If the browser clears its storage, they are gone. Backup keeps a copy and needs no email or password.</span></div>
+        <button className="td-x" aria-label="Later" onClick={() => { haptic(); try { localStorage.setItem(BK, String(Date.now() + 14 * 864e5)) } catch { /* ignore */ } onLater() }}>✕</button>
+      </div>
+      <button className="btn secondary" onClick={() => { haptic(); onOpen() }}>Turn on backup</button>
     </div>
   )
 }
