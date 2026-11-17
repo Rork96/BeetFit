@@ -2,6 +2,7 @@ import { ProgramOffer } from './CoachProgram.jsx'
 import { HabitsToday } from './Habits.jsx'
 import HabitCheck from '../camera/HabitCheck.jsx'
 import EnergyCard from './Energy.jsx'
+import { track } from '../lib/track.js'
 import { energyCheck } from '../lib/adapt.js'
 import { TrialNote } from './Pro.jsx'
 import { installMode, snoozed } from '../lib/install.js'
@@ -126,7 +127,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       </div>
 
       {habit && <HabitCheck habit={habit} streak={habitStreak(state, habit.id, key, habit.days?.length ? habit.days : null)} onClose={() => setHabit(null)}
-        onDone={(how, info) => update(prev => ({ ...markHabitPatch(prev, habit.id, how), ...(info?.glasses ? { water: { ...(prev.water || {}), [key]: (prev.water?.[key] || 0) + info.glasses } } : {}) }))}
+        onDone={(how, info) => { track('habit_done'); update(prev => ({ ...markHabitPatch(prev, habit.id, how), ...(info?.glasses ? { water: { ...(prev.water || {}), [key]: (prev.water?.[key] || 0) + info.glasses } } : {}) })) }}
         water={{ amount: label => waterFor(state, habit, label), text: g => fmtWater(g, state), left: g => (water + g >= t.water ? 'goal reached' : `${fmtWater(t.water - water - g, state)} to go`) }}
         onAction={l => (l === 'food' ? go('meals') : go('workout', { start: true, dayIdx }))} />}
       {waterOpen && <WaterSheet state={state} onSet={setGlasses} onClose={() => setWaterOpen(false)} />}

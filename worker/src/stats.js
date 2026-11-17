@@ -1,9 +1,12 @@
 // Funnel counters, nothing personal: one row per (day, event, who), so a count is "distinct devices that did it that day".
 // `who` is the random device id (or user id for server-side events); it is never returned, only counted.
 // Read with GET /api/stats and the STATS_KEY secret in the x-stats-key header. Without the secret the endpoint does not exist.
-export const EVENTS = ['open', 'welcome', 'plan_built', 'paywall_view', 'trial_start', 'signin', 'checkout_open', 'paid', 'first_log', 'first_snap']
+export const EVENTS = ['open', 'welcome', 'plan_built', 'paywall_view', 'trial_start', 'signin', 'checkout_open', 'paid', 'first_log', 'first_snap',
+  // What people actually do: a day with food logged, a session finished, a habit proved, the weekly check-in shown and acted on.
+  'log_day', 'session_done', 'habit_done', 'checkin_seen', 'checkin_done']
 // Order of the funnel as the owner reads it. `open` is reach, not a step.
-export const FUNNEL = ['welcome', 'plan_built', 'paywall_view', 'trial_start', 'checkout_open', 'paid']
+// The trial now starts by itself after the plan, so the PRO screen comes later, usually from the check-in or the trial's end.
+export const FUNNEL = ['welcome', 'plan_built', 'trial_start', 'log_day', 'checkin_seen', 'paywall_view', 'checkout_open', 'paid']
 
 export async function ensureStatsSchema(db) {
   await db.prepare('CREATE TABLE IF NOT EXISTS evt (day TEXT NOT NULL, name TEXT NOT NULL, who TEXT NOT NULL, PRIMARY KEY (day, name, who))').run()

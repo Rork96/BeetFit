@@ -14,6 +14,7 @@ import HowToSheet from './HowTo.jsx'
 import { ExThumb, ExInfoSheet } from './MyEx.jsx'
 import { setLiveSession, flushState } from '../lib/store.js'
 import { useWakeLock } from '../lib/hooks.js'
+import { track } from '../lib/track.js'
 import './session.css'
 
 const RPE = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10]
@@ -165,7 +166,7 @@ export default function Session({ state, update, day, dayIdx, startCamAt, starte
             onSwap={() => setSheet({ kind: 'swap', ei })}
             onPain={() => setSheet({ kind: 'pain', ei })} />
         ))}
-        <button className="btn" onClick={() => { haptic(); setRecap(true) }}>Finish session</button>
+        <button className="btn" onClick={() => { haptic(); track('session_done'); setRecap(true) }}>Finish session</button>
       </div>
 
       {rest && (

@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { track } from '../lib/track.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { dayKey, KG_TO_LB } from '../lib/day.js'
 import { energyCheck, applyCheck } from '../lib/adapt.js'
@@ -15,15 +16,17 @@ const shortDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'num
 export default function EnergyCard({ state, update, pro, where = 'progress' }) {
   const today = dayKey()
   const c = energyCheck(state, today)
+  const act = !!c && c.ready && c.due && !c.coach
+  useEffect(() => { if (act && where === 'today') track('checkin_seen') }, [act, where])
   if (!c) return null
   const lb = state.settings?.units === 'lb'
   const rateTxt = r => `${Math.abs(lb ? r * KG_TO_LB : r).toFixed(2)} ${lb ? 'lb' : 'kg'} a week`
   const tgt = lb ? `${(state.profile.targetKg * KG_TO_LB).toFixed(0)} lb` : `${state.profile.targetKg} kg`
   const locked = !!pro?.on && !pro.pro && !!state.settings?.adaptFree
-  const act = c.ready && c.due && !c.coach
   if (where === 'today' && !act) return null
 
   const choose = choice => {
+    if (choice !== 'skip') track('checkin_done')
     choice === 'skip' || choice === 'hold' ? haptic() : hapticSuccess()
     update(prev => { const patch = applyCheck(prev, c, choice, today); return { ...patch, settings: { ...patch.settings, adaptFree: true } } })
   }

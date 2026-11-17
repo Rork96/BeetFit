@@ -4,6 +4,7 @@ import { MacroBar, MacroChips } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { stapleMatches } from '../data/staples.js'
+import { track } from '../lib/track.js'
 import { recentFoods, lastMeal, slotByHour, SLOTS, recentNames, historyDays } from '../lib/foods.js'
 import { suggestMeals, suggestBudget } from '../data/meals.js'
 import FoodHistory from './FoodHistory.jsx'
@@ -61,6 +62,7 @@ export default function MealsTab({ state, update, onUpgrade }) {
 
   const addFoods = (items, { quiet, slot: forSlot } = {}) => {
     const sl = forSlot || slot
+    track('log_day')
     const t0 = Math.max(Date.now(), atSeq + 1) // unique even when two logs land in the same millisecond
     atSeq = t0 + items.length
     const ats = items.map((_, i) => t0 + i)
