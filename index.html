@@ -2,12 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>FitTrack</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>BeetFit: a plan, a camera that counts your reps, calories that follow your body</title>
+    <meta name="description" content="A training plan for your days and kit, a camera that counts your reps on your phone, and a weekly check-in that measures what you really burn. Free to start, no card." />
+    <link rel="canonical" href="https://beetfit.wealthifai.xyz/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BeetFit" />
+    <meta property="og:url" content="https://beetfit.wealthifai.xyz/" />
+    <meta property="og:title" content="BeetFit: calories that follow your body" />
+    <meta property="og:description" content="A plan for your days and kit, a camera that counts your reps, and a weekly check-in that measures what you really burn. Free to start, no card." />
+    <meta property="og:image" content="https://beetfit.wealthifai.xyz/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BeetFit: calories that follow your body" />
+    <meta name="twitter:description" content="A plan, a camera that counts your reps, and a weekly check-in that measures what you really burn." />
+    <meta name="twitter:image" content="https://beetfit.wealthifai.xyz/og.jpg" />
+    <meta name="theme-color" content="#0c0d11" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BeetFit" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Painted before the app's CSS and JS arrive: no white flash, and something to look at on a slow connection. -->
+    <style>
+      html, body { margin: 0; background: #0c0d11; }
+      #boot { position: fixed; inset: 0; display: grid; place-items: center; background: #0c0d11; }
+      #boot img { width: 84px; height: 84px; border-radius: 22px; animation: boot 1.6s ease-in-out infinite; }
+      @keyframes boot { 50% { transform: scale(1.06); opacity: .8; } }
+      @media (prefers-reduced-motion: reduce) { #boot img { animation: none; } }
+    </style>
+    <div id="root"><div id="boot" aria-label="Loading BeetFit"><img src="/favicon.svg" alt="" /></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

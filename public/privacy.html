@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy Policy · BeetFit</title>
+<meta name="description" content="What BeetFit collects, where it goes, and how to delete it.">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+<main>
+<a class="back" href="/">← BeetFit</a>
+<h1>Privacy Policy</h1>
+<p class="meta">Effective November 11, 2026</p>
+
+<p class="lead">BeetFit is a fitness and nutrition app. It works without an account: by default your plan, logs and settings stay on your phone. This page lists everything that leaves your phone, why, and who else handles it.</p>
+
+<p>BeetFit is run by <b data-legal="company">WealthifAi</b>, Manitoba, Canada ("we"). Questions or requests: <a data-legal="email" href="mailto:ai.generalisimus@gmail.com">ai.generalisimus@gmail.com</a>.</p>
+
+<h2>1. What stays on your phone</h2>
+<ul>
+<li><b>Everything you log</b>: meals, water, weight, body measurements, workouts, notes, pain reports, your plan and settings. It is stored in your browser or app storage on the device.</li>
+<li><b>Camera video for rep counting and habit checks.</b> Pose and object detection run on the phone. Video frames are never uploaded or saved.</li>
+</ul>
+
+<h2>2. What leaves your phone, and why</h2>
+<table>
+<tr><th>When you…</th><th>What is sent</th><th>Who handles it</th></tr>
+<tr><td>Open the app</td><td>A random install ID (no name, no email) so we can cap free usage per device. Your IP address, which our host sees with every request.</td><td>Cloudflare (hosting)</td></tr>
+<tr><td>Take a meal photo</td><td>That photo, to estimate the food and calories. We don't keep it.</td><td>Google (Gemini API)</td></tr>
+<tr><td>Ask Beet, or ask for a plan review</td><td>Your question and a short summary of your plan and recent logs (targets, today's totals, recent workouts), so the answer fits you. We don't keep the conversation on our servers.</td><td>Google (Gemini API)</td></tr>
+<tr><td>Search food or scan a barcode</td><td>The search text or barcode number.</td><td>Open Food Facts, USDA FoodData Central (via our server)</td></tr>
+<tr><td>Turn on sync, or sign in</td><td>A copy of your app data (everything in section 1 except camera video), so it follows you to other phones. Your email address if you sign in with email; an account ID from Google or Apple if you use them.</td><td>Cloudflare (database), Resend (sign-in and check-in emails), Google / Apple (sign-in)</td></tr>
+<tr><td>Turn on reminders</td><td>A push address for this phone, your reminder times (including the names of your habits) and time zone.</td><td>Apple, Google or Mozilla push services</td></tr>
+<tr><td>Join a coach</td><td>Your synced data, a summary (adherence, last workout, camera-checked sets, form score), and messages, visible to that coach until you leave.</td><td>Your coach, through Cloudflare</td></tr>
+<tr><td>Add a demo clip to your own exercise</td><td>The clip, shortened on your phone to 8 seconds without sound. Anyone with its link can play it; the link contains a long random code and isn't listed anywhere.</td><td>Cloudflare (R2 storage)</td></tr>
+<tr><td>Buy PRO</td><td>Payment details go straight to the payment provider; we never see your card. We keep your subscription status and the provider's customer ID.</td><td>Stripe (web), Apple App Store or Google Play via RevenueCat (apps)</td></tr>
+</table>
+
+<h2>3. Usage counts</h2>
+<p>To see whether the app works for people, we count a few steps per install per day: opened the welcome screen, built a plan, saw the PRO screen, started a trial, paid. Each count is one row: the date, the step name and the random install ID. No content of your logs, no advertising IDs, no third-party analytics or ad SDKs.</p>
+
+<h2>4. Health information</h2>
+<p>Weight, food, workouts and pain reports are health information. We use them only to run the features you turn on (sync, coach, Beet, reminders). We don't sell them, rent them, or use them for advertising, and we don't share them with anyone except the services in section 2 for the purpose stated there.</p>
+
+<h2>5. Where data is stored</h2>
+<p>Our servers run on Cloudflare's global network, so synced data and requests may be processed outside Canada, including in the United States. Google, Stripe, Resend and the push services may also process data outside your country. They act on our instructions under their own data processing terms.</p>
+
+<h2>6. How long we keep it</h2>
+<ul>
+<li>Synced data, messages and clips: until you delete them or delete your account.</li>
+<li>Rate-limit counters (install ID or IP address): about one day.</li>
+<li>Usage counts: up to 13 months.</li>
+<li>Subscription records: as long as tax and accounting law requires.</li>
+</ul>
+
+<h2>7. Your choices and rights</h2>
+<ul>
+<li><b>See or take your data</b>: Settings → Your data → Export CSV or JSON.</li>
+<li><b>Delete everything on the phone</b>: Settings → Your data → Reset app. If you use sync without an account and this is your only phone, the copy on our servers is deleted too.</li>
+<li><b>Delete your account</b>: Settings → Account → Delete account. This removes your synced data, sign-in details, coach links, messages, push addresses and demo clips from our servers and cancels any web subscription.</li>
+<li><b>Leave a coach</b> at any time: Settings → Coach.</li>
+<li>Ask us for access, correction or deletion, or complain about how we handle your data, at the email above. We answer within 30 days. In Canada you can also contact the Office of the Privacy Commissioner of Canada; in the EU or UK, your local data protection authority.</li>
+</ul>
+
+<h2>8. Age</h2>
+<p>BeetFit is for people aged 16 and over. We don't knowingly collect data from anyone younger. If you think a child under 16 is using BeetFit, write to us and we will delete the account.</p>
+
+<h2>9. Security</h2>
+<p>Connections use HTTPS. Install IDs are signed so they can't be forged. Access to our servers is limited to the people who run BeetFit. No system is perfectly secure; if a breach affects you, we will tell you and the regulator as the law requires.</p>
+
+<h2>10. Changes</h2>
+<p>If we change this policy, we update the date at the top. If a change affects how your data is used in a meaningful way, we will tell you in the app before it applies.</p>
+
+<p class="foot"><a href="/terms">Terms of Use</a> · <a href="/">Open BeetFit</a></p>
+</main>
+</body>
+</html>

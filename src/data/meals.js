@@ -98,3 +98,34 @@ export function swapMeal(plan, index, dailyKcal) {
   next[index] = pickMeal(slot, Math.round(dailyKcal * SLOT_SPLIT[slot]), plan[index].name)
   return next
 }
+
+// How many kcal a suggestion for `slot` should be: the slot's usual share of the day, never more than what is left.
+// 0 when the day's target is already covered (nothing to suggest).
+export function suggestBudget(slot, targetKcal, eatenKcal) {
+  const left = targetKcal - eatenKcal
+  if (left < 120) return 0
+  const share = targetKcal * SLOT_SPLIT[slot]
+  return Math.round(Math.min(left, Math.max(share, 150)) / 10) * 10
+}
+
+// A few ideas for one slot, scaled to `budgetKcal` (0.6–1.5 of a normal serving), leaning to protein.
+// `exclude` = names to skip (what you ate in the last days, ideas already on screen).
+export function suggestMeals(slot, budgetKcal, { n = 3, exclude = [], rnd = Math.random } = {}) {
+  if (budgetKcal <= 0) return []
+  const skip = new Set(exclude.map(x => String(x).toLowerCase()))
+  const scored = MEALS.filter(m => m.slot === slot && !skip.has(m.name.toLowerCase())).map(m => {
+    const factor = Math.min(1.5, Math.max(0.6, budgetKcal / m.kcal))
+    const kcal = m.kcal * factor
+    return { m, factor, err: Math.abs(kcal - budgetKcal) / budgetKcal, dens: m.p / m.kcal }
+  })
+  const near = scored.filter(x => x.err <= 0.2)
+  const pool = near.length >= n ? near : scored.sort((a, b) => a.err - b.err).slice(0, Math.max(n, 5))
+  return pool
+    .map(x => ({ ...x, score: x.err - x.dens * 1.2 + rnd() * 0.18 }))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, n)
+    .map(({ m, factor }) => {
+      const f = +factor.toFixed(2)
+      return { name: m.name, slot, factor: f, kcal: Math.round(m.kcal * f), p: Math.round(m.p * f), f_: Math.round(m.f * f), c: Math.round(m.c * f) }
+    })
+}

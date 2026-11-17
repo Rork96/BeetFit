@@ -1,0 +1,64 @@
+.bm { display: block; overflow: visible; flex: none; }
+.bm-shadow { fill: #000; opacity: .35; }
+.bm-body { transform-box: fill-box; transform-origin: 50% 100%; animation: bmBob 3.4s ease-in-out infinite; }
+.bm-leaves { transform-box: fill-box; transform-origin: 50% 100%; animation: bmSway 4.2s ease-in-out infinite; }
+.bm-face { fill: var(--rork-ink, #1d1d1d); }
+.bm-eye { transform-box: fill-box; transform-origin: center; animation: bmBlink 5.2s infinite; }
+.bm-arc { fill: none; stroke: var(--rork-ink, #1d1d1d); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.bm-fill { fill: var(--rork-ink, #1d1d1d); }
+.bm-dots { fill: var(--accent); }
+.bm.think .bm-dots circle { animation: bmDot 1.2s ease-in-out infinite; }
+.bm.think .bm-dots circle:nth-child(2) { animation-delay: .2s; }
+.bm.think .bm-dots circle:nth-child(3) { animation-delay: .4s; }
+.bm.cheer .bm-body { animation: bmJump 0.9s cubic-bezier(.3, .7, .4, 1) infinite; }
+.bm.tired .bm-body { animation: bmBob 6s ease-in-out infinite; }
+.bm.tired .bm-leaves { animation: none; transform: rotate(-5deg); }
+@keyframes bmBob { 0%, 100% { transform: scale(1, 1) } 50% { transform: scale(1.025, .975) } }
+@keyframes bmSway { 0%, 100% { transform: rotate(-2.5deg) } 50% { transform: rotate(2.5deg) } }
+@keyframes bmBlink { 0%, 92%, 100% { transform: scaleY(1) } 95% { transform: scaleY(.1) } }
+@keyframes bmJump { 0%, 100% { transform: translateY(0) scale(1.03, .97) } 45% { transform: translateY(-9px) scale(.97, 1.03) } }
+@keyframes bmDot { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+
+.bt-hello { display: flex; align-items: flex-end; gap: 14px; }
+.bt-hello .bm { margin-bottom: -4px; }
+.td-top .bm { margin-right: 6px; }
+.td-top-r { display: flex; align-items: center; gap: 4px; }
+.bt-msg.typing { display: flex; align-items: center; padding: 6px 12px; }
+.bm-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 18px 8px 8px; animation: riseIn var(--dur-3) var(--ease-out) backwards; }
+.bm-empty b { font: 600 17px var(--f-display); }
+.bm-empty .hint { margin: 4px 0 0; max-width: 30ch; }
+.bm-empty-t { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.bm-empty-t .btn { margin-top: 10px; width: auto; padding-inline: 20px; }
+.bm-empty.compact { flex-direction: row; text-align: left; align-items: center; padding: 6px 0; gap: 14px; }
+.bm-empty.compact .bm-empty-t { align-items: flex-start; }
+.bm-empty.compact b { font-size: 15px; }
+.bm-empty.compact .hint { margin-top: 2px; }
+
+/* Poke */
+.bm-tap { position: relative; display: inline-flex; flex: none; cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; border-radius: 50%; }
+.bm-tap:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.bm-tap:active .bm-move { transform: scale(.94); transition: transform 80ms; }
+.bm-move { display: inline-flex; transform-origin: 50% 90%; }
+.bm-move.jump { animation: bmPJump 620ms cubic-bezier(.3, .7, .3, 1); }
+.bm-move.squish { animation: bmPSquish 560ms cubic-bezier(.3, .7, .3, 1); }
+.bm-move.spin { animation: bmPSpin 760ms cubic-bezier(.4, .1, .2, 1); }
+.bm-move.wiggle { animation: bmPWiggle 600ms ease-in-out; }
+@keyframes bmPJump { 0% { transform: none } 20% { transform: scale(1.1, .88) } 50% { transform: translateY(-22%) scale(.94, 1.08) rotate(-6deg) } 80% { transform: scale(1.06, .94) } 100% { transform: none } }
+@keyframes bmPSquish { 0% { transform: none } 25% { transform: scale(1.22, .78) } 55% { transform: scale(.88, 1.14) } 80% { transform: scale(1.05, .96) } 100% { transform: none } }
+@keyframes bmPSpin { 0% { transform: none } 70% { transform: rotate(380deg) scale(.92) } 100% { transform: rotate(360deg) } }
+@keyframes bmPWiggle { 0%, 100% { transform: none } 20% { transform: rotate(-14deg) } 40% { transform: rotate(12deg) } 60% { transform: rotate(-8deg) } 80% { transform: rotate(5deg) } }
+.bm.dizzy .bm-body { animation: bmBob 0.5s ease-in-out infinite; }
+
+.bm-say { position: absolute; z-index: 30; white-space: nowrap; pointer-events: none; padding: 7px 10px; font: 600 12.5px var(--f-body);
+  background: var(--paper, #fcfcfc); color: var(--rork-ink, #1d1d1d); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  animation: bmSay 1.7s var(--ease-out) both; }
+.bm-say::after { content: ''; position: absolute; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
+.b-top .bm-say { bottom: 100%; left: 50%; margin-bottom: 4px; translate: -50% 0; }
+.b-top .bm-say::after { bottom: -4px; left: calc(50% - 5px); }
+.b-left .bm-say { right: 100%; top: 50%; margin-right: 6px; translate: 0 -50%; }
+.b-left .bm-say::after { right: -4px; top: calc(50% - 5px); }
+.b-right .bm-say { left: 100%; top: 50%; margin-left: 6px; translate: 0 -50%; }
+.b-right .bm-say::after { left: -4px; top: calc(50% - 5px); }
+.b-bottom .bm-say { top: 100%; left: 50%; margin-top: 4px; translate: -50% 0; }
+.b-bottom .bm-say::after { top: -4px; left: calc(50% - 5px); }
+@keyframes bmSay { 0% { opacity: 0; transform: scale(.6) } 12% { opacity: 1; transform: scale(1.06) } 20% { transform: scale(1) } 85% { opacity: 1 } 100% { opacity: 0; transform: translateY(-4px) } }

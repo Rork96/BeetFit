@@ -1,0 +1,50 @@
+.ht-anim { width: 100%; display: block; overflow: hidden; }
+.ht-anim svg { width: 100%; height: 100%; display: block; }
+.ht-anim.lg { flex: none; height: 210px; background: radial-gradient(120% 90% at 50% 100%, rgba(207,255,98,.07), transparent 70%), var(--card-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 8px 10px; }
+.ht-anim.sm { height: 100%; }
+.ht-thumb .ht-anim { height: 56px; }
+.ht-seg { stroke: rgba(241,242,246,.92); stroke-linecap: round; fill: none; }
+.ht-seg.hl { stroke: var(--accent); }
+.ht-seg.dim { stroke: rgba(241,242,246,.32); }
+.ht-head { fill: var(--card-2); stroke: rgba(241,242,246,.92); stroke-width: 3; }
+.ht-ground { stroke: rgba(241,242,246,.2); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.ht-eq { stroke: var(--accent); }
+.ht-eq.fill { fill: var(--accent); stroke: none; }
+.ht-eq.line { stroke: rgba(207,255,98,.55); stroke-width: 1.2; }
+.ht-eq.thick { stroke-width: 3; stroke-linecap: round; stroke: var(--accent); }
+.ht-eq.bench { fill: rgba(241,242,246,.1); stroke: rgba(241,242,246,.28); stroke-width: 1; }
+
+.ht-thumb { position: relative; flex: none; width: 66px; height: 66px; padding: 4px; border: 1px solid var(--line-2); border-radius: var(--r-2); background: var(--card-2); overflow: hidden; }
+.ht-thumb:active { transform: scale(.96); }
+.ht-new { position: absolute; right: 3px; top: 3px; font: 700 9px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--on-accent); background: var(--accent); padding: 1px 5px; border-radius: 6px; font-style: normal; }
+
+.ht-sheet { display: flex; flex-direction: column; gap: 12px; }
+.ht-play { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ht-steps { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ht-steps li button { width: 100%; display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 9px 10px; border: 1px solid transparent; border-radius: var(--r-1); background: transparent; color: rgba(241,242,246,.72); font-size: 14.5px; line-height: 1.4; transition: background var(--dur-2), color var(--dur-2); }
+.ht-steps li b { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border: 1.5px solid var(--line-2); font-size: 12px; color: var(--hint); }
+.ht-steps li.on button { background: rgba(207,255,98,.07); border-color: var(--accent-line); color: var(--text); }
+.ht-steps li.on b { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ht-feel p, .ht-breath p { font-size: 14.5px; line-height: 1.45; margin-top: 2px; }
+.ht-mist { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.ht-mist li { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 2px solid var(--danger); }
+.ht-mist b { font-weight: 600; font-size: 14px; }
+.ht-mist span { font-size: 13.5px; color: rgba(241,242,246,.72); line-height: 1.4; }
+.ht-prog { display: flex; flex-wrap: wrap; gap: 8px; }
+.ss-exhead { display: flex; gap: 12px; align-items: flex-start; }
+.ht-lib { position: relative; display: block; width: 100%; padding: 0; border: none; background: none; }
+.ht-lib .btn { position: absolute; right: 10px; bottom: 10px; width: auto; }
+
+.ht-anim.md { flex: none; height: 150px; background: radial-gradient(120% 90% at 50% 100%, rgba(207,255,98,.07), transparent 70%), var(--card-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 6px 10px; }
+
+.ex-row .ht-thumb { width: 60px; height: 60px; }
+.ex-row .ht-thumb .ht-anim { height: 50px; }
+
+/* Filled figure: a dark cut-out pass, then the body fills. */
+.ht-out path, .ht-out circle { fill: var(--card-2); stroke: var(--card-2); stroke-width: 2.2; stroke-linejoin: round; }
+.ht-body path, .ht-body circle { fill: rgba(241, 242, 246, .94); stroke: none; }
+.ht-body path.hl { fill: var(--accent); }
+.ht-body path.dim { fill: rgba(241, 242, 246, .28); }
+.ht-out-s { fill: none; stroke: var(--card-2); stroke-width: 15; stroke-linecap: round; }
+.ht-torso-s { fill: none; stroke: rgba(241, 242, 246, .94); stroke-width: 10.8; stroke-linecap: round; }
+.ht-torso-s.hl { stroke: var(--accent); }

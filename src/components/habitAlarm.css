@@ -1,0 +1,9 @@
+.ha { position: fixed; z-index: 70; left: 12px; right: 12px; top: max(12px, env(safe-area-inset-top)); display: grid; gap: 10px; padding: 14px; border-radius: 18px;
+  background: var(--card, #1b1d24); border: 1px solid var(--accent); box-shadow: 0 10px 40px rgba(0,0,0,.45); animation: haIn .25s ease-out, haPulse 1.6s ease-in-out infinite; }
+.ha-t { display: grid; gap: 2px; }
+.ha-t b { font: 700 18px/1.2 var(--f-display); }
+.ha-t span { font-size: 13px; opacity: .75; }
+.ha-a { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@keyframes haIn { from { transform: translateY(-16px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes haPulse { 50% { box-shadow: 0 10px 40px rgba(0,0,0,.45), 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent) } }
+@media (prefers-reduced-motion: reduce) { .ha { animation: none; } }
