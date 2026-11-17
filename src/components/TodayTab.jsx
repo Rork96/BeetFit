@@ -311,7 +311,7 @@ function NextUp({ up, onSummary, tasks, day, camCount, tomorrow, streak, t, wate
           </span>
         ))}
       </div>
-      <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · {tasks.some(x => x.rest) ? 'rest day counts, one more keeps your streak' : 'any 2 keep your streak'}</p>
+      <p className="td-tasks-cap"><b className="num">{tasks.filter(x => x.done).length}/3</b> done today · {(n => n >= 3 ? 'all three, a full day' : n === 2 ? 'streak kept for today' : tasks.some(x => x.rest) ? 'rest day counts, one more keeps your streak' : n === 1 ? 'one more keeps your streak' : 'any 2 keep your streak')(tasks.filter(x => x.done).length)}</p>
     </div>
   )
 }

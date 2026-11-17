@@ -237,3 +237,10 @@
 .wt-col span { font-size: 12px; color: var(--hint); min-height: 14px; } .wt-col em { font-style: normal; font-size: 11px; color: var(--hint); }
 .wt-col.today em { color: var(--text); font-weight: 600; }
 .td-body .td-delta { padding-right: 36px; }
+
+/* 320 px phones: the ring gives way so the macro numbers fit */
+@media (max-width: 360px) {
+  .card.td-kcal { grid-template-columns: 124px minmax(0, 1fr); gap: 12px; }
+  .td-kcal .td-ring { width: 124px; height: 124px; }
+}
+@media (max-width: 360px) { .td-top .td-streak .num { white-space: normal; } }

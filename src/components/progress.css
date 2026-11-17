@@ -52,3 +52,10 @@
 .pg-stand svg { width: 15px; height: 15px; flex: none; }
 .pg-stand.ahead, .pg-stand.on { color: var(--accent); }
 .pg-stand.behind { color: var(--warn, #ffb340); font-weight: 500; }
+
+/* 320 px phones */
+@media (max-width: 360px) {
+  .pg-scale { gap: 3px; }
+  .pg-scale button { width: 26px; height: 26px; }
+  .pg-scale .td-small { min-width: 40px; }
+}

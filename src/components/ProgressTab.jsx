@@ -127,7 +127,7 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
       {/* Measurements */}
       <div className="card">
         <div className="row"><span className="label">Measurements</span></div>
-        <div className="chips">{MEAS.map(([k, l]) => <button key={k} className={'chip' + (meas === k ? ' on' : '')} onClick={() => { haptic(); setMeas(k) }}>{l}</button>)}</div>
+        <div className="chips wrap">{MEAS.map(([k, l]) => <button key={k} className={'chip' + (meas === k ? ' on' : '')} onClick={() => { haptic(); setMeas(k) }}>{l}</button>)}</div>
         {mlog.length >= 2 ? <MiniTrend points={mlog.map(r => r[meas])} /> : <p className="hint">Log {MEAS.find(x => x[0] === meas)[1].toLowerCase()} weekly — it moves when the scale doesn't.</p>}
         {mlog.length > 0 && <p className="td-small num">Latest {mlog[mlog.length - 1][meas]} cm{mlog.length > 1 ? ` · ${(mlog[mlog.length - 1][meas] - mlog[0][meas]).toFixed(1)} cm since ${mlog[0].date.slice(5)}` : ''}</p>}
         <div className="pg-log">
