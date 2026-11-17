@@ -78,6 +78,17 @@ describe('billing', () => {
     _clearPrices()
   })
 
+  it('a prod_ id with only a one-time price says what it found', async () => {
+    _clearPrices()
+    const real = globalThis.fetch
+    globalThis.fetch = async (url, init) => (String(url).includes('prices?product=prod_once') ? Response.json({ data: [{ id: 'price_o', recurring: null }] }) : real(url, init))
+    const r = await (await worker.fetch(new Request('https://beetfit.test/api/billing/config'), { ...env, STRIPE_PRICE_YEAR: 'prod_once' }, {})).json()
+    globalThis.fetch = real
+    expect(r.on).toBe(true)
+    expect(r.priceError).toMatch(/found: one-time/)
+    _clearPrices()
+  })
+
   it('config tells the owner why prices are missing, and keeps web on', async () => {
     _clearPrices()
     const bad = { ...env, STRIPE_PRICE_MONTH: 'prod_wrong' }

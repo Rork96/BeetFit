@@ -96,9 +96,16 @@ export async function priceId(env, plan) {
   if (!raw || !raw.startsWith('prod_')) return raw
   const key = raw + ':' + plan
   if (resolved[key]) return resolved[key]
-  const list = await stripe(env, `prices?product=${encodeURIComponent(raw)}&active=true&type=recurring&limit=20`)
-  const hit = (list.data || []).find(p => p.recurring?.interval === plan)
-  if (!hit) throw new Error(`stripe: no active ${plan}ly price on ${raw}`)
+  const list = await stripe(env, `prices?product=${encodeURIComponent(raw)}&active=true&limit=20`)
+  const all = list.data || [], rec = all.filter(p => p.recurring)
+  // Exact interval first ("every 12 months" counts as yearly); a product with a single recurring price is taken as is.
+  const hit = rec.find(p => p.recurring.interval === plan && (p.recurring.interval_count || 1) === 1)
+    || (plan === 'year' && rec.find(p => p.recurring.interval === 'month' && p.recurring.interval_count === 12))
+    || (rec.length === 1 ? rec[0] : null)
+  if (!hit) {
+    const found = all.length ? all.map(p => (p.recurring ? `every ${p.recurring.interval_count || 1} ${p.recurring.interval}` : 'one-time')).join(', ') : 'no active prices (wrong id, or test/live mode differs from the secret key)'
+    throw new Error(`stripe: no ${plan}ly subscription price on ${raw}; found: ${found}`)
+  }
   return (resolved[key] = hit.id)
 }
 
