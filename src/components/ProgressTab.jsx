@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { BeetEmpty } from './BeetMascot.jsx'
 import BodyFigure from './BodyFigure.jsx'
-import { bmi, bmiCategory, macros, bmr, tdee, eta } from '../lib/calories.js'
+import { bmi, bmiCategory, macros, bmr, burn, realRate, eta } from '../lib/calories.js'
 import EnergyCard from './Energy.jsx'
 import { planPath, planStanding } from '../lib/adapt.js'
-import { dayKey, addDays, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
+import { dayKey, addDays, targets, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { strengthTrends } from '../lib/strength.js'
 import Ic, { Stat } from './Icons.jsx'
@@ -32,7 +32,7 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
   const pct = total === 0 ? 100 : Math.max(0, Math.min(100, Math.round((Math.abs(now - start) / total) * 100) * Math.sign((start - now) * (start - profile.targetKg) || 1)))
   const rate = weeklyRate(state, 21)
   const curBmi = bmi({ heightCm: profile.heightCm, weightKg: now })
-  const m = macros({ ...profile, weightKg: now })
+  const m = state.coach?.override ? targets({ ...state, settings: { ...state.settings, cycleFood: false } }) : macros({ ...profile, weightKg: now })
   const planEta = state.coach?.override?.kcal ? null : eta({ ...profile, weightKg: now })
   const path = planPath(state)
   // A new plan has no history to show: the window starts at the first weigh-in and the rest of it looks ahead along the plan.
@@ -163,7 +163,7 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
           <Stat icon="fat" v={m.fat} unit="g" label="Fat" color="var(--water)" />
           <Stat icon="carbs" v={m.carbs} unit="g" label="Carbs" color="var(--data-2)" />
         </div>
-        <p className="hint num">BMR {bmr({ ...profile, weightKg: now })} kcal · TDEE {tdee({ ...profile, weightKg: now })} kcal</p>
+        <p className="hint num">Daily burn {burn({ ...profile, weightKg: now })} kcal ({profile.burnAdj ? 'measured from your log' : 'estimate'}) · at rest {bmr({ ...profile, weightKg: now })}{profile.goal !== 'maintain' && !state.coach?.override?.kcal ? ` · pace ${Math.abs(toU(realRate({ ...profile, weightKg: now }))).toFixed(2)} ${units}/week` : ''}</p>
       </div>
 
     </div>

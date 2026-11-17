@@ -386,7 +386,7 @@ function Ready({ profile, it, program, name, onStart, onProgram }) {
           <MacroRing kcal={kcal} p={m.protein} c={m.carbs} f={m.fat} size={120} label="kcal / day" />
           <div className="ob-kcal-r"><MacroChips p={m.protein} c={m.carbs} f={m.fat} /><small className="hint">grams a day</small></div>
         </div>
-        <p className="hint num">BMR {bmr(profile)} · TDEE {tdee(profile)} · activity: {profile.activity}</p>
+        <p className="hint num">You burn about {tdee(profile)} kcal a day (activity: {profile.activity}){m.kcal !== tdee(profile) ? `. Eating ${Math.abs(tdee(profile) - m.kcal)} ${m.kcal < tdee(profile) ? 'under' : 'over'} it sets the pace below.` : '.'}</p>
       </div>
       <div className="card ob-pace">
         <span className="label">Where this gets you</span>
