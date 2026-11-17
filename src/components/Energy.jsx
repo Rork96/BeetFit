@@ -24,7 +24,7 @@ export default function EnergyCard({ state, update, pro, where = 'progress' }) {
   if (where === 'today' && !act) return null
 
   const choose = choice => {
-    choice === 'skip' ? haptic() : hapticSuccess()
+    choice === 'skip' || choice === 'hold' ? haptic() : hapticSuccess()
     update(prev => { const patch = applyCheck(prev, c, choice, today); return { ...patch, settings: { ...patch.settings, adaptFree: true } } })
   }
 
@@ -44,7 +44,7 @@ export default function EnergyCard({ state, update, pro, where = 'progress' }) {
           <M have={c.have.weighIns} need={c.need.weighIns} label="weigh-ins" />
           <M have={c.have.spanDays} need={c.need.spanDays} label="days apart" />
         </div>
-        <p className="hint en-fine">In the last 3 weeks. Then your calories follow your body, not an average.</p>
+        <p className="hint en-fine">Counted over the last 4 weeks. Then your calories follow your body, not an average.</p>
       </section>
     )
   }
@@ -94,11 +94,12 @@ export default function EnergyCard({ state, update, pro, where = 'progress' }) {
       ) : !c.changes ? (
         <>
           <p className="en-lead"><Ic n="check" /> Right on the estimate. Your target stays at <b className="num">{n(c.kcalNow)}</b> kcal.</p>
-          <button className="btn secondary" onClick={() => choose('pace')}>Got it</button>
+          <button className="btn secondary" onClick={() => choose('hold')}>Got it</button>
         </>
       ) : (
         <>
           <p className="en-lead">That’s <b className="num">{n(Math.abs(c.diff))}</b> kcal {up ? 'more' : 'less'} than your plan assumed. Pick what to hold:</p>
+          {Math.abs(c.raw - c.measured) >= 100 && <p className="hint en-fine">This week alone read {n(c.raw)}. One week is noisy, so the estimate moves part of the way and firms up as weeks add up.</p>}
           <button className="en-opt" onClick={() => choose('pace')}>
             <span><b>{state.profile.goal === 'maintain' ? 'Update my target' : 'Stay on pace'}</b>
               <small>{c.keepPace.eta ? `${tgt} by ~${shortDate(c.keepPace.eta.date)}` : c.keepPace.rate ? rateTxt(c.keepPace.rate) : 'hold your weight'}</small></span>

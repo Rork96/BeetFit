@@ -4,16 +4,25 @@ import { dayKey, addDays, eaten, currentWeight } from './day.js'
 import { tdee, burn, bmr, targetCalories, realRate, eta, kcalFloor, KCAL_PER_KG_WEEK } from './calories.js'
 
 export const NEED = { logDays: 8, weighIns: 4, spanDays: 10 } // inside the window
-export const WINDOW = 21
+export const WINDOW = 28
 export const EVERY = 7 // days between check-ins
-const MAX_STEP = 300 // kcal a check-in may move the burn estimate
+// One week of scale readings is noisy (water alone swings a kilo), so a check-in never replaces the estimate:
+// it moves it part of the way, further when the reading is tight and the estimate is still loose (a small Kalman filter).
+const PRIOR_SD = 250 // how far a formula is off for a real person, kcal a day
+const DRIFT_SD = 40 // how much a real burn wanders in a week
+const MIN_SD = 100 // a reading is never trusted tighter than this (food logs are rough too)
 
-// Least-squares slope (kg per day) through the weigh-ins.
-function slope(points) {
+// Least-squares line through the weigh-ins: slope in kg per day, and how sure it is (standard error).
+function fit(points) {
   const n = points.length
   const mx = points.reduce((a, p) => a + p.x, 0) / n, my = points.reduce((a, p) => a + p.y, 0) / n
   const den = points.reduce((a, p) => a + (p.x - mx) ** 2, 0)
-  return den ? points.reduce((a, p) => a + (p.x - mx) * (p.y - my), 0) / den : 0
+  if (!den) return { slope: 0, se: Infinity }
+  const slope = points.reduce((a, p) => a + (p.x - mx) * (p.y - my), 0) / den
+  const rss = points.reduce((a, p) => a + (p.y - my - slope * (p.x - mx)) ** 2, 0)
+  // Day-to-day weight scatters by at least ~0.3 kg; a handful of points that happen to line up are not more certain than that.
+  const sd = Math.max(0.3, n > 2 ? Math.sqrt(rss / (n - 2)) : 0.5)
+  return { slope, se: sd / Math.sqrt(den) }
 }
 
 const dayNum = k => Math.round(Date.parse(k + 'T12:00:00Z') / 864e5)
@@ -45,15 +54,20 @@ export function energyCheck(state, today = dayKey()) {
   if (!ready) return { ...base, ready: false, pct: Math.round((Math.min(1, have.logDays / NEED.logDays) + Math.min(1, have.weighIns / NEED.weighIns) + Math.min(1, have.spanDays / NEED.spanDays)) / 3 * 100) }
 
   const intake = Math.round(logs.reduce((a, d) => a + d.kcal, 0) / logs.length)
-  const perDay = slope(weighs.map(w => ({ x: dayNum(w.date), y: w.kg })))
+  const line = fit(weighs.map(w => ({ x: dayNum(w.date), y: w.kg })))
+  const perDay = line.slope
   const rate = +(perDay * 7).toFixed(2) // kg a week, negative = losing
   const raw = intake - perDay * 7700
-  // Water and a rough food log swing the estimate. Outside ±30% of the formula it is noise, not metabolism.
+  // Water and a rough food log swing the reading. Outside ±30% of the formula it is noise, not metabolism.
   const noisy = raw < base.formula * 0.7 || raw > base.formula * 1.3
-  const stepTo = Math.max(base.current - MAX_STEP, Math.min(base.current + MAX_STEP, raw))
-  const measured = Math.round(stepTo / 10) * 10
+  // Blend the reading into the running estimate. Windows overlap from week to week, so a reading counts for half.
+  const P = Number.isFinite(p.burnVar) ? p.burnVar : PRIOR_SD ** 2
+  const R = Math.max(MIN_SD, line.se * 7700) ** 2 * 2
+  const gain = noisy ? 0 : P / (P + R)
+  const measured = Math.round((base.current + gain * (raw - base.current)) / 10) * 10
+  const nextVar = Math.round((1 - gain) * P + DRIFT_SD ** 2)
   const adj = measured - base.formula
-  const next = { ...p, burnAdj: adj }
+  const next = { ...p, burnAdj: adj, burnVar: nextVar }
   // Two ways to act on it: hold the pace (calories move), or hold the calories (the date moves).
   const keepPace = { kcal: targetCalories(next), rate: realRate(next), eta: eta(next) }
   // Holding the calories only makes sense while they still point the right way (a deficit on a loss goal, a surplus on a gain goal).
@@ -62,19 +76,19 @@ export function energyCheck(state, today = dayKey()) {
   const held = { ...next, rateKg: heldRate }
   const keepKcal = { ok: heldRate >= 0.05 && targetCalories(held) === base.kcalNow, kcal: base.kcalNow, rate: +((base.kcalNow - measured) / KCAL_PER_KG_WEEK).toFixed(2), eta: heldRate ? eta(held) : null, rateKg: heldRate }
   return {
-    ...base, ready: true, pct: 100, intake, rate, raw: Math.round(raw), measured, adj, noisy,
+    ...base, ready: true, pct: 100, intake, rate, raw: Math.round(raw), measured, adj, noisy, gain: +gain.toFixed(2), nextVar, sd: Math.round(Math.sqrt(nextVar)),
     diff: measured - base.current, planned: realRate(p),
-    keepPace, keepKcal, changes: Math.abs(measured - base.current) >= 50 && !noisy,
-    confidence: have.logDays >= 14 && have.weighIns >= 8 ? 'high' : have.logDays >= 10 && have.weighIns >= 5 ? 'good' : 'early'
+    keepPace, keepKcal, changes: Math.abs(keepPace.kcal - base.kcalNow) >= 100 && !noisy, // smaller than that is inside the noise: the target stays put
+    confidence: Math.sqrt(nextVar) <= 110 ? 'high' : Math.sqrt(nextVar) <= 170 ? 'good' : 'early'
   }
 }
 
 // State patch for the chosen option ('pace' | 'kcal' | 'skip'). Keeps a short history for the Progress tab and the coach.
 export function applyCheck(prev, check, choice, today = dayKey()) {
-  const log = [...(prev.adaptLog || []), { date: today, measured: check.measured, formula: check.formula, intake: check.intake, rate: check.rate, from: check.kcalNow, to: choice === 'pace' ? check.keepPace.kcal : check.kcalNow, choice }].slice(-26)
+  const log = [...(prev.adaptLog || []), { date: today, measured: check.measured, formula: check.formula, intake: check.intake, rate: check.rate, from: check.kcalNow, to: choice === 'pace' ? check.keepPace.kcal : check.kcalNow, choice, raw: check.raw }].slice(-26)
   const settings = { ...(prev.settings || {}), adaptAt: today }
-  if (choice === 'skip') return { settings, adaptLog: log }
-  const profile = { ...prev.profile, burnAdj: check.adj }
+  if (choice === 'skip' || choice === 'hold') return { settings, adaptLog: log }
+  const profile = { ...prev.profile, burnAdj: check.adj, burnVar: check.nextVar }
   if (choice === 'kcal' && check.keepKcal.ok) profile.rateKg = check.keepKcal.rateKg
   return { settings, adaptLog: log, profile }
 }

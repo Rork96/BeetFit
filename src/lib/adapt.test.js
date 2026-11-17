@@ -73,12 +73,16 @@ describe('energyCheck', () => {
     expect(c.raw).toBeGreaterThan(2600)
     expect(c.raw).toBeLessThan(2700)
   })
-  it('moves at most 300 kcal a check-in, and offers both ways to act', () => {
-    const st = mk({ kcal: 2100, perWeek: 0 }) // not losing at 2100: the real burn is 2100, the formula says more
+  it('a reading moves the estimate part of the way, and offers both ways to act', () => {
+    const st = mk({ kcal: 2100, perWeek: 0 }) // not losing at 2100: this reading says 2100, the formula says more
     const c = energyCheck(st, T)
     const F = tdee({ ...profile, weightKg: 90 })
     expect(c.formula).toBe(F)
-    expect(c.measured).toBe(Math.round(Math.max(F - 300, 2100) / 10) * 10)
+    expect(c.raw).toBe(2100)
+    expect(c.measured).toBeGreaterThan(2100)
+    expect(c.measured).toBeLessThan(F - 100)
+    expect(c.gain).toBeGreaterThan(0.3)
+    expect(c.gain).toBeLessThan(0.8)
     expect(c.changes).toBe(true)
     expect(c.keepPace.kcal).toBeLessThan(c.kcalNow) // hold the pace → eat less
     expect(c.keepKcal.kcal).toBe(c.kcalNow) // hold the calories → slower
@@ -108,6 +112,10 @@ describe('energyCheck', () => {
     expect(energyCheck(a, addDays(T, 7)).due).toBe(true)
     const s = { ...st, ...applyCheck(st, c, 'skip', T) }
     expect(s.profile.burnAdj).toBeUndefined()
+    // The second reading is trusted less than the first: the estimate has firmed up.
+    const again = energyCheck({ ...a, settings: {} }, T)
+    expect(again.gain).toBeLessThan(c.gain)
+    expect(Math.abs(again.measured - c.measured)).toBeLessThan(Math.abs(c.measured - c.formula))
   })
 })
 
@@ -131,5 +139,17 @@ describe('plan path', () => {
     expect(planStanding(st, 88.4, '2026-11-15').state).toBe('ahead')
     expect(planStanding(st, 89.1, '2026-11-15').state).toBe('on')
     expect(planStanding(st, 90.0, '2026-11-15')).toMatchObject({ state: 'behind', delta: 1 })
+  })
+})
+
+describe('energyCheck stays calm', () => {
+  it('a small difference changes nothing and asks nothing', () => {
+    const F = tdee({ ...profile, weightKg: 90 })
+    const c = energyCheck(mk({ kcal: F - 550 + 60, perWeek: -0.5 }), T) // reading ≈ formula + 60
+    expect(c.changes).toBe(false)
+    const st = mk({ kcal: F - 490, perWeek: -0.5 })
+    const held = { ...st, ...applyCheck(st, c, 'hold', T) }
+    expect(held.profile.burnAdj).toBeUndefined()
+    expect(held.settings.adaptAt).toBe(T)
   })
 })
