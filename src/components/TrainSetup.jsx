@@ -9,7 +9,7 @@ import { haptic, hapticSuccess } from '../lib/platform.js'
 import { dayKey } from '../lib/day.js'
 import './myex.css'
 
-export const PLACES = [['home, no equipment', 'Home', 'no kit', 'today'], ['home, basic', 'Home', 'some kit', 'weight'], ['gym', 'Gym', 'full kit', 'train']]
+export const PLACES = [['home, no equipment', 'Home', 'no kit', 'home'], ['home, basic', 'Home', 'some kit', 'kettle'], ['gym', 'Gym', 'full kit', 'train']]
 export const KIT = ['dumbbell', 'kettlebell', 'bands', 'pullup_bar', 'bench']
 export const placeName = loc => (loc === 'gym' ? 'the gym' : loc === 'home, basic' ? 'home with your kit' : 'home, no equipment')
 

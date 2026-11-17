@@ -140,3 +140,9 @@
 .tn-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .tn-t b { font: 700 15px/1.25 var(--f-display); }
 .tn-t .hint { font-size: 12.5px; line-height: 1.4; }
+
+.pr-check { gap: 10px; }
+.pr-check .en-big b { font-size: 32px; }
+.pr-check .en-opt { padding: 10px 12px; pointer-events: none; }
+.pr-check .en-opt em { font-size: 18px; }
+.pr-check .en-facts b { font-size: 15px; }

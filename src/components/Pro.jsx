@@ -12,6 +12,7 @@ import { SignIn } from './Account.jsx'
 import { Verified } from './Coach.jsx'
 import { track } from '../lib/track.js'
 import './pro.css'
+import './energy.css'
 
 const REASON = {
   snap: 'That was today’s last free photo estimate.',
@@ -34,7 +35,7 @@ const HEAD = {
   strength: 'See every lift get stronger',
   clients: 'Coach more people',
   video: 'Show the move, not just the name',
-  default: 'The plan is free. PRO makes it stick.'
+  default: 'The plan is free. PRO keeps it honest.'
 }
 
 // The photo card is drawn in code (a real photo result needs a real photo); the rest are real screens, below.
@@ -57,6 +58,23 @@ function DemoSnap() {
           <li><span>Broccoli</span><b className="num">34</b></li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// The weekly check-in, drawn with the same classes as the real card (components/Energy.jsx). Sample numbers.
+function DemoCheck() {
+  return (
+    <div className="pr-demo pr-check">
+      <span className="label">Weekly check-in</span>
+      <div className="en-big"><b className="num">2,280</b><span>kcal a day is what you really burn</span></div>
+      <div className="en-facts">
+        <div><b className="num">2,100</b><small>kcal eaten, average</small></div>
+        <div><b className="num">−0.2</b><small>kg a week on the scale</small></div>
+        <div><b className="num">2,578</b><small>the formula’s guess</small></div>
+      </div>
+      <div className="en-opt"><span><b>Stay on pace</b><small>82 kg by ~Mar 8</small></span><em className="num">1,730<small>kcal</small></em></div>
+      <p className="pc-cap">Every week your food log and the scale re-set your calories. No more guessing why the scale stopped.</p>
     </div>
   )
 }
@@ -221,7 +239,9 @@ export default function ProSheet({ pro, account, reason, onClose }) {
 
         <div className="pr-demos" aria-label="What PRO adds">
           {(reason === 'clients' || reason === 'video') && <DemoCoach />}
+          {reason !== 'snap' && reason !== 'chat' && reason !== 'clients' && reason !== 'video' && <DemoCheck />}
           <DemoSnap />
+          {(reason === 'snap' || reason === 'chat') && <DemoCheck />}
           {reason !== 'clients' && reason !== 'video' && <DemoCoach />}
           <Shot src="/pro/beet.webp" label="Ask Beet" w={780} h={460} />
           <Shot src="/pro/trend.webp" label="Strength trends" w={780} h={740} />

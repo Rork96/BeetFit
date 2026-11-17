@@ -177,7 +177,7 @@ export default function Onboarding({ onDone, onRestore, account }) {
             <Field label="Experience"><Chips value={it.exp} options={['beginner', 'irregular', 'regular']} onChange={v => setI('exp', v)} /></Field>
             <Field label="Where you'll train">
               <div className="ob-tiles">
-                {[['home, no equipment', 'Home', 'no kit', 'today'], ['home, basic', 'Home', 'some kit', 'weight'], ['gym', 'Gym', 'full kit', 'train']].map(([v, t, s, ic]) => (
+                {[['home, no equipment', 'Home', 'no kit', 'home'], ['home, basic', 'Home', 'some kit', 'kettle'], ['gym', 'Gym', 'full kit', 'train']].map(([v, t, s, ic]) => (
                   <button key={v} className={'ob-tile' + (it.loc === v ? ' on' : '')} onClick={() => setI('loc', v)} aria-pressed={it.loc === v}>
                     <Ic n={ic} className="solid" /><b>{t}</b><small>{s}</small>
                   </button>

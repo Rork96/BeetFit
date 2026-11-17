@@ -32,6 +32,8 @@ const P = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   timer: <><circle className="f" cx="12" cy="13.5" r="7.5" /><path d="M12 13.5V10M10 2.5h4" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
+  home: <><path className="f" d="M4.5 10.5 12 4l7.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 19z" /><path d="M9.5 20.5v-6h5v6" /></>,
+  kettle: <><path className="f" d="M7 20.5a5.5 5.5 0 0 1 0-9h10a5.5 5.5 0 0 1 0 9z" /><path d="M8.5 11.5V8a3.5 3.5 0 0 1 7 0v3.5" /></>,
   chevron: <path d="M9 5.5l6.5 6.5L9 18.5" />,
 }
 
