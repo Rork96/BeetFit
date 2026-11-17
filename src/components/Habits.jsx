@@ -44,11 +44,11 @@ function HabitsInvite({ update, openSetup }) {
   )
 }
 
-export function HabitsToday({ state, update, onCheck, openSetup }) {
+export function HabitsToday({ state, update, onCheck, openSetup, invite = true }) {
   const all = habitsOf(state)
   const key = dayKey()
   const list = all.filter(h => scheduledOn(h, key) || habitDone(state, h.id, key)) // not-today habits stay out of the way
-  if (!all.length) return state.settings?.habitsHint === false ? null : <HabitsInvite update={update} openSetup={openSetup} />
+  if (!all.length) return state.settings?.habitsHint === false || !invite ? null : <HabitsInvite update={update} openSetup={openSetup} />
   if (!list.length) return null
   const now = new Date(), mins = now.getHours() * 60 + now.getMinutes()
   const done = list.filter(h => habitDone(state, h.id, key)).length

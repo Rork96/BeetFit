@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import BeetMascot from './BeetMascot.jsx'
 import Ic from './Icons.jsx'
 import { MacroRing, MacroChips } from './Nutri.jsx'
-import { macros, bmr, tdee, bmi, MIN_AGE, minTargetKg, targetNote } from '../lib/calories.js'
+import { macros, bmr, tdee, bmi, MIN_AGE, minTargetKg, targetNote, maxRate, eta, realRate } from '../lib/calories.js'
 import { track } from '../lib/track.js'
 
 import { DEFAULT_INTAKE, PREVPAT, MOTIVEPAT, mkProg, paceInfo, planWhy, activityFrom, exPool, stepsTarget } from '../lib/program.js'
@@ -57,7 +57,12 @@ export default function Onboarding({ onDone, onRestore, account }) {
   const id = STEPS[step]
   const go = d => { haptic(); setDir(d); setStep(s => Math.max(0, Math.min(STEPS.length - 1, s + d))); window.scrollTo(0, 0) }
 
-  const profile = useMemo(() => ({ ...p, activity: activityFrom(it) }), [p, it])
+  // The planned pace (kg a week) comes from the target and the timeframe, held inside the safe range. Calories are built from it.
+  const profile = useMemo(() => {
+    const base = { ...p, activity: activityFrom(it) }
+    const want = Math.abs(p.targetKg - p.weightKg) / Math.max(1, it.timeframe * 4.33)
+    return p.goal === 'maintain' ? base : { ...base, rateKg: +Math.max(0.05, Math.min(want, maxRate(base))).toFixed(2) }
+  }, [p, it])
   const built = useMemo(() => mkProg(p.goal, it), [p.goal, it])
   const [swapped, setSwapped] = useState(null) // program after accepted review swaps; reset when answers change
   useEffect(() => { setSwapped(null) }, [built])
@@ -370,8 +375,10 @@ function Ready({ profile, it, program, name, onStart, onProgram }) {
   const m = macros(profile)
   const kcal = useCountUp(m.kcal, 900)
   const why = planWhy(it, program)
+  const when = eta(profile), r = Math.abs(realRate(profile))
+  const paceLine = when ? `${(+profile.targetKg).toFixed(1)} kg by ~${when.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${profile.goal === 'gain' ? '+' : '−'}${r.toFixed(2)} kg/week` : paceInfo(profile, it).line
   return (
-    <Step title={`${name ? name + ', y' : 'Y'}our plan is ready`} sub={`${program.length} training days · ${it.timeframe} months to target`}>
+    <Step title={`${name ? name + ', y' : 'Y'}our plan is ready`} sub={`${program.length} training days${when ? ` · about ${when.weeks} weeks to target` : ''}`}>
       <div className="ob-ready-beet"><BeetMascot size={96} mood="cheer" bubble="right" lines={['Day 1 is the hard one.', 'I’ll be on Today.', 'Let’s go!']} /></div>
       <div className="card ob-kcal">
         <span className="label">Daily target</span>
@@ -383,13 +390,13 @@ function Ready({ profile, it, program, name, onStart, onProgram }) {
       </div>
       <div className="card ob-pace">
         <span className="label">Where this gets you</span>
-        <b className="num">{paceInfo(profile, it).line}</b>
-        <p className="hint">Pace comes from your target and timeframe. Weigh in once a week and watch it play out.</p>
+        <b className="num">{paceLine}</b>
+        <p className="hint">{targetNote(profile) || 'Your calories are set for exactly this pace.'} After two weeks of logging, BeetFit measures what you really burn and keeps the date honest.</p>
       </div>
       <div className="card">
         <span className="label">Now → target</span>
         <BodyFigure sex={profile.sex} heightCm={profile.heightCm} startKg={profile.weightKg} currentKg={profile.weightKg} targetKg={profile.targetKg} goal={profile.goal} show="target" height={220} />
-        <div className="bf-legend"><span><i className="now" />now {profile.weightKg} kg</span><span><i className="tgt" />in {it.timeframe} months {profile.targetKg} kg</span></div>
+        <div className="bf-legend"><span><i className="now" />now {profile.weightKg} kg</span><span><i className="tgt" />{when ? `in ${when.weeks} weeks` : 'target'} {profile.targetKg} kg</span></div>
       </div>
       <div className="card">
         <span className="label">Why this plan</span>

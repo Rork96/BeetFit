@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { BeetEmpty } from './BeetMascot.jsx'
 import BodyFigure from './BodyFigure.jsx'
-import { bmi, bmiCategory, macros, bmr, tdee } from '../lib/calories.js'
+import { bmi, bmiCategory, macros, bmr, tdee, eta } from '../lib/calories.js'
+import EnergyCard from './Energy.jsx'
 import { dayKey, weightSeries, weeklyRate, monthGrid, KG_TO_LB, currentWeight } from '../lib/day.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { strengthTrends } from '../lib/strength.js'
@@ -31,6 +32,7 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
   const rate = weeklyRate(state, 21)
   const curBmi = bmi({ heightCm: profile.heightCm, weightKg: now })
   const m = macros({ ...profile, weightKg: now })
+  const planEta = state.coach?.override?.kcal ? null : eta({ ...profile, weightKg: now })
 
   const logWeight = () => {
     const kg = lb ? Math.round((entry / KG_TO_LB) * 10) / 10 : entry
@@ -74,6 +76,7 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
         </div>
         <div className="progressbar"><div style={{ width: `${Math.max(0, pct)}%` }} /></div>
         <p className="hint num" style={{ textAlign: 'center' }}>{Math.max(0, pct)}% to target · BMI {curBmi} · {bmiCategory(curBmi)}</p>
+        {planEta && <p className="pg-eta num"><Ic n="target" />On plan: {toU(profile.targetKg).toFixed(lb ? 0 : 1)} {units} by ~{planEta.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>}
       </div>
 
       {/* Weight */}
@@ -92,6 +95,8 @@ export default function ProgressTab({ state, update, openCalendar, pro }) {
         </div>
         <p className="td-small">The thick line is your 7-day average — trust it over any single morning.</p>
       </div>
+
+      <EnergyCard state={state} update={update} pro={pro} where="progress" />
 
       {/* Check-in */}
       <div className="card">

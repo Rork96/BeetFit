@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { HabitsSetup } from './Habits.jsx'
-import { GOALS, ACTIVITY_LEVELS, minTargetKg, targetNote } from '../lib/calories.js'
+import { GOALS, ACTIVITY_LEVELS, minTargetKg, targetNote, maxRate, eta, realRate, targetCalories } from '../lib/calories.js'
 import { applyMotionLevel, getMotionLevel } from '../lib/motion.js'
 import { voiceEnabled, setVoiceEnabled, speak, unlockVoice } from '../lib/voice.js'
 import { exportState, clearState } from '../lib/store.js'
 import { downloadCSV } from '../lib/foods.js'
 import { haptic } from '../lib/platform.js'
-import { KG_TO_LB, GLASS_SIZES, glassMl, fmtWater } from '../lib/day.js'
+import { KG_TO_LB, GLASS_SIZES, glassMl, fmtWater, currentWeight } from '../lib/day.js'
 import { DEFAULT_INTAKE } from '../lib/program.js'
 import { rebuildKeep } from '../lib/myex.js'
 import { TrainingCard } from './TrainSetup.jsx'
@@ -21,7 +21,7 @@ import { cachedAccount, getMailRem, setMailRem, MAIL_ERR } from '../lib/account.
 import { proLine } from './Pro.jsx'
 import { REMINDERS, remindersOf, pushSupport, pushOn, enablePush, disablePush, testPush, PUSH_ERR, permission } from '../lib/push.js'
 
-const VERSION = '0.38.0'
+const VERSION = '0.39.0'
 
 // Settings is a short list of groups (the iOS / Android pattern): each row opens its own page,
 // so the root fits on one screen and the version sits at the bottom of it.
@@ -72,6 +72,20 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
                   onChange={e => { const v = +e.target.value; if (v) setP({ targetKg: lb ? Math.round((v / KG_TO_LB) * 2) / 2 : v }) }} />
               </label>
               {p.goal === 'lose' && p.targetKg < minTargetKg(p.heightCm) && <p className="hint" role="alert" style={{ margin: 0, color: 'var(--warn)' }}>A weight-loss target needs a healthy weight, BMI 18.5 or more: about {lb ? +(minTargetKg(p.heightCm) * KG_TO_LB).toFixed(0) + ' lb' : minTargetKg(p.heightCm) + ' kg'} at your height.</p>}
+              {p.goal !== 'maintain' && !state.coach?.override?.kcal && (() => {
+                const cur = { ...p, weightKg: currentWeight(state) }
+                const opts = (p.goal === 'gain' ? [0.125, 0.25, 0.4] : [0.25, 0.5, 0.75, 1]).filter(r => r <= maxRate(cur) + 0.001)
+                const when = eta(cur)
+                return (
+                  <>
+                    <label>Pace</label>
+                    <div className="chips wrap">
+                      {opts.map(r => <button key={r} className={'chip' + (Math.abs((p.rateKg || 0) - r) < 0.02 ? ' on' : '')} onClick={() => { haptic(); setP({ rateKg: r }) }}>{lb ? `${+(r * KG_TO_LB).toFixed(1)} lb` : `${r} kg`} / week</button>)}
+                    </div>
+                    <p className="hint num" style={{ margin: 0 }}>{targetCalories(cur)} kcal a day · {Math.abs(realRate(cur)).toFixed(2)} kg a week{when ? ` · ${lb ? (p.targetKg * KG_TO_LB).toFixed(0) + ' lb' : p.targetKg + ' kg'} by ~${when.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
+                  </>
+                )
+              })()}
               {targetNote(p) && <p className="hint" style={{ margin: 0 }}>{targetNote(p)}</p>}
               <label>Activity
                 <select value={p.activity} onChange={e => setP({ activity: e.target.value })}>

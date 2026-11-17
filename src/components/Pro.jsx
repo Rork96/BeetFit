@@ -4,7 +4,7 @@ import Ic from './Icons.jsx'
 import { MacroRing } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion } from 'motion/react'
-import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR } from '../lib/billing.js'
+import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR, usedSoFar } from '../lib/billing.js'
 import { isNative } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
@@ -20,11 +20,15 @@ const REASON = {
   clients: 'Free coaching covers 3 clients. PRO lifts that to 200.',
   video: 'Your own exercises are free. Demo videos on them are part of PRO.',
   welcome: 'Your plan is built. Beet and photo estimates are what keep you on it: try them free first.',
+  adapt: 'Your first check-in was free. PRO re-measures your burn every week and moves your calories with it.',
+  ended: null,
   success: null
 }
 
 const HEAD = {
   welcome: 'Your plan is set. Now keep it going.',
+  adapt: 'Calories that follow your body',
+  ended: 'Your 14 days of PRO are up',
   snap: 'Photograph your meals, skip the typing',
   chat: 'A coach in your pocket, all day',
   strength: 'See every lift get stronger',
@@ -213,6 +217,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
           <p className="pr-sub">Logging, your plan and camera rep counting stay free. PRO adds the parts that do the thinking for you.</p>
         </div>
         {reason && REASON[reason] && <p className="pr-why">{REASON[reason]}</p>}
+        {reason === 'ended' && <p className="pr-why">{usedLine() ? `In those two weeks: ${usedLine()}. ` : ''}Your plan, logging and camera rep counting stay free. PRO keeps the parts that did the thinking.</p>}
 
         <div className="pr-demos" aria-label="What PRO adds">
           {(reason === 'clients' || reason === 'video') && <DemoCoach />}
@@ -230,6 +235,7 @@ export default function ProSheet({ pro, account, reason, onClose }) {
             ['train', 'Plan, logging, camera reps', '✓', '✓'],
             ['cam', 'Meal photos a day', cfg.free?.snaps ?? 3, 30],
             ['beet', 'Beet questions a day', cfg.free?.chats ?? 5, 60],
+            ['target', 'Weekly check-in: real burn → new target', '1st one', 'Weekly'],
             ['progress', 'Strength trends', 'Top lift', 'All lifts'],
             ['people', 'Add your trainer', '✓', '✓'],
             ['people', 'Coach: clients', cfg.free?.clients ?? 3, 200],
@@ -288,6 +294,59 @@ export default function ProSheet({ pro, account, reason, onClose }) {
     </>,
     document.body
   )
+}
+
+// "18 meal photos and 34 answers from Beet": what this device actually used.
+export function usedLine() {
+  const u = usedSoFar(), parts = []
+  if (u.snaps > 0) parts.push(`${u.snaps} meal ${u.snaps === 1 ? 'photo' : 'photos'} counted`)
+  if (u.chats > 0) parts.push(`${u.chats} ${u.chats === 1 ? 'answer' : 'answers'} from Beet`)
+  return parts.join(' and ')
+}
+
+// Today: where the free trial stands. Quiet on the first days, a real card in the last three, one note when it's over.
+const flag = k => { try { return localStorage.getItem(k) } catch { return null } }
+const setFlag = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* ignore */ } }
+export function TrialNote({ pro, quiet }) {
+  const [, tick] = useState(0)
+  const st = pro?.status
+  if (!pro?.on || !st) return null
+  const again = () => tick(n => n + 1)
+  const trialing = st.pro && st.state === 'trialing' && st.source === 'trial'
+  const left = trialing && st.trialEnd ? daysLeft(st.trialEnd) : null
+  const today = new Date().toDateString()
+  if (trialing && left > 3) {
+    if (!flag('beetfit_trial_note')) return null
+    return (
+      <div className="card tn">
+        <span className="tn-badge">PRO</span>
+        <div className="tn-t"><b>PRO is on for {left} days, free</b><span className="hint">No card taken, and it stops by itself.</span></div>
+        <button className="td-x" aria-label="OK" onClick={() => { haptic(); setFlag('beetfit_trial_note', null); again() }}>✕</button>
+      </div>
+    )
+  }
+  if (trialing) {
+    if (flag('beetfit_trial_snooze') === today) return null
+    const used = usedLine()
+    return (
+      <div className="card tn end">
+        <div className="row"><span className="tn-badge">PRO</span><button className="td-x" aria-label="Later" onClick={() => { haptic(); setFlag('beetfit_trial_snooze', today); again() }}>✕</button></div>
+        <div className="tn-t"><b>{left <= 1 ? 'PRO ends tomorrow' : `PRO ends in ${left} days`}</b>
+          <span className="hint">{used ? `So far: ${used}. ` : ''}Nothing is charged when it stops. Your plan and logs stay.</span></div>
+        <button className="btn small" onClick={() => { haptic(); pro.open() }}>Keep PRO</button>
+      </div>
+    )
+  }
+  if (!quiet && !st.pro && st.trialUsed && flag('beetfit_trial_over') !== '1' && (st.source === 'trial' || st.state === 'expired' || !st.source)) {
+    return (
+      <div className="card tn end">
+        <div className="row"><span className="tn-badge off">PRO</span><button className="td-x" aria-label="Dismiss" onClick={() => { haptic(); setFlag('beetfit_trial_over', '1'); again() }}>✕</button></div>
+        <div className="tn-t"><b>Your free PRO days are over</b><span className="hint">Logging, your plan and camera reps carry on free. Photo estimates and Beet are back to the daily free amount.</span></div>
+        <button className="btn small secondary" onClick={() => { haptic(); setFlag('beetfit_trial_over', '1'); pro.open('ended') }}>See what PRO keeps</button>
+      </div>
+    )
+  }
+  return null
 }
 
 // Settings card: one line of status and the way in.

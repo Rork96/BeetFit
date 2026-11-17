@@ -20,7 +20,24 @@ export function billingConfig(force = false) {
 const today = () => new Date().toISOString().slice(0, 10)
 let usage = (() => { const u = cachedStatus()?.usage; return u && u.day === today() ? u : null })()
 const subs = new Set()
-const setUsage = u => { usage = u ? { ...u, day: today() } : null; subs.forEach(f => f()) }
+// Running totals on this device ("18 meal photos, 34 questions"), fed by the daily meters.
+const USE = 'beetfit_use'
+export const usedSoFar = () => { try { return JSON.parse(localStorage.getItem(USE)) || {} } catch { return {} } }
+function addUse(u) {
+  try {
+    const t = usedSoFar(), d = today(), last = t.last?.day === d ? t.last : { day: d }
+    for (const k of ['snaps', 'chats']) {
+      const now = u?.[k]?.used
+      if (!Number.isFinite(now)) continue
+      const delta = now - (last[k] || 0)
+      if (delta > 0) t[k] = (t[k] || 0) + delta
+      last[k] = now
+    }
+    t.last = last
+    localStorage.setItem(USE, JSON.stringify(t))
+  } catch { /* ignore */ }
+}
+const setUsage = u => { if (u) addUse(u); usage = u ? { ...u, day: today() } : null; subs.forEach(f => f()) }
 export const usageOf = () => (usage && usage.day === today() ? usage : null)
 export function useUsage() {
   const [, tick] = useState(0)

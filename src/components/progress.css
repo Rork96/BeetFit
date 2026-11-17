@@ -44,3 +44,6 @@
 .st-unlock { align-self: flex-start; }
 .pg-kpis span { display: inline-flex; align-items: center; gap: 5px; }
 .pg-kpis span .ic { width: 16px; height: 16px; color: var(--accent); }
+
+.pg-eta { margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--accent); }
+.pg-eta svg { width: 15px; height: 15px; }

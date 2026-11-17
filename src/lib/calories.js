@@ -32,10 +32,45 @@ export const noDeficit = profile => (profile.age < 18 ? 'teen' : null)
 // Lowest weight the app will aim for: a BMI of 18.5.
 export const minTargetKg = heightCm => Math.ceil(18.5 * (heightCm / 100) ** 2 * 10) / 10
 
+// 1 kg of body weight ≈ 7,700 kcal, so 1 kg a week ≈ 1,100 kcal a day.
+export const KCAL_PER_KG_WEEK = 1100
+export const MAX_DEFICIT = 0.25 // of daily burn
+export const MAX_SURPLUS = 0.15
+// Safe weekly pace: 1% of body weight down, 0.5% up.
+export const maxRate = (profile, goal = profile.goal) => +(profile.weightKg * (goal === 'gain' ? 0.005 : 0.01)).toFixed(2)
+
+// What the body burns in a day. The formula is a population average; once the app has measured the person
+// (lib/adapt.js: food logged against the weight trend) the difference is kept in profile.burnAdj.
+export function burn(profile) {
+  const f = tdee(profile)
+  const adj = Math.max(-0.3 * f, Math.min(0.3 * f, +profile.burnAdj || 0))
+  return Math.round(f + adj)
+}
+
+// profile.rateKg = planned kg a week (set from target and timeframe at onboarding, editable in Settings).
+// Profiles from before it existed keep the old flat −20% / +10%.
 export function targetCalories(profile) {
   const goal = GOALS.find(g => g.id === profile.goal) || GOALS[1]
-  const adjust = goal.adjust < 0 && noDeficit(profile) ? 0 : goal.adjust
-  return Math.max(kcalFloor(profile), Math.round(tdee(profile) * (1 + adjust)))
+  const T = burn(profile), floor = kcalFloor(profile)
+  if (goal.adjust < 0 && noDeficit(profile)) return Math.max(floor, T)
+  if (profile.rateKg > 0 && goal.adjust !== 0) {
+    const d = profile.rateKg * KCAL_PER_KG_WEEK
+    const kcal = goal.adjust < 0 ? T - Math.min(d, T * MAX_DEFICIT) : T + Math.min(d, T * MAX_SURPLUS)
+    return Math.max(floor, Math.round(kcal / 10) * 10)
+  }
+  return Math.max(floor, Math.round(T * (1 + goal.adjust)))
+}
+
+// The pace the calorie target really delivers (kg a week, signed: negative = losing), after the caps and the floor.
+export const realRate = profile => +((targetCalories(profile) - burn(profile)) / KCAL_PER_KG_WEEK).toFixed(2)
+
+// When the target weight arrives at that pace: { weeks, date } or null (maintaining, or the pace is ~0).
+export function eta(profile, fromKg = profile.weightKg, from = new Date()) {
+  const diff = profile.targetKg - fromKg, r = realRate(profile)
+  if (Math.abs(diff) < 0.3 || Math.abs(r) < 0.03 || Math.sign(diff) !== Math.sign(r)) return null
+  const weeks = diff / r
+  const date = new Date(from); date.setDate(date.getDate() + Math.round(weeks * 7))
+  return { weeks: Math.round(weeks), date }
 }
 
 // Why the number isn't the plain 20% deficit, if it isn't. Shown next to the target.
@@ -43,7 +78,9 @@ export function targetNote(profile) {
   const goal = GOALS.find(g => g.id === profile.goal) || GOALS[1]
   if (goal.adjust >= 0) return null
   if (noDeficit(profile)) return 'Under 18 the plan keeps you at maintenance. Growing bodies are not put on a deficit.'
-  const plain = Math.round(tdee(profile) * (1 + goal.adjust))
+  const T = burn(profile)
+  const plain = profile.rateKg > 0 ? Math.round(T - Math.min(profile.rateKg * KCAL_PER_KG_WEEK, T * MAX_DEFICIT)) : Math.round(T * (1 + goal.adjust))
+  if (profile.rateKg > 0 && plain >= kcalFloor(profile) && profile.rateKg * KCAL_PER_KG_WEEK > T * MAX_DEFICIT + 5) return `Capped at a ${Math.round(MAX_DEFICIT * 100)}% deficit: faster than that costs muscle. Expect about ${Math.abs(realRate(profile))} kg a week.`
   if (plain < kcalFloor(profile)) return `Raised to ${kcalFloor(profile)} kcal, the lowest safe daily intake without a clinician. Weight will move slower.`
   return null
 }

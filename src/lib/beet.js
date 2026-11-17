@@ -3,6 +3,18 @@ import { api } from './api.js'
 import { dayKey, addDays, targets, eaten, waterOf, program, nextDayIndex, setsLogged, currentWeight } from './day.js'
 import { overview } from './coach.js'
 
+import { energyCheck } from './adapt.js'
+import { burn, realRate } from './calories.js'
+
+// What the app knows about the person's real energy use, for Beet.
+function energyLine(state, today) {
+  const p = { ...state.profile, weightKg: currentWeight(state) }
+  const c = energyCheck(state, today)
+  const pace = state.profile.goal === 'maintain' ? 'maintaining' : `planned pace ${Math.abs(realRate(p))} kg/week`
+  if (!c?.ready) return `Energy: estimated burn ${burn(p)} kcal/day (formula, not yet measured), ${pace}.`
+  return `Energy: measured burn about ${c.measured} kcal/day from ${c.have.logDays} logged days (average intake ${c.intake} kcal, scale trend ${c.rate} kg/week); the plan currently assumes ${c.current}; ${pace}.`
+}
+
 export function buildContext(state, today = dayKey()) {
   const p = state.profile, t = targets(state), e = eaten(state, today)
   const ov = overview(state, today)
@@ -17,6 +29,7 @@ export function buildContext(state, today = dayKey()) {
     `Profile: ${p.sex}, ${p.age} y, ${p.heightCm} cm, ${currentWeight(state)} kg now (started ${p.weightKg}), goal ${p.goal}, target ${p.targetKg} kg.`,
     `Setup: trains at ${it.loc || 'n/a'}, ${it.daysWk || prog.days.length} days/week, experience ${it.exp || 'n/a'}${it.injuries ? `, avoid loading: ${it.injuries}` : ''}.`,
     `Daily targets${t.coach ? ' (set by their coach)' : ''}: ${t.kcal} kcal, protein ${t.protein} g, carbs ${t.carbs} g, fat ${t.fat} g, water ${t.water} glasses.`,
+    energyLine(state, today),
     `Today so far: ${e.kcal} kcal, P ${e.p} g, C ${e.c} g, F ${e.f} g; water ${waterOf(state, today)}/${t.water}; ${setsLogged(state, today) ? 'trained today' : 'not trained yet today'}.`,
     foods.length ? `Logged today: ${foods.join('; ')}.` : 'Nothing logged to eat today.',
     `Plan "${prog.name}": ${prog.days.map(d => `${d.name} [${d.exercises.map(x => x.name).join(', ')}]`).join(' | ')}.`,

@@ -17,6 +17,7 @@ import { useSync } from './lib/useSync.js'
 import { useCoach } from './lib/useCoach.js'
 import { useAccount } from './lib/useAccount.js'
 import { usePro } from './lib/usePro.js'
+import { startTrial } from './lib/billing.js'
 import ProSheet from './components/Pro.jsx'
 import { CoachChat, CoachHome } from './components/Coach.jsx'
 import HabitAlarm from './components/HabitAlarm.jsx'
@@ -83,8 +84,15 @@ export default function App() {
     try {
       if (localStorage.getItem('beetfit_coach_intent')) { localStorage.removeItem('beetfit_coach_intent'); setSettings('setup'); return }
       if (localStorage.getItem('beetfit_paywall') && pro.config) {
-        localStorage.removeItem('beetfit_paywall')
-        if (pro.config.on && !isNative() && !pro.status?.pro && !pro.status?.trialUsed) setTimeout(() => pro.open('welcome'), 500)
+        const fresh = pro.config.on && !isNative() && !pro.status?.pro && !pro.status?.trialUsed
+        if (!fresh) localStorage.removeItem('beetfit_paywall')
+        else if (pro.config.autoTrial) {
+          // No sheet in the way on day one: the 14 days simply start (no card, nothing to cancel). Offline → tried again next open.
+          startTrial().then(r => {
+            if (r.ok || r.error === 'trial_used' || r.error === 'already_pro') localStorage.removeItem('beetfit_paywall')
+            if (r.ok) { localStorage.setItem('beetfit_trial_note', '1'); pro.refresh() }
+          }).catch(() => {})
+        } else { localStorage.removeItem('beetfit_paywall'); setTimeout(() => pro.open('welcome'), 500) }
       }
     } catch { /* ignore */ }
   }, [hasPlan, pro.config]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -158,7 +166,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={ml === 'off' ? 'always' : ml === 'full' || ml === 'lite' ? 'never' : 'user'}>
       <div key={tab} className={'tabv' + (back ? ' tab-back' : '')}>
-        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={pg => setSettings(typeof pg === 'string' ? pg : true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} habitLink={habitLink} clearHabitLink={() => setHabitLink(null)} />}
+        {tab === 'today' && <TodayTab state={view} update={update} go={go} openSettings={pg => setSettings(typeof pg === 'string' ? pg : true)} coach={coach} openChat={() => setChat(true)} openClients={() => setClients(true)} askBeet={q => go('beet', q ? { first: q } : null)} openRead={id => setGuides({ first: id })} openCalendar={o => setCal(o || {})} sync={sync} habitLink={habitLink} clearHabitLink={() => setHabitLink(null)} pro={pro} />}
         {tab === 'workout' && <WorkoutTab state={view} update={update} intent={intent} clearIntent={() => setIntent(null)} pro={pro} />}
         {tab === 'meals' && <MealsTab state={view} update={update} onUpgrade={pro.on && !pro.pro ? r => pro.open(r) : null} />}
         {tab === 'beet' && <BeetChat embedded state={view} first={intent?.first} onUpgrade={pro.on && !pro.pro ? () => pro.open('chat') : null} />}

@@ -132,6 +132,8 @@ export async function billingConfig(env) {
     web: !!(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_MONTH && env.STRIPE_PRICE_YEAR),
     store: !!env.REVENUECAT_WEBHOOK_AUTH,
     trialDays: TRIAL_DAYS,
+    // The 14 days start by themselves when the plan is built (no card, nothing to cancel). AUTO_TRIAL = "0" brings back the ask-first sheet.
+    autoTrial: env.AUTO_TRIAL !== '0',
     free: FREE,
     prices: await prices(env).catch(() => null),
     ...(await priceProblem(env).then(e => (e ? { priceError: e } : {})))

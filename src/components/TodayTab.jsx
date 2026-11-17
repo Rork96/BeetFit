@@ -1,8 +1,12 @@
 import { ProgramOffer } from './CoachProgram.jsx'
 import { HabitsToday } from './Habits.jsx'
 import HabitCheck from '../camera/HabitCheck.jsx'
+import EnergyCard from './Energy.jsx'
+import { energyCheck } from '../lib/adapt.js'
+import { TrialNote } from './Pro.jsx'
+import { installMode, snoozed } from '../lib/install.js'
 import { habitsOf, habitStreak, markHabitPatch, waterFor } from '../lib/habits.js'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { planStatus } from '../lib/train.js'
 import { nextUp, dayKey, eaten, targets, waterOf, fmtWater, dayTasks, streakInfo, todayStanding, weekReview, week, program, nextDayIndex, setsLogged, currentWeight, fmtWeight, KG_TO_LB } from '../lib/day.js'
 import { trackerFor } from '../camera/RepTracker.jsx'
@@ -26,7 +30,7 @@ import './today.css'
 
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync, habitLink, clearHabitLink }) {
+export default function TodayTab({ state, update, go, openSettings, coach, openChat, openClients, askBeet, openRead, openCalendar, sync, habitLink, clearHabitLink, pro }) {
   const key = dayKey()
   const t = targets(state)
   const e = eaten(state, key)
@@ -68,6 +72,22 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
   const ts = planStatus(state, key)
   const up = nextUp(state, key, { workoutTime: wPlan?.time || null, restDay: !wPlan && (ts.kind === 'rest' || ts.kind === 'week') })
   const tomorrow = prog.days[(dayIdx + (trainedToday ? 1 : 0)) % prog.days.length]
+
+  // One suggestion a day, and none while the person is still getting started: Today is for today's work.
+  const [, setFsTick] = useState(0)
+  const starting = gettingStarted(state, !!askBeet)
+  const pitch = useMemo(() => {
+    if (starting) return null
+    const can = []
+    if (installMode() && !snoozed()) can.push('install')
+    if (!habitsOf(state).length && state.settings?.habitsHint !== false) can.push('habits')
+    let atOff = false; try { atOff = localStorage.getItem(AT_OFF) === '1' } catch { /* ignore */ }
+    if (coach && !coach.link?.coach && !atOff) can.push('trainer')
+    return can.length ? can[Math.floor(Date.parse(key + 'T12:00:00Z') / 864e5) % can.length] : null
+  }, [starting, key, !!coach?.link?.coach, habitsOf(state).length, state.settings?.habitsHint]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ec = energyCheck(state, key)
+  const checkDue = !!(ec?.ready && ec.due && !ec.coach) // the weekly check-in is up: one PRO-related card at a time
 
   const wNow = currentWeight(state)
   const wStart = state.weightLog?.[0]?.kg ?? wNow
@@ -113,6 +133,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
       <div className="stk td-stack">
         <NextUp up={up} onSummary={allDone ? openDayDone : null} tasks={tasks} day={day} camCount={camCount} tomorrow={tomorrow} streak={st} t={t} water={water} state={state} units={units} go={go}
           onGlass={() => addGlass(1)} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
+        <EnergyCard state={state} update={update} pro={pro} where="today" />
         {coach && <CoachNote coach={coach} onOpen={openChat} />}
         {coach?.link?.coach && <ProgramOffer state={state} update={update} />}
         {/* Calories */}
@@ -139,7 +160,8 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           <button className="td-link" onClick={() => go('meals')}>Log food →</button>
         </div>
 
-        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} />
+        <TrialNote pro={pro} quiet={checkDue} />
+        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} onHide={() => setFsTick(n => n + 1)} />
         <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
         {todayPlans.length > 0 && (
           <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
@@ -152,7 +174,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </button>
         )}
 
-        <HabitsToday state={state} update={update} onCheck={setHabit} openSetup={() => openSettings('reminders')} />
+        <HabitsToday state={state} update={update} onCheck={setHabit} openSetup={() => openSettings('reminders')} invite={pitch === 'habits'} />
 
         {/* Water + Body */}
         <div className="grid2">
@@ -181,9 +203,9 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           </button>
         </div>
 
-        {askBeet && <BeetCard state={state} onAsk={askBeet} />}
+        {askBeet && !starting && <BeetCard state={state} onAsk={askBeet} />}
         <CoachStrip openClients={openClients} />
-        {coach && !coach.link?.coach && <AddTrainer coach={coach} />}
+        {pitch === 'trainer' && <AddTrainer coach={coach} />}
 
         {/* Week + today's tasks */}
         <div className="card td-wk">
@@ -199,7 +221,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           {state.settings?.streak !== false && <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>}
         </div>
 
-        <InstallCard />
+        {pitch === 'install' && <InstallCard />}
         {openRead && <ReadCard state={state} onOpen={openRead} />}
       </div>
       {streakOpen && <StreakSheet state={state} update={update} onClose={() => history.back()} onCalendar={() => calendar({ day: key })} />}
@@ -296,8 +318,22 @@ function NextUp({ up, onSummary, tasks, day, camCount, tomorrow, streak, t, wate
 
 // First days: five small wins, in order, each one tap away. Hides itself when done or dismissed.
 const FS_OFF = 'beetfit_firststeps_off'
-function FirstSteps({ state, go, onGlass, askBeet, onStart }) {
-  const [off, setOff] = useState(() => { try { return localStorage.getItem(FS_OFF) === '1' } catch { return false } })
+const fsOff = () => { try { return localStorage.getItem(FS_OFF) === '1' } catch { return false } }
+// Still in the first days (the "Getting started" card is up)? Then Today holds back every other suggestion.
+export function gettingStarted(state, hasBeet = true) {
+  if (fsOff()) return false
+  const done = [
+    Object.values(state.foodLog || {}).some(d => d?.length),
+    Object.values(state.water || {}).some(n => n > 0),
+    Object.values(state.workoutLog || {}).some(d => Object.keys(d || {}).some(k => !k.startsWith('__'))),
+    (state.weightLog || []).length > 0,
+    ...(hasBeet ? [(loadChat() || []).length > 0] : [])
+  ]
+  return done.some(x => !x)
+}
+
+function FirstSteps({ state, go, onGlass, askBeet, onStart, onHide }) {
+  const [off, setOff] = useState(fsOff)
   const steps = [
     { id: 'food', icon: 'food', t: 'Log your first meal', s: 'Photo, barcode or search', done: Object.values(state.foodLog || {}).some(d => d?.length), act: () => go('meals') },
     { id: 'water', icon: 'water', t: 'Add a glass of water', s: 'One tap on Today', done: Object.values(state.water || {}).some(n => n > 0), act: onGlass },
@@ -308,7 +344,7 @@ function FirstSteps({ state, go, onGlass, askBeet, onStart }) {
   const n = steps.filter(x => x.done).length
   if (off || n === steps.length) return null
   const next = steps.find(x => !x.done)
-  const hide = () => { haptic(); try { localStorage.setItem(FS_OFF, '1') } catch { /* ignore */ } setOff(true) }
+  const hide = () => { haptic(); try { localStorage.setItem(FS_OFF, '1') } catch { /* ignore */ } setOff(true); onHide?.() }
   return (
     <div className="card fs1">
       <div className="fs1-h">
