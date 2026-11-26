@@ -3,7 +3,7 @@
 // Read with GET /api/stats and the STATS_KEY secret in the x-stats-key header. Without the secret the endpoint does not exist.
 export const EVENTS = ['open', 'welcome', 'plan_built', 'paywall_view', 'trial_start', 'signin', 'checkout_open', 'paid', 'first_log', 'first_snap',
   // What people actually do: a day with food logged, a session finished, a habit proved, the weekly check-in shown and acted on.
-  'log_day', 'session_done', 'habit_done', 'checkin_seen', 'checkin_done']
+  'log_day', 'session_done', 'habit_done', 'checkin_seen', 'checkin_done', 'push_on']
 // Order of the funnel as the owner reads it. `open` is reach, not a step.
 // The trial now starts by itself after the plan, so the PRO screen comes later, usually from the check-in or the trial's end.
 export const FUNNEL = ['welcome', 'plan_built', 'trial_start', 'log_day', 'checkin_seen', 'paywall_view', 'checkout_open', 'paid']

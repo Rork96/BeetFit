@@ -51,6 +51,20 @@ async function currentSub() {
   try { return await (await registration()).pushManager.getSubscription() } catch { return null }
 }
 
+// Asking on Today. Reminders are what bring people back (morning brief, the heads-up before the free days end),
+// so Today offers them once after the first win instead of leaving them in Settings. 'ask' = one tap turns them on;
+// null = already on, blocked, not possible here (iPhone Safari needs the Home Screen app first), or snoozed.
+const ASK_SNOOZE = 'beetfit_push_ask_snooze'
+export const pushAskSnoozed = () => { try { return +localStorage.getItem(ASK_SNOOZE) > Date.now() } catch { return false } }
+export const snoozePushAsk = (days = 7) => { try { localStorage.setItem(ASK_SNOOZE, String(Date.now() + days * 864e5)) } catch { /* ignore */ } }
+export function pushAsk() {
+  if (pushOn() || pushAskSnoozed()) return null
+  const s = pushSupport()
+  if (s === 'native') return 'ask'
+  if (s !== 'web' || permission() === 'denied') return null
+  return 'ask'
+}
+
 // Turn reminders on for this device. Must be called from a tap (permission prompt).
 export async function enablePush(prefs, events = []) {
   const kind = pushSupport()

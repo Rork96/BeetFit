@@ -26,6 +26,8 @@ import Ic from './Icons.jsx'
 import { ReadCard } from './Read.jsx'
 import SyncBadge from './SyncBadge.jsx'
 import InstallCard from './InstallCard.jsx'
+import { pushAsk, pushOn, enablePush, remindersOf, snoozePushAsk, PUSH_ERR, REMINDERS } from '../lib/push.js'
+import { planEvents } from '../lib/plans.js'
 import { WaterSheet } from './Water.jsx'
 import './today.css'
 
@@ -82,6 +84,9 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
     if (starting) return null
     // Days of logs that exist only in this browser come first: a cleared browser would take them all.
     if (!sync?.on && loggedDays(state) >= 5 && !backupSnoozed()) return 'backup'
+    // Reminders next: they carry the morning brief and the heads-up before the free days end. The Getting started card
+    // offers them first; this card is for people who closed that card.
+    if (fsOff() && pushAsk() === 'ask') return 'push'
     const can = []
     if (installMode() && !snoozed()) can.push('install')
     if (!habitsOf(state).length && state.settings?.habitsHint !== false) can.push('habits')
@@ -165,7 +170,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
         </div>
 
         <TrialNote pro={pro} quiet={checkDue} />
-        <FirstSteps state={state} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} onHide={() => setFsTick(n => n + 1)} />
+        <FirstSteps state={state} trial={isTrial(pro)} go={go} onGlass={() => addGlass(1)} askBeet={askBeet} onStart={() => { haptic(); go('workout', { start: true, dayIdx }) }} onHide={() => setFsTick(n => n + 1)} />
         <WeekReview state={state} today={key} streak={st} units={units} onPlan={() => { haptic(); openCalendar?.({ plan: true }) }} />
         {todayPlans.length > 0 && (
           <button className="card td-plans" onClick={() => { haptic(); openCalendar?.({ day: key }) }}>
@@ -225,6 +230,7 @@ export default function TodayTab({ state, update, go, openSettings, coach, openC
           {state.settings?.streak !== false && <p className="td-small td-rule">2 of 3 keeps the streak · 1 missed day a week is free</p>}
         </div>
 
+        {pitch === 'push' && <PushCard state={state} trial={isTrial(pro)} onLater={() => setPitchTick(n => n + 1)} />}
         {pitch === 'install' && <InstallCard />}
         {pitch === 'backup' && <BackupCard days={loggedDays(state)} onOpen={() => openSettings('sync')} onLater={() => setPitchTick(n => n + 1)} />}
         {openRead && <ReadCard state={state} onOpen={openRead} />}
@@ -360,10 +366,16 @@ export function gettingStarted(state, hasBeet = true) {
   return done.some(x => !x)
 }
 
-function FirstSteps({ state, go, onGlass, askBeet, onStart, onHide }) {
+function FirstSteps({ state, trial, go, onGlass, askBeet, onStart, onHide }) {
   const [off, setOff] = useState(fsOff)
+  const rem = useReminderOptIn(state)
+  // The row stays once it was offered, so turning reminders on shows as a tick. Blocked or impossible here: no row.
+  const [remOffered] = useState(() => pushAsk() === 'ask')
+  const remRow = remOffered && (pushOn() || pushAsk() === 'ask')
+  const brief = remindersOf(state).brief
   const steps = [
     { id: 'food', icon: 'food', t: 'Log your first meal', s: 'Photo, barcode or search', done: Object.values(state.foodLog || {}).some(d => d?.length), act: () => go('meals') },
+    ...(remRow ? [{ id: 'remind', icon: 'bell', t: rem.busy ? 'Turning on…' : 'Turn on reminders', s: trial ? 'Morning brief, and a heads-up before your free PRO days end' : `Morning brief at ${brief.h}:${String(brief.m).padStart(2, '0')}, skipped when you’ve done it`, done: pushOn(), act: rem.turnOn }] : []),
     { id: 'water', icon: 'water', t: 'Add a glass of water', s: 'One tap on Today', done: Object.values(state.water || {}).some(n => n > 0), act: onGlass },
     { id: 'train', icon: 'train', t: 'Do Day 1', s: 'The camera counts your reps', done: Object.values(state.workoutLog || {}).some(d => Object.keys(d || {}).some(k => !k.startsWith('__'))), act: onStart },
     { id: 'weigh', icon: 'scale', t: 'Log your weight', s: 'Once a week is enough', done: (state.weightLog || []).length > 0, act: () => go('progress') },
@@ -390,6 +402,45 @@ function FirstSteps({ state, go, onGlass, askBeet, onStart, onHide }) {
           </button>
         ))}
       </div>
+      {rem.msg && <p className={rem.ok ? 'hint fs1-msg' : 'sy-err fs1-msg'}>{rem.msg}</p>}
+    </div>
+  )
+}
+
+const isTrial = pro => !!(pro?.status?.pro && pro.status.state === 'trialing' && pro.status.source === 'trial')
+
+// One tap from a card on Today: permission prompt → subscribe → a line saying when the first one comes.
+function useReminderOptIn(state) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [ok, setOk] = useState(false)
+  const turnOn = async () => {
+    if (busy) return false
+    setBusy(true); setMsg('')
+    const r = await enablePush(remindersOf(state), planEvents(state))
+    setBusy(false)
+    if (!r.ok) { setOk(false); setMsg(PUSH_ERR[r.error] || 'Couldn’t turn on reminders. Try again from Settings.'); return false }
+    hapticSuccess(); track('push_on'); setOk(true)
+    const n = r.next
+    const what = n ? (n.kind === 'event' ? 'Calendar' : REMINDERS.find(x => x.id === n.kind)?.label) : null
+    setMsg(what ? `Reminders are on. First one: ${what}, ${new Date(n.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : 'Reminders are on. Change times in Settings.')
+    return true
+  }
+  return { busy, msg, ok, turnOn }
+}
+
+function PushCard({ state, trial, onLater }) {
+  const rem = useReminderOptIn(state)
+  const on = pushOn()
+  return (
+    <div className="card at">
+      <div className="at-h">
+        <span className="at-ic"><Ic n="bell" className="solid" /></span>
+        <div><b>Let BeetFit nudge you</b><span className="hint">A morning brief with today’s targets, and a meal or workout reminder only when it’s still open{trial ? '. Plus a heads-up before your free PRO days end.' : '.'}</span></div>
+        {!on && <button className="td-x" aria-label="Not now" onClick={() => { haptic(); snoozePushAsk(7); onLater() }}>✕</button>}
+      </div>
+      {!on && <button className="btn secondary btn-ic" disabled={rem.busy} onClick={() => { haptic(); rem.turnOn() }}><Ic n="bell" />{rem.busy ? 'Turning on…' : 'Turn on reminders'}</button>}
+      {rem.msg && <p className={rem.ok ? 'hint' : 'sy-err'}>{rem.msg}</p>}
     </div>
   )
 }

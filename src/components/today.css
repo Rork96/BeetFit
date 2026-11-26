@@ -244,3 +244,4 @@
   .td-kcal .td-ring { width: 124px; height: 124px; }
 }
 @media (max-width: 360px) { .td-top .td-streak .num { white-space: normal; } }
+.fs1-msg { margin: 8px 0 0; font-size: 12.5px; }
