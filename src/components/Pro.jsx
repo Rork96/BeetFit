@@ -4,13 +4,14 @@ import Ic from './Icons.jsx'
 import { MacroRing } from './Nutri.jsx'
 import { createPortal } from 'react-dom'
 import { motion } from 'motion/react'
-import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR, usedSoFar } from '../lib/billing.js'
+import { startCheckout, openPortal, startTrial, canBuyHere, fmtMoney, yearSaving, BILLING_ERR, usedSoFar, useUsage } from '../lib/billing.js'
 import { isNative } from '../lib/platform.js'
 import { useBackClose } from '../lib/hooks.js'
 import { haptic, hapticSuccess } from '../lib/platform.js'
 import { SignIn } from './Account.jsx'
 import { Verified } from './Coach.jsx'
 import { track } from '../lib/track.js'
+import { TOUR } from '../lib/tour.js'
 import './pro.css'
 import './energy.css'
 
@@ -114,6 +115,69 @@ function Shot({ src, label, w, h }) {
   )
 }
 
+// The 15-second tour: plays muted in the strip, tap for sound.
+function TourCard() {
+  return (
+    <figure className="pr-demo pr-shot pr-tour">
+      <span className="label">15-second tour</span>
+      <video src={TOUR.src} poster={TOUR.poster} muted playsInline loop autoPlay preload="none" controls width={720} height={1280} />
+    </figure>
+  )
+}
+
+// Free and PRO side by side, with "You" on the column that applies now. Numbers come from /api/billing/config.
+const PRO_LIM = { snaps: 30, chats: 60, clients: 200 }
+export function Limits({ cfg, current }) {
+  const rows = [
+    ['train', 'Plan, logging, camera reps', '✓', '✓'],
+    ['cam', 'Meal photos a day', cfg?.free?.snaps ?? 3, PRO_LIM.snaps],
+    ['beet', 'Beet questions a day', cfg?.free?.chats ?? 5, PRO_LIM.chats],
+    ['target', 'Weekly check-in: real burn → new target', '1st one', 'Weekly'],
+    ['progress', 'Strength trends', 'Top lift', 'All lifts'],
+    ['people', 'Add your trainer', '✓', '✓'],
+    ['people', 'Coach: clients', cfg?.free?.clients ?? 3, PRO_LIM.clients],
+    ['cam', 'Coach: camera form scores', '—', '✓'],
+  ]
+  return (
+    <div className={'pr-cmp' + (current ? ' cur-' + current : '')} role="table" aria-label="Free and PRO compared">
+      <div className="pr-cmp-h" role="row"><span role="columnheader" />
+        <span role="columnheader" className="free">Free{current === 'free' && <i className="pr-you">You</i>}</span>
+        <span role="columnheader" className="pro">PRO{current === 'pro' && <i className="pr-you">You</i>}</span></div>
+      {rows.map(([ic, l, f, p]) => (
+        <div className="pr-cmp-r" role="row" key={l}>
+          <span role="cell"><Ic n={ic} className="solid" />{l}</span>
+          <span role="cell" className={'num' + (f === '✓' ? ' yes' : '')}>{f}</span>
+          <span role="cell" className={'num pro' + (p === '✓' ? ' yes' : '')}>{p}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Today's meters: what is used of the daily photo and Beet amounts. Before the first request of the day the server
+// hasn't counted anything, so the limits alone are shown.
+export function UsageToday({ cfg, isPro }) {
+  const u = useUsage()
+  const lim = k => u?.[k]?.limit ?? (isPro ? PRO_LIM[k] : cfg?.free?.[k] ?? (k === 'snaps' ? 3 : 5))
+  const used = k => u?.[k]?.used ?? 0
+  const rows = [['snaps', 'cam', 'Meal photos'], ['chats', 'beet', 'Beet questions']]
+  return (
+    <div className="pr-use" aria-label="Used today">
+      {rows.map(([k, ic, l]) => {
+        const L = lim(k), n = Math.min(used(k), L)
+        return (
+          <div key={k} className={'pr-use-r' + (n >= L ? ' out' : '')}>
+            <span className="pr-use-l"><Ic n={ic} className="solid" />{l} today</span>
+            <b className="num">{n}<small> of {L}</small></b>
+            <i className="pr-use-bar"><i style={{ transform: `scaleX(${L ? n / L : 0})` }} /></i>
+          </div>
+        )
+      })}
+      <p className="hint pr-use-note">Resets at midnight UTC. Plan, logging, camera reps and reminders have no limit.</p>
+    </div>
+  )
+}
+
 const fmtDate = ms => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 const daysLeft = ms => Math.max(0, Math.ceil((ms - Date.now()) / 864e5))
 
@@ -192,6 +256,21 @@ export default function ProSheet({ pro, account, reason, onClose }) {
               <b className="num">{st.state === 'trialing' && st.trialEnd ? `${daysLeft(st.trialEnd)} days left` : st.periodEnd ? fmtDate(st.periodEnd) : '—'}</b></div>
           </div>
         )}
+        {st?.pro && (
+          <div className="pr-lim">
+            <span className="label">Your daily limits</span>
+            <UsageToday cfg={cfg} isPro />
+            {st.state === 'trialing' && st.trialEnd && <p className="hint pr-fine">After {fmtDate(st.trialEnd)} the Free column applies: {cfg?.free?.snaps ?? 3} meal photos and {cfg?.free?.chats ?? 5} Beet questions a day, the first check-in only.</p>}
+            <Limits cfg={cfg} current="pro" />
+            {st.state === 'trialing' && (
+              <div className="pr-demos pr-demos-sm" aria-label="What PRO does">
+                <TourCard />
+                <Shot src="/pro/checkin.webp" label="Weekly check-in" w={780} h={1185} />
+                <Shot src="/pro/beet.webp" label="Ask Beet" w={780} h={460} />
+              </div>
+            )}
+          </div>
+        )}
         {st?.state === 'trialing' && (
           <>
             <p className="hint pr-fine">Your trial ends {fmtDate(st.trialEnd)}. {st.source === 'trial' ? 'No card was taken, so nothing can be charged. It just stops.' : 'With no card on file it simply stops; nothing is charged.'}</p>
@@ -240,34 +319,21 @@ export default function ProSheet({ pro, account, reason, onClose }) {
         <div className="pr-demos" aria-label="What PRO adds">
           {(reason === 'clients' || reason === 'video') && <DemoCoach />}
           {reason !== 'snap' && reason !== 'chat' && reason !== 'clients' && reason !== 'video' && <DemoCheck />}
+          <TourCard />
           <DemoSnap />
           {(reason === 'snap' || reason === 'chat') && <DemoCheck />}
+          <Shot src="/pro/checkin.webp" label="Weekly check-in" w={780} h={1185} />
           {reason !== 'clients' && reason !== 'video' && <DemoCoach />}
           <Shot src="/pro/beet.webp" label="Ask Beet" w={780} h={460} />
           <Shot src="/pro/trend.webp" label="Strength trends" w={780} h={740} />
           <Shot src="/pro/food.webp" label="Every meal, counted" w={780} h={560} />
         </div>
-        <p className="pr-eg">App screens with sample data; the photo and coach cards are illustrations. Swipe →</p>
+        <p className="pr-eg">App screens and the tour use sample data; the photo and coach cards are illustrations. Swipe →</p>
 
-        <div className="pr-cmp" role="table" aria-label="Free and PRO compared">
-          <div className="pr-cmp-h" role="row"><span role="columnheader" /><span role="columnheader">Free</span><span role="columnheader" className="pro">PRO</span></div>
-          {[
-            ['train', 'Plan, logging, camera reps', '✓', '✓'],
-            ['cam', 'Meal photos a day', cfg.free?.snaps ?? 3, 30],
-            ['beet', 'Beet questions a day', cfg.free?.chats ?? 5, 60],
-            ['target', 'Weekly check-in: real burn → new target', '1st one', 'Weekly'],
-            ['progress', 'Strength trends', 'Top lift', 'All lifts'],
-            ['people', 'Add your trainer', '✓', '✓'],
-            ['people', 'Coach: clients', cfg.free?.clients ?? 3, 200],
-            ['cam', 'Coach: camera form scores', '—', '✓'],
-          ].map(([ic, l, f, p]) => (
-            <div className="pr-cmp-r" role="row" key={l}>
-              <span role="cell"><Ic n={ic} className="solid" />{l}</span>
-              <span role="cell" className={'num' + (f === '✓' ? ' yes' : '')}>{f}</span>
-              <span role="cell" className={'num pro' + (p === '✓' ? ' yes' : '')}>{p}</span>
-            </div>
-          ))}
-        </div>
+        <span className="label pr-lim-l">Your daily limits now</span>
+        <UsageToday cfg={cfg} isPro={false} />
+
+        <Limits cfg={cfg} current="free" />
 
         {isNative() ? (
           <p className="hint pr-fine">In-app purchase arrives with the App Store and Google Play release.</p>
@@ -372,10 +438,13 @@ export function TrialNote({ pro, quiet }) {
 // Settings card: one line of status and the way in.
 export function proLine(pro) {
   const st = pro.status
-  return !st?.pro ? (st?.trialUsed ? 'Unlimited photo estimates, more Beet, strength trends.' : `${pro.config?.trialDays || 14} days free, no card needed.`)
-    : st.state === 'trialing' ? `Trial · ${daysLeft(st.trialEnd)} days left`
-      : st.cancelAtEnd ? `Ends ${fmtDate(st.periodEnd)}`
-        : `${st.plan === 'year' ? 'Yearly' : 'Monthly'} · renews ${st.periodEnd ? fmtDate(st.periodEnd) : ''}`
+  const f = pro.config?.free || {}
+  const freeLim = `Free: ${f.snaps ?? 3} meal photos and ${f.chats ?? 5} Beet questions a day`
+  const proLim = `${PRO_LIM.snaps} photos and ${PRO_LIM.chats} Beet questions a day`
+  return !st?.pro ? (st?.trialUsed ? `${freeLim}. PRO: ${proLim}, weekly check-ins, all strength trends.` : `${freeLim}. ${pro.config?.trialDays || 14} days of PRO free, no card.`)
+    : st.state === 'trialing' ? `Trial · ${daysLeft(st.trialEnd)} days left · ${proLim}`
+      : st.cancelAtEnd ? `Ends ${fmtDate(st.periodEnd)} · ${proLim}`
+        : `${st.plan === 'year' ? 'Yearly' : 'Monthly'} · renews ${st.periodEnd ? fmtDate(st.periodEnd) : ''} · ${proLim}`
 }
 
 export function ProCard({ pro, onOpen }) {

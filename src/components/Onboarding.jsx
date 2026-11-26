@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import BeetMascot from './BeetMascot.jsx'
 import Ic from './Icons.jsx'
+import { TourButton } from './Tour.jsx'
+import './tour.css'
 import { MacroRing, MacroChips } from './Nutri.jsx'
 import { macros, bmr, tdee, bmi, MIN_AGE, minTargetKg, targetNote, maxRate, eta, realRate } from '../lib/calories.js'
 import { track } from '../lib/track.js'
@@ -284,6 +286,7 @@ function Welcome({ onStart, onRestore, account }) {
           <li><span><Ic n="cam" className="solid" /></span>The camera counts your reps</li>
           <li><span><Ic n="beet" className="solid" /></span>Beet knows your plan and food</li>
         </ul>
+        <TourButton />
       </div>
       <button className="btn" onClick={() => onStart(null, open === 'trainer')}>Build my plan</button>
       <p className="hint ob-free">2 minutes · free to start · no card</p>

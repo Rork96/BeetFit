@@ -210,7 +210,7 @@ export default function Settings({ state, update, sync, coach, account, pro, ope
               <i className="st-chev" aria-hidden="true" />
             </button>
           )}
-          {pro?.on && <Nav ic="beet" label={pro.status?.pro ? 'BeetFit PRO' : 'Try BeetFit PRO'} sub={proLine(pro)} hot={!pro.status?.pro} onClick={() => { haptic(); pro.open() }} />}
+          {pro?.on && <Nav ic="beet" label={pro.status?.pro ? 'BeetFit PRO' : 'Try BeetFit PRO'} sub={proLine(pro)} hot={!pro.status?.pro} wrap onClick={() => { haptic(); pro.open() }} />}
         </div>
 
         <Group title="Your plan">
@@ -250,9 +250,9 @@ function Group({ title, children }) {
   )
 }
 
-function Nav({ ic, label, sub, hot, onClick }) {
+function Nav({ ic, label, sub, hot, wrap, onClick }) {
   return (
-    <button className={'st-nav' + (hot ? ' hot' : '')} onClick={onClick}>
+    <button className={'st-nav' + (hot ? ' hot' : '') + (wrap ? ' wrap' : '')} onClick={onClick}>
       <span className="st-ic"><Ic n={ic} /></span>
       <span className="st-t"><b>{label}</b>{sub && <small>{sub}</small>}</span>
       <i className="st-chev" aria-hidden="true" />
