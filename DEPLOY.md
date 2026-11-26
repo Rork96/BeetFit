@@ -8,7 +8,6 @@ Needs: Node 20+, the Cloudflare account that owns `wealthifai.xyz`.
 
 ```bash
 git clone https://github.com/Rork96/BeetFit.git && cd BeetFit
-git checkout redesign/camera-v1        # until PR #1 is merged
 npm install
 npx wrangler login                     # opens Cloudflare in the browser → Allow
 
@@ -30,9 +29,14 @@ Check:
 
 If `wrangler secret put` complains the Worker doesn't exist yet, run `npm run deploy` first, then the secrets, then deploy again.
 
-### Deploy on every push (optional)
-Cloudflare dashboard → Workers & Pages → **beetfit** → Settings → Builds → Connect → GitHub `Rork96/BeetFit`, branch `main`.
-Build command: `npm run build` · Deploy command: `npx wrangler deploy`.
+### Deploy on every push to `main`
+`main` is production. Cloudflare dashboard → Workers & Pages → **beetfit** → Settings → Build → **Connect** → GitHub `Rork96/BeetFit`:
+- Production branch: `main`
+- Build command: `npm run build` (prebuild downloads the pose model)
+- Deploy command: `npx wrangler deploy`
+- Non-production branches: keep the default `npx wrangler versions upload` (a preview version, production is untouched)
+
+Secrets stay on the Worker (`keep_vars = true`), so the build needs no variables. Work on a branch, open a PR, merge to `main` to ship.
 
 ### Abuse protection (recommended, free)
 Security → WAF → Rate limiting rules → Create:
